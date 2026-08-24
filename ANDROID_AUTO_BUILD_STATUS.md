@@ -3,12 +3,43 @@
 Result: **FAIL**
 
 ```text
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:25:42: 'fun ExtraPropertiesExtension.provideDelegate(receiver: Any?, property: KProperty<*>): MutablePropertyDelegate' is deprecated. Use 'val property = extra[name] as Type' instead. See the Gradle 9.6 upgrading guide.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:45:1: 'fun Project.android(configure: Action<BaseAppModuleExtension>): Unit' is deprecated. Replaced by com.android.build.api.dsl.ApplicationExtension.
+This class is not used for the public extensions in AGP when android.newDsl=true, which is the default in AGP 9.0, and will be removed in AGP 10.0.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:102:41: 'fun srcDir(srcDir: Any): Any' is deprecated. Use `directories` mutable set instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:161:9: 'var htmlOutput: File?' is deprecated. Use SingleArtifact.LINT_HTML_REPORT or SingleArtifact.AGGREGATED_LINT_HTML_REPORT to cconsume lint report artifacts.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:162:9: 'var htmlReport: Boolean' is deprecated. Lint reports are now always generated. Use SingleArtifact.LINT_HTML_REPORT or SingleArtifact.AGGREGATED_LINT_HTML_REPORT to consume lint report artifacts.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preGplayDebugBuild UP-TO-DATE
+
+> Task :app:dataBindingMergeDependencyArtifactsGplayDebug
+WARNING: [Processor] Library '/home/runner/.gradle/caches/modules-2/files-2.1/androidx.car.app/app/1.7.0/368eb3df2522b17368912c34129ebf3c1f0f9519/app-1.7.0.aar' contains references to both AndroidX and old support library. This seems like the library is partially migrated. Jetifier will try to rewrite the library anyway.
+ Example of androidX reference: 'androidx/car/app/media/IMediaPlaybackHost'
+ Example of support library reference: 'android/support/v4/media/session/MediaSessionCompat$Token'
+WARNING: [Processor] Library '/home/runner/.gradle/caches/modules-2/files-2.1/androidx.media3/media3-session/1.11.0/494cabd189f6ffa23a95603bdbf85c6a9d85a0e7/media3-session-1.11.0.aar' contains references to both AndroidX and old support library. This seems like the library is partially migrated. Jetifier will try to rewrite the library anyway.
+ Example of androidX reference: 'androidx/media3/session/legacy/MediaBrowserServiceCompat$2'
+ Example of support library reference: 'android/support/v4/media/MediaBrowserCompat$MediaItem'
+
+> Task :app:generateGplayDebugResources
+> Task :app:generateGplayDebugBuildConfig
+> Task :app:packageGplayDebugResources
+> Task :app:processGplayDebugNavigationResources
+> Task :app:parseGplayDebugLocalResources
+> Task :app:mergeGplayDebugResources
+> Task :app:generateGplayDebugRFile
+> Task :app:dataBindingGenBaseClassesGplayDebug
+> Task :app:kspGplayDebugKotlin
+> Task :app:kaptGenerateStubsGplayDebugKotlin
+
 > Task :app:kaptGplayDebugKotlin
 warning: The following options were not recognized by any processor: '[room.schemaLocation, kapt.kotlin.generated]'
 
-> Task :app:compileGplayDebugKotlin FAILED
+> Task :app:compileGplayDebugKotlin
 e: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/gplay/java/com/nextcloud/talk/auto/TalkCarAppService.kt:9:24 Unresolved reference 'ApplicationInfo'.
 e: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/gplay/java/com/nextcloud/talk/auto/TalkCarAppService.kt:32:40 Unresolved reference 'ApplicationInfo'.
+
+> Task :app:compileGplayDebugKotlin FAILED
 
 [Incubating] Problems report is available at: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/build/reports/problems/problems-report.html
 
@@ -57,37 +88,6 @@ org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:com
 	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:328)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
-	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:111)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:146)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:131)
-	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$0(DefaultBuildLifecycleController.java:323)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:324)
-	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$0(StateTransitionController.java:235)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
-	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:235)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:314)
-	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:302)
-	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:300)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:296)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:288)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:131)
-	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:182)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.lambda$run$0(DefaultBuildController.java:199)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:199)
 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:65)
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
@@ -208,7 +208,7 @@ Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionExcept
 	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:38)
 	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:68)
 	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)
-	... 61 more
+	... 30 more
 Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
 	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:21)
 	at org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork.execute(BuildToolsApiCompilationWork.kt:320)
@@ -251,6 +251,6 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD FAILED in 4m 20s
+BUILD FAILED in 4m 53s
 13 actionable tasks: 13 executed
 ```
