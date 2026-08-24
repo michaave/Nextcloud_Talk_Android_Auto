@@ -9,4 +9,5 @@
 
 <automotiveApp>
     <uses name="notification" />
+    <uses name="template" />
 </automotiveApp>

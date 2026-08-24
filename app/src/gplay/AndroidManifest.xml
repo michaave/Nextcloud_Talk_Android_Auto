@@ -9,6 +9,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+
     <application
         android:name=".application.NextcloudTalkApplication"
         android:allowBackup="true"
@@ -24,10 +26,26 @@
         <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
 
+
+        <!-- ConversationItem and communication templates require Car API 7. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="7" />
+
         <!-- Android Auto discovers the projected messaging capability through this descriptor. -->
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
+
+        <service
+            android:name=".auto.TalkCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.MESSAGING" />
+                <category android:name="androidx.car.app.category.CALLING" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".services.firebase.NCFirebaseMessagingService"
