@@ -23,7 +23,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew --write-verification-metadata sha256,pgp :app:compileGplayDebugKotlin --stacktrace
+          # Resolve the GPlay compile classpath without compiling sources. This lets
+          # Gradle write the new trusted signatures/checksums even if source code
+          # still needs a later compile fix.
+          ./gradlew :app:dependencies \
+            --configuration gplayDebugCompileClasspath \
+            --write-verification-metadata sha256,pgp \
+            --stacktrace
 
       - name: Commit verification metadata
         shell: bash
