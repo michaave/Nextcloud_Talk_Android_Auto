@@ -241,6 +241,6 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD FAILED in 1m 47s
+BUILD FAILED in 1m 37s
 Configuration cache entry discarded due to serialization error.
 ```
