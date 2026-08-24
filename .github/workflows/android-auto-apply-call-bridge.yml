@@ -24,7 +24,7 @@ jobs:
           ref: android-auto
           fetch-depth: 0
 
-      - name: Apply Android Auto source and dependency patches
+      - name: Apply Android Auto source and published dependency patches
         run: |
           python3 scripts/android-auto-wire-call-bridge.py
           python3 scripts/android-auto-update-dependencies.py
@@ -38,7 +38,7 @@ jobs:
                   app/src/main/java/com/nextcloud/talk/jobs/NotificationWorker.kt \
                   app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt
           if ! git diff --cached --quiet; then
-            git commit -m "feat(auto): wire Talk calls to current Core-Telecom"
+            git commit -m "feat(auto): wire Talk calls to published Core-Telecom"
           fi
           git fetch origin android-auto
           git rebase origin/android-auto
