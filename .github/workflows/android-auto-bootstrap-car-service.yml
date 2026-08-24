@@ -1,0 +1,274 @@
+name: Android Auto - bootstrap car service
+
+on:
+  push:
+    branches:
+      - android-auto
+    paths:
+      - .github/workflows/android-auto-bootstrap-car-service.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Android Auto branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: android-auto
+
+      - name: Add Android Auto Car App and Telecom foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          gradle = Path('app/build.gradle.kts')
+          text = gradle.read_text()
+          anchor = 'dependencies {\n    implementation("androidx.media3:media3-session:1.11.0")\n'
+          addition = '''dependencies {
+    // Android Auto communication UI is isolated to the Google Play flavor.
+    "gplayImplementation"("androidx.car.app:app:1.7.0")
+    "gplayImplementation"("androidx.car.app:app-projected:1.7.0")
+    "gplayImplementation"("androidx.core:core-telecom:1.1.0-alpha06")
+    implementation("androidx.media3:media3-session:1.11.0")
+'''
+          if 'androidx.car.app:app:1.7.0' not in text:
+              if anchor not in text:
+                  raise SystemExit('Could not find dependencies anchor in app/build.gradle.kts')
+              text = text.replace(anchor, addition, 1)
+              gradle.write_text(text)
+
+          manifest = Path('app/src/gplay/AndroidManifest.xml')
+          text = manifest.read_text()
+          if 'android.permission.MANAGE_OWN_CALLS' not in text:
+              marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n          xmlns:tools="http://schemas.android.com/tools">\n'
+              replacement = marker + '\n    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />\n'
+              if marker not in text:
+                  raise SystemExit('Could not find gplay manifest root')
+              text = text.replace(marker, replacement, 1)
+
+          if 'androidx.car.app.minCarApiLevel' not in text:
+              marker = '        <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />\n'
+              replacement = marker + '''
+
+        <!-- ConversationItem and communication templates require Car API 7. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="7" />
+'''
+              if marker not in text:
+                  raise SystemExit('Could not find gplay application metadata anchor')
+              text = text.replace(marker, replacement, 1)
+
+          if '.auto.TalkCarAppService' not in text:
+              marker = '        <service\n            android:name=".services.firebase.NCFirebaseMessagingService"'
+              service = '''        <service
+            android:name=".auto.TalkCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.MESSAGING" />
+                <category android:name="androidx.car.app.category.CALLING" />
+            </intent-filter>
+        </service>
+
+'''
+              if marker not in text:
+                  raise SystemExit('Could not find service anchor in gplay manifest')
+              text = text.replace(marker, service + marker, 1)
+          manifest.write_text(text)
+
+          descriptor = Path('app/src/gplay/res/xml/automotive_app_desc.xml')
+          text = descriptor.read_text()
+          if '<uses name="template" />' not in text:
+              text = text.replace('    <uses name="notification" />\n', '    <uses name="notification" />\n    <uses name="template" />\n', 1)
+              descriptor.write_text(text)
+
+          service_file = Path('app/src/gplay/java/com/nextcloud/talk/auto/TalkCarAppService.kt')
+          service_file.parent.mkdir(parents=True, exist_ok=True)
+          service_file.write_text('''/*
+ * Nextcloud Talk - Android Client
+ *
+ * SPDX-FileCopyrightText: 2026 Michael Avery
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+package com.nextcloud.talk.auto
+
+import android.content.ApplicationInfo
+import android.content.Intent
+import androidx.car.app.CarAppService
+import androidx.car.app.CarContext
+import androidx.car.app.Screen
+import androidx.car.app.Session
+import androidx.car.app.model.Action
+import androidx.car.app.model.Header
+import androidx.car.app.model.ItemList
+import androidx.car.app.model.ListTemplate
+import androidx.car.app.model.Row
+import androidx.car.app.model.Template
+import androidx.car.app.validation.HostValidator
+import com.nextcloud.talk.auto.call.TalkTelecomManager
+
+/** Android Auto entry point for Talk messaging and calling. */
+class TalkCarAppService : CarAppService() {
+    override fun onCreate() {
+        super.onCreate()
+        TalkTelecomManager.get(applicationContext).registerWithTelecom()
+    }
+
+    override fun createHostValidator(): HostValidator =
+        if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
+        } else {
+            HostValidator.Builder(this)
+                .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+                .build()
+        }
+
+    override fun onCreateSession(): Session = TalkCarSession()
+}
+
+private class TalkCarSession : Session() {
+    override fun onCreateScreen(intent: Intent): Screen = TalkCarHomeScreen(carContext)
+}
+
+private class TalkCarHomeScreen(carContext: CarContext) : Screen(carContext) {
+    override fun onGetTemplate(): Template {
+        val items = ItemList.Builder()
+            .addItem(
+                Row.Builder()
+                    .setTitle("Messages")
+                    .addText("Read, reply to, and start Talk conversations")
+                    .setOnClickListener {
+                        screenManager.push(
+                            TalkCarStatusScreen(
+                                carContext,
+                                "Messages",
+                                "Android Auto messaging notifications and voice replies are enabled. " +
+                                    "Conversation history and contact selection are being wired to Talk next."
+                            )
+                        )
+                    }
+                    .build()
+            )
+            .addItem(
+                Row.Builder()
+                    .setTitle("Calls")
+                    .addText("Start and control Talk voice calls")
+                    .setOnClickListener {
+                        screenManager.push(
+                            TalkCarStatusScreen(
+                                carContext,
+                                "Calls",
+                                "Talk is registered with Android Telecom. " +
+                                    "The next layer connects Telecom callbacks to Talk WebRTC calls."
+                            )
+                        )
+                    }
+                    .build()
+            )
+            .build()
+
+        return ListTemplate.Builder()
+            .setHeader(
+                Header.Builder()
+                    .setStartHeaderAction(Action.APP_ICON)
+                    .setTitle("Nextcloud Talk")
+                    .build()
+            )
+            .setSingleList(items)
+            .build()
+    }
+}
+
+private class TalkCarStatusScreen(
+    carContext: CarContext,
+    private val title: String,
+    private val status: String
+) : Screen(carContext) {
+    override fun onGetTemplate(): Template =
+        ListTemplate.Builder()
+            .setHeader(
+                Header.Builder()
+                    .setStartHeaderAction(Action.BACK)
+                    .setTitle(title)
+                    .build()
+            )
+            .setSingleList(
+                ItemList.Builder()
+                    .addItem(Row.Builder().setTitle(status).build())
+                    .build()
+            )
+            .build()
+}
+''')
+
+          telecom_file = Path('app/src/gplay/java/com/nextcloud/talk/auto/call/TalkTelecomManager.kt')
+          telecom_file.parent.mkdir(parents=True, exist_ok=True)
+          telecom_file.write_text('''/*
+ * Nextcloud Talk - Android Client
+ *
+ * SPDX-FileCopyrightText: 2026 Michael Avery
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+package com.nextcloud.talk.auto.call
+
+import android.content.Context
+import androidx.core.telecom.CallsManager
+
+/**
+ * Owns Talk's Core-Telecom registration for the Android Auto capable build.
+ *
+ * Call sessions will be added here as the existing Talk WebRTC lifecycle is
+ * bridged into Telecom. Registration is intentionally idempotent.
+ */
+class TalkTelecomManager private constructor(context: Context) {
+    val callsManager = CallsManager(context.applicationContext)
+
+    @Volatile
+    private var registered = false
+
+    @Synchronized
+    fun registerWithTelecom() {
+        if (registered) return
+
+        val capabilities =
+            CallsManager.CAPABILITY_BASELINE or CallsManager.CAPABILITY_SUPPORTS_VIDEO_CALLING
+        callsManager.registerAppWithTelecom(capabilities)
+        registered = true
+    }
+
+    companion object {
+        @Volatile
+        private var instance: TalkTelecomManager? = null
+
+        fun get(context: Context): TalkTelecomManager =
+            instance ?: synchronized(this) {
+                instance ?: TalkTelecomManager(context).also { instance = it }
+            }
+    }
+}
+''')
+          PY
+
+      - name: Compile Google Play Android Auto sources
+        run: ./gradlew :app:compileGplayDebugKotlin --stacktrace
+
+      - name: Commit bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts app/src/gplay
+          if git diff --cached --quiet; then
+            echo "Bootstrap is already present."
+            exit 0
+          fi
+          git commit -m "feat(auto): add Car App and Telecom foundation"
+          git push origin HEAD:android-auto
