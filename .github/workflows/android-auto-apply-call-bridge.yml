@@ -6,6 +6,11 @@ on:
       - android-auto
     paths:
       - .github/workflows/android-auto-apply-call-bridge.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .github/workflows/android-auto-apply-call-bridge.yml
 
 permissions:
   contents: write
