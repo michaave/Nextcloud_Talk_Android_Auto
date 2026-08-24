@@ -19,18 +19,21 @@ jobs:
           ref: android-auto
           fetch-depth: 0
 
-      - name: Apply shared Talk call bridge patches
-        run: python3 scripts/android-auto-wire-call-bridge.py
+      - name: Apply Android Auto source and dependency patches
+        run: |
+          python3 scripts/android-auto-wire-call-bridge.py
+          python3 scripts/android-auto-update-dependencies.py
 
-      - name: Commit source wiring
+      - name: Commit wiring and dependency update
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/nextcloud/talk/jobs/NotificationWorker.kt \
+          git add app/build.gradle.kts \
+                  app/src/main/java/com/nextcloud/talk/jobs/NotificationWorker.kt \
                   app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt
           if ! git diff --cached --quiet; then
-            git commit -m "feat(auto): wire Talk call lifecycle to Telecom"
+            git commit -m "feat(auto): wire Talk calls to current Core-Telecom"
           fi
           git fetch origin android-auto
           git rebase origin/android-auto
