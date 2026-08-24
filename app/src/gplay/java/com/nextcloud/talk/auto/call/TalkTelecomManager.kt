@@ -127,7 +127,15 @@ class TalkTelecomManager private constructor(context: Context) {
         val control = managed.control ?: return
         val endpoint = managed.availableEndpoints.firstOrNull { endpoint ->
             routeForEndpoint(endpoint) == route
-        } ?: run {
+        } ?: if (route == TalkCallInterop.AUDIO_ROUTE_BLUETOOTH) {
+            managed.availableEndpoints.firstOrNull { endpoint ->
+                routeForEndpoint(endpoint) == TalkCallInterop.AUDIO_ROUTE_EXTERNAL
+            }
+        } else {
+            null
+        }
+
+        if (endpoint == null) {
             Log.w(TAG, "No Telecom endpoint for requested route $route on $callKey")
             return
         }
