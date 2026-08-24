@@ -3,6 +3,9 @@
 Result: **FAIL**
 
 ```text
+The current default is 'false'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+Add android.sync.suppressAgpWarnings=UNSUPPORTED_PROJECT_OPTION_USE to the gradle.properties file to suppress this warning.
 w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:25:42: 'fun ExtraPropertiesExtension.provideDelegate(receiver: Any?, property: KProperty<*>): MutablePropertyDelegate' is deprecated. Use 'val property = extra[name] as Type' instead. See the Gradle 9.6 upgrading guide.
 w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/build.gradle.kts:45:1: 'fun Project.android(configure: Action<BaseAppModuleExtension>): Unit' is deprecated. Replaced by com.android.build.api.dsl.ApplicationExtension.
 This class is not used for the public extensions in AGP when android.newDsl=true, which is the default in AGP 9.0, and will be removed in AGP 10.0.
@@ -12,7 +15,6 @@ w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_A
 
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preGplayDebugBuild UP-TO-DATE
-
 > Task :app:dataBindingMergeDependencyArtifactsGplayDebug
 WARNING: [Processor] Library '/home/runner/.gradle/caches/modules-2/files-2.1/androidx.car.app/app/1.7.0/368eb3df2522b17368912c34129ebf3c1f0f9519/app-1.7.0.aar' contains references to both AndroidX and old support library. This seems like the library is partially migrated. Jetifier will try to rewrite the library anyway.
  Example of androidX reference: 'androidx/car/app/media/IMediaPlaybackHost'
@@ -35,11 +37,9 @@ WARNING: [Processor] Library '/home/runner/.gradle/caches/modules-2/files-2.1/an
 > Task :app:kaptGplayDebugKotlin
 warning: The following options were not recognized by any processor: '[room.schemaLocation, kapt.kotlin.generated]'
 
-> Task :app:compileGplayDebugKotlin
+> Task :app:compileGplayDebugKotlin FAILED
 e: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/gplay/java/com/nextcloud/talk/auto/TalkCarAppService.kt:9:24 Unresolved reference 'ApplicationInfo'.
 e: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/gplay/java/com/nextcloud/talk/auto/TalkCarAppService.kt:32:40 Unresolved reference 'ApplicationInfo'.
-
-> Task :app:compileGplayDebugKotlin FAILED
 
 [Incubating] Problems report is available at: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/build/reports/problems/problems-report.html
 
@@ -251,6 +251,6 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD FAILED in 4m 53s
+BUILD FAILED in 6m
 13 actionable tasks: 13 executed
 ```
