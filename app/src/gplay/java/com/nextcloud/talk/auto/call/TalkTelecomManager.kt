@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.telecom.CallAttributesCompat
 import androidx.core.telecom.CallControlScope
+import androidx.core.telecom.CallEndpointCompat
 import androidx.core.telecom.CallsManager
 import com.nextcloud.talk.activities.CallActivity
 import com.nextcloud.talk.call.TalkCallInterop
@@ -109,12 +110,33 @@ class TalkTelecomManager private constructor(context: Context) {
     }
 
     fun onCallEnded(callKey: String) {
+        TalkCallInterop.clearTelecomAudioState(appContext, callKey)
         val managed = calls.remove(callKey) ?: return
         managed.control?.let { control ->
             scope.launch {
                 runCatching {
                     control.disconnect(DisconnectCause(DisconnectCause.LOCAL))
                 }.onFailure { Log.w(TAG, "Telecom disconnect failed for $callKey", it) }
+            }
+        }
+    }
+
+    fun requestAudioEndpoint(callKey: String, route: String) {
+        if (callKey.isBlank() || route.isBlank()) return
+        val managed = calls[callKey] ?: return
+        val control = managed.control ?: return
+        val endpoint = managed.availableEndpoints.firstOrNull { endpoint ->
+            routeForEndpoint(endpoint) == route
+        } ?: run {
+            Log.w(TAG, "No Telecom endpoint for requested route $route on $callKey")
+            return
+        }
+
+        scope.launch {
+            runCatching {
+                control.requestEndpointChange(endpoint)
+            }.onFailure {
+                Log.w(TAG, "Unable to request Telecom audio route $route for $callKey", it)
             }
         }
     }
@@ -196,6 +218,7 @@ class TalkTelecomManager private constructor(context: Context) {
                             TalkCallInterop.requestDisconnect(appContext, managed.callKey)
                         } else {
                             calls.remove(managed.callKey)
+                            TalkCallInterop.clearTelecomAudioState(appContext, managed.callKey)
                         }
                     },
                     onSetActive = {
@@ -212,11 +235,30 @@ class TalkTelecomManager private constructor(context: Context) {
                             TalkCallInterop.requestDisconnect(appContext, managed.callKey)
                         } else {
                             calls.remove(managed.callKey)
+                            TalkCallInterop.clearTelecomAudioState(appContext, managed.callKey)
                         }
                     }
                 ) {
                     val callControl = this
                     managed.control = callControl
+
+                    scope.launch {
+                        currentCallEndpoint
+                            .distinctUntilChanged()
+                            .collect { endpoint ->
+                                managed.currentEndpoint = endpoint
+                                publishAudioState(managed)
+                            }
+                    }
+
+                    scope.launch {
+                        availableEndpoints
+                            .distinctUntilChanged()
+                            .collect { endpoints ->
+                                managed.availableEndpoints = endpoints
+                                publishAudioState(managed)
+                            }
+                    }
 
                     scope.launch {
                         isMuted
@@ -232,10 +274,36 @@ class TalkTelecomManager private constructor(context: Context) {
                 }
             } catch (t: Throwable) {
                 calls.remove(callKey)
+                TalkCallInterop.clearTelecomAudioState(appContext, callKey)
                 Log.e(TAG, "Unable to add Talk call to Telecom: $callKey", t)
             }
         }
     }
+
+    private fun publishAudioState(managed: ManagedCall) {
+        val currentRoute = managed.currentEndpoint?.let(::routeForEndpoint)
+        val availableRoutes = managed.availableEndpoints
+            .mapNotNull(::routeForEndpoint)
+            .distinct()
+            .toTypedArray()
+
+        TalkCallInterop.updateTelecomAudioState(
+            appContext,
+            managed.callKey,
+            currentRoute,
+            availableRoutes
+        )
+    }
+
+    private fun routeForEndpoint(endpoint: CallEndpointCompat): String? =
+        when (endpoint.type) {
+            CallEndpointCompat.TYPE_EARPIECE -> TalkCallInterop.AUDIO_ROUTE_EARPIECE
+            CallEndpointCompat.TYPE_BLUETOOTH -> TalkCallInterop.AUDIO_ROUTE_BLUETOOTH
+            CallEndpointCompat.TYPE_WIRED_HEADSET -> TalkCallInterop.AUDIO_ROUTE_WIRED_HEADSET
+            CallEndpointCompat.TYPE_SPEAKER -> TalkCallInterop.AUDIO_ROUTE_SPEAKER
+            CallEndpointCompat.TYPE_STREAMING -> TalkCallInterop.AUDIO_ROUTE_EXTERNAL
+            else -> null
+        }
 
     private fun launchTalkCall(managed: ManagedCall, voiceOnly: Boolean) {
         managed.activityStarted = true
@@ -267,7 +335,9 @@ class TalkTelecomManager private constructor(context: Context) {
         val video: Boolean,
         @Volatile var activityStarted: Boolean,
         @Volatile var answeredByTelecom: Boolean = false,
-        @Volatile var control: CallControlScope? = null
+        @Volatile var control: CallControlScope? = null,
+        @Volatile var currentEndpoint: CallEndpointCompat? = null,
+        @Volatile var availableEndpoints: List<CallEndpointCompat> = emptyList()
     )
 
     companion object {
