@@ -80,7 +80,9 @@ class TalkTelecomManager private constructor(context: Context) {
         if (existing != null) {
             existing.activityStarted = true
             existing.callExtras = Bundle(callExtras)
-            existing.control?.let { control -> scope.launch { control.setActive() } }
+            existing.control?.let { control ->
+                scope.launch { activateStartedCall(existing, control) }
+            }
             return
         }
 
@@ -95,7 +97,14 @@ class TalkTelecomManager private constructor(context: Context) {
     }
 
     fun onCallActive(callKey: String) {
-        calls[callKey]?.control?.let { control -> scope.launch { control.setActive() } }
+        val managed = calls[callKey] ?: return
+        managed.control?.let { control ->
+            scope.launch {
+                if (!managed.incoming) {
+                    control.setActive()
+                }
+            }
+        }
     }
 
     fun onCallEnded(callKey: String) {
@@ -106,6 +115,26 @@ class TalkTelecomManager private constructor(context: Context) {
                     control.disconnect(DisconnectCause(DisconnectCause.LOCAL))
                 }.onFailure { Log.w(TAG, "Telecom disconnect failed for $callKey", it) }
             }
+        }
+    }
+
+    private suspend fun activateStartedCall(managed: ManagedCall, control: CallControlScope) {
+        runCatching {
+            when {
+                managed.incoming && !managed.answeredByTelecom -> {
+                    control.answer(
+                        if (managed.video) {
+                            CallAttributesCompat.CALL_TYPE_VIDEO_CALL
+                        } else {
+                            CallAttributesCompat.CALL_TYPE_AUDIO_CALL
+                        }
+                    )
+                }
+
+                !managed.incoming -> control.setActive()
+            }
+        }.onFailure {
+            Log.w(TAG, "Unable to activate Talk call in Telecom: ${managed.callKey}", it)
         }
     }
 
@@ -154,6 +183,7 @@ class TalkTelecomManager private constructor(context: Context) {
                 callsManager.addCall(
                     callAttributes = attributes,
                     onAnswer = { requestedCallType ->
+                        managed.answeredByTelecom = true
                         launchTalkCall(
                             managed,
                             voiceOnly = requestedCallType != CallAttributesCompat.CALL_TYPE_VIDEO_CALL
@@ -161,10 +191,15 @@ class TalkTelecomManager private constructor(context: Context) {
                     },
                     onDisconnect = {
                         cancelIncomingNotification(managed)
-                        TalkCallInterop.requestDisconnect(appContext, managed.callKey)
+                        if (managed.activityStarted) {
+                            TalkCallInterop.requestDisconnect(appContext, managed.callKey)
+                        } else {
+                            calls.remove(managed.callKey)
+                        }
                     },
                     onSetActive = {
                         if (!managed.activityStarted) {
+                            managed.answeredByTelecom = managed.incoming
                             launchTalkCall(managed, voiceOnly = !managed.video)
                         }
                     },
@@ -172,7 +207,11 @@ class TalkTelecomManager private constructor(context: Context) {
                         // We intentionally do not advertise hold. If Telecom must make
                         // the call inactive (for example for a cellular call), ending
                         // Talk is safer than leaving WebRTC media active in the car.
-                        TalkCallInterop.requestDisconnect(appContext, managed.callKey)
+                        if (managed.activityStarted) {
+                            TalkCallInterop.requestDisconnect(appContext, managed.callKey)
+                        } else {
+                            calls.remove(managed.callKey)
+                        }
                     }
                 ) {
                     managed.control = this
@@ -185,8 +224,8 @@ class TalkTelecomManager private constructor(context: Context) {
                             }
                     }
 
-                    if (!managed.incoming || managed.activityStarted) {
-                        scope.launch { setActive() }
+                    if (managed.activityStarted) {
+                        scope.launch { activateStartedCall(managed, this@addCall) }
                     }
                 }
             } catch (t: Throwable) {
@@ -225,6 +264,7 @@ class TalkTelecomManager private constructor(context: Context) {
         val incoming: Boolean,
         val video: Boolean,
         @Volatile var activityStarted: Boolean,
+        @Volatile var answeredByTelecom: Boolean = false,
         @Volatile var control: CallControlScope? = null
     )
 
