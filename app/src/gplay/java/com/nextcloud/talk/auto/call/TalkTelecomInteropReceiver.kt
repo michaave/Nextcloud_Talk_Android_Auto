@@ -20,6 +20,7 @@ class TalkTelecomInteropReceiver : BroadcastReceiver() {
 
         when (intent.action) {
             TalkCallInterop.ACTION_INCOMING_CALL -> {
+                TalkCallInterop.beginTelecomAudioManagement(context, callKey)
                 manager.onIncomingCall(
                     callKey = callKey,
                     callExtras = intent.getBundleExtra(TalkCallInterop.EXTRA_CALL_EXTRAS) ?: Bundle(),
@@ -29,6 +30,7 @@ class TalkTelecomInteropReceiver : BroadcastReceiver() {
             }
 
             TalkCallInterop.ACTION_CALL_STARTED -> {
+                TalkCallInterop.beginTelecomAudioManagement(context, callKey)
                 manager.onCallStarted(
                     callKey = callKey,
                     callExtras = intent.getBundleExtra(TalkCallInterop.EXTRA_CALL_EXTRAS) ?: Bundle(),
@@ -40,6 +42,12 @@ class TalkTelecomInteropReceiver : BroadcastReceiver() {
 
             TalkCallInterop.ACTION_CALL_ACTIVE -> manager.onCallActive(callKey)
             TalkCallInterop.ACTION_CALL_ENDED -> manager.onCallEnded(callKey)
+            TalkCallInterop.ACTION_CONTROL_AUDIO_ENDPOINT -> {
+                manager.requestAudioEndpoint(
+                    callKey,
+                    intent.getStringExtra(TalkCallInterop.EXTRA_AUDIO_ROUTE).orEmpty()
+                )
+            }
         }
     }
 }
