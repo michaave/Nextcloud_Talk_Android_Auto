@@ -27,6 +27,14 @@ object TalkCallInterop {
 
     const val ACTION_CONTROL_DISCONNECT = "com.nextcloud.talk.call.action.CONTROL_DISCONNECT"
     const val ACTION_CONTROL_MUTE = "com.nextcloud.talk.call.action.CONTROL_MUTE"
+    const val ACTION_CONTROL_AUDIO_ENDPOINT = "com.nextcloud.talk.call.action.CONTROL_AUDIO_ENDPOINT"
+    const val ACTION_TELECOM_AUDIO_STATE_CHANGED = "com.nextcloud.talk.call.action.TELECOM_AUDIO_STATE_CHANGED"
+
+    const val AUDIO_ROUTE_EARPIECE = "earpiece"
+    const val AUDIO_ROUTE_BLUETOOTH = "bluetooth"
+    const val AUDIO_ROUTE_WIRED_HEADSET = "wired_headset"
+    const val AUDIO_ROUTE_SPEAKER = "speaker"
+    const val AUDIO_ROUTE_EXTERNAL = "external"
 
     const val EXTRA_CALL_KEY = "talk_call_key"
     const val EXTRA_CALL_EXTRAS = "talk_call_extras"
@@ -34,6 +42,16 @@ object TalkCallInterop {
     const val EXTRA_INCOMING = "talk_incoming"
     const val EXTRA_VIDEO = "talk_video"
     const val EXTRA_MUTED = "talk_muted"
+    const val EXTRA_AUDIO_ROUTE = "talk_audio_route"
+
+    @Volatile
+    private var activeTelecomCallKey: String? = null
+
+    @Volatile
+    private var telecomCurrentAudioRoute: String? = null
+
+    @Volatile
+    private var telecomAvailableAudioRoutes: Array<String> = emptyArray()
 
     fun callKey(accountId: Long, roomToken: String): String = "$accountId@$roomToken"
 
@@ -99,6 +117,55 @@ object TalkCallInterop {
                 .putExtra(EXTRA_MUTED, muted)
         )
     }
+
+    @JvmStatic
+    fun requestTelecomAudioRoute(context: Context, route: String) {
+        val callKey = activeTelecomCallKey ?: return
+        send(
+            context,
+            Intent(ACTION_CONTROL_AUDIO_ENDPOINT)
+                .putExtra(EXTRA_CALL_KEY, callKey)
+                .putExtra(EXTRA_AUDIO_ROUTE, route)
+        )
+    }
+
+    fun beginTelecomAudioManagement(context: Context, callKey: String) {
+        if (callKey.isBlank()) return
+        activeTelecomCallKey = callKey
+        telecomCurrentAudioRoute = null
+        telecomAvailableAudioRoutes = emptyArray()
+        send(context, Intent(ACTION_TELECOM_AUDIO_STATE_CHANGED).putExtra(EXTRA_CALL_KEY, callKey))
+    }
+
+    fun updateTelecomAudioState(
+        context: Context,
+        callKey: String,
+        currentRoute: String?,
+        availableRoutes: Array<String>
+    ) {
+        if (callKey.isBlank()) return
+        activeTelecomCallKey = callKey
+        telecomCurrentAudioRoute = currentRoute
+        telecomAvailableAudioRoutes = availableRoutes.copyOf()
+        send(context, Intent(ACTION_TELECOM_AUDIO_STATE_CHANGED).putExtra(EXTRA_CALL_KEY, callKey))
+    }
+
+    fun clearTelecomAudioState(context: Context, callKey: String) {
+        if (callKey.isBlank() || activeTelecomCallKey != callKey) return
+        activeTelecomCallKey = null
+        telecomCurrentAudioRoute = null
+        telecomAvailableAudioRoutes = emptyArray()
+        send(context, Intent(ACTION_TELECOM_AUDIO_STATE_CHANGED).putExtra(EXTRA_CALL_KEY, callKey))
+    }
+
+    @JvmStatic
+    fun isTelecomAudioManaged(): Boolean = activeTelecomCallKey != null
+
+    @JvmStatic
+    fun getTelecomCurrentAudioRoute(): String? = telecomCurrentAudioRoute
+
+    @JvmStatic
+    fun getTelecomAvailableAudioRoutes(): Array<String> = telecomAvailableAudioRoutes.copyOf()
 
     private fun notifySimple(context: Context, action: String, accountId: Long, roomToken: String) {
         if (accountId < 0L || roomToken.isBlank()) return
