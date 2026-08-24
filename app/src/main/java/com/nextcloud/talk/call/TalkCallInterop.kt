@@ -8,6 +8,7 @@ package com.nextcloud.talk.call
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_INTERNAL_USER_ID
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
@@ -65,10 +66,12 @@ object TalkCallInterop {
         val roomToken = callExtras.getString(KEY_ROOM_TOKEN).orEmpty()
         if (accountId < 0L || roomToken.isBlank()) return
 
+        val key = callKey(accountId, roomToken)
+        prepareTelecomAudioManagementIfAvailable(context, key)
         send(
             context,
             Intent(ACTION_INCOMING_CALL)
-                .putExtra(EXTRA_CALL_KEY, callKey(accountId, roomToken))
+                .putExtra(EXTRA_CALL_KEY, key)
                 .putExtra(EXTRA_CALL_EXTRAS, Bundle(callExtras))
                 .putExtra(EXTRA_DISPLAY_NAME, displayName)
                 .putExtra(EXTRA_INCOMING, true)
@@ -86,10 +89,12 @@ object TalkCallInterop {
         callExtras: Bundle
     ) {
         if (accountId < 0L || roomToken.isBlank()) return
+        val key = callKey(accountId, roomToken)
+        prepareTelecomAudioManagementIfAvailable(context, key)
         send(
             context,
             Intent(ACTION_CALL_STARTED)
-                .putExtra(EXTRA_CALL_KEY, callKey(accountId, roomToken))
+                .putExtra(EXTRA_CALL_KEY, key)
                 .putExtra(EXTRA_CALL_EXTRAS, Bundle(callExtras))
                 .putExtra(EXTRA_DISPLAY_NAME, displayName)
                 .putExtra(EXTRA_INCOMING, incoming)
@@ -130,7 +135,7 @@ object TalkCallInterop {
     }
 
     fun beginTelecomAudioManagement(context: Context, callKey: String) {
-        if (callKey.isBlank()) return
+        if (callKey.isBlank() || activeTelecomCallKey == callKey) return
         activeTelecomCallKey = callKey
         telecomCurrentAudioRoute = null
         telecomAvailableAudioRoutes = emptyArray()
@@ -170,6 +175,15 @@ object TalkCallInterop {
     private fun notifySimple(context: Context, action: String, accountId: Long, roomToken: String) {
         if (accountId < 0L || roomToken.isBlank()) return
         send(context, Intent(action).putExtra(EXTRA_CALL_KEY, callKey(accountId, roomToken)))
+    }
+
+    @Suppress("DEPRECATION")
+    private fun prepareTelecomAudioManagementIfAvailable(context: Context, callKey: String) {
+        val probe = Intent(ACTION_CALL_STARTED).setPackage(context.packageName)
+        val receivers = context.packageManager.queryBroadcastReceivers(probe, PackageManager.MATCH_ALL)
+        if (receivers.isNotEmpty()) {
+            beginTelecomAudioManagement(context, callKey)
+        }
     }
 
     private fun send(context: Context, intent: Intent) {
