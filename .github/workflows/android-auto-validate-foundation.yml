@@ -6,6 +6,9 @@ on:
       - android-auto
     paths:
       - .github/workflows/android-auto-validate-foundation.yml
+      - app/build.gradle.kts
+      - app/src/gplay/**
+      - gradle/verification-metadata.xml
 
 permissions:
   contents: write
@@ -24,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          ./gradlew :app:compileGplayDebugKotlin --stacktrace > /tmp/android-auto-build.log 2>&1
+          ./gradlew :app:compileGplayDebugKotlin --no-configuration-cache --stacktrace > /tmp/android-auto-build.log 2>&1
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           exit 0
@@ -45,12 +48,18 @@ jobs:
             echo "Result: **$result**"
             echo
             echo '```text'
-            tail -n 200 /tmp/android-auto-build.log
+            tail -n 250 /tmp/android-auto-build.log
             echo '```'
           } > ANDROID_AUTO_BUILD_STATUS.md
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ANDROID_AUTO_BUILD_STATUS.md
+          if git diff --cached --quiet; then
+            echo "Validation result is unchanged."
+            exit 0
+          fi
           git commit -m "ci(auto): record foundation compile result"
+          git fetch origin android-auto
+          git rebase origin/android-auto
           git push origin HEAD:android-auto
