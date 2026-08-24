@@ -1,239 +1,238 @@
 # Android Auto call bridge build
 
-Result: **FAIL**
+Result: **PASS**
 
 ```text
-	at org.gradle.internal.serialize.graph.RunningKt.runWriteOperation(Running.kt:42)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$safeRunnerFor$2$1.accept(WorkNodeCodec.kt:399)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$safeRunnerFor$2$1.accept(WorkNodeCodec.kt:398)
-	at org.gradle.api.internal.project.DefaultProjectState.lambda$applyToMutableState$0(DefaultProjectState.java:241)
-	at org.gradle.api.internal.project.DefaultProjectState.lambda$fromMutableState$0(DefaultProjectState.java:248)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:302)
-	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:300)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:296)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withReplacedLocks$0(DefaultWorkerLeaseService.java:452)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:374)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withReplacedLocks(DefaultWorkerLeaseService.java:451)
-	at org.gradle.api.internal.project.DefaultProjectState.runWithModelLock(DefaultProjectState.java:276)
-	at org.gradle.api.internal.project.DefaultProjectState.fromMutableState(DefaultProjectState.java:248)
-	at org.gradle.api.internal.project.DefaultProjectState.applyToMutableState(DefaultProjectState.java:240)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$safeRunnerFor$2.invokeSuspend(WorkNodeCodec.kt:398)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$safeRunnerFor$2.invoke(WorkNodeCodec.kt)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$safeRunnerFor$2.invoke(WorkNodeCodec.kt)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$writeGroupedNodes$1.invokeSuspend(WorkNodeCodec.kt:331)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$writeGroupedNodes$1.invoke(WorkNodeCodec.kt)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$writeGroupedNodes$1.invoke(WorkNodeCodec.kt)
-	at org.gradle.internal.serialize.graph.RunningKt$runWriteOperation$1.invokeSuspend(Running.kt:43)
-	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
-	at kotlin.coroutines.ContinuationKt.startCoroutine(Continuation.kt:115)
-	at org.gradle.internal.serialize.graph.RunningKt.runToCompletion(Running.kt:58)
-	at org.gradle.internal.serialize.graph.RunningKt.runWriteOperation(Running.kt:42)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.writeGroupedNodes(WorkNodeCodec.kt:327)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.writeNodeBatchesInParallel$lambda$1$0$0(WorkNodeCodec.kt:248)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec$runBuildOperations$1$1.execute$lambda$1(WorkNodeCodec.kt:597)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodecKt$asBuildOperation$1.run(WorkNodeCodec.kt:640)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.lambda$executeInParallel$0(DefaultBuildOperationExecutor.java:106)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperation(DefaultBuildOperationQueue.java:416)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.doRunBatch(DefaultBuildOperationQueue.java:407)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue.withProjectLockChangePolicy(DefaultBuildOperationQueue.java:209)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue.access$900(DefaultBuildOperationQueue.java:38)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.executePendingWork(DefaultBuildOperationQueue.java:378)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.tryRunAsWorkerThread(DefaultWorkerLeaseService.java:145)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runBatchWithLeaseRetry$0(DefaultBuildOperationQueue.java:353)
-	at org.gradle.internal.time.ExponentialBackoff.retryUntil(ExponentialBackoff.java:69)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runBatchWithLeaseRetry(DefaultBuildOperationQueue.java:352)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runBatch(DefaultBuildOperationQueue.java:338)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runOperations$0(DefaultBuildOperationQueue.java:269)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperations(DefaultBuildOperationQueue.java:266)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.access$000(DefaultBuildOperationQueue.java:245)
-	at org.gradle.internal.operations.DefaultBuildOperationQueue.waitForCompletion(DefaultBuildOperationQueue.java:146)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.executeInParallel(DefaultBuildOperationExecutor.java:119)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.runAllWithAccessToProjectState(DefaultBuildOperationExecutor.java:83)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.runAllWithAccessToProjectState(DefaultBuildOperationExecutor.java:78)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.runBuildOperations$lambda$0(WorkNodeCodec.kt:588)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.handleBuildOperationExceptions(WorkNodeCodec.kt:286)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.runBuildOperations(WorkNodeCodec.kt:587)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.writeNodeBatchesInParallel(WorkNodeCodec.kt:243)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.writeNodes(WorkNodeCodec.kt:209)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.doWrite(WorkNodeCodec.kt:122)
-	at org.gradle.internal.serialize.codecs.core.WorkNodeCodec.writeWork(WorkNodeCodec.kt:94)
-	at org.gradle.internal.cc.impl.ConfigurationCacheState.writeWorkGraphOf(ConfigurationCacheState.kt:570)
-	at org.gradle.internal.cc.impl.ConfigurationCacheState.writeBuildContent$org_gradle_configuration_cache(ConfigurationCacheState.kt:524)
-	at org.gradle.internal.cc.impl.ConfigurationCacheState.writeBuildState(ConfigurationCacheState.kt:363)
-	at org.gradle.internal.cc.impl.ConfigurationCacheState.writeBuildsInTree(ConfigurationCacheState.kt:314)
-	at org.gradle.internal.cc.impl.ConfigurationCacheState.writeRootBuild(ConfigurationCacheState.kt:287)
-	at org.gradle.internal.cc.impl.ConfigurationCacheState.writeRootBuildState(ConfigurationCacheState.kt:185)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO$writeRootBuildStateTo$1.invokeSuspend(DefaultConfigurationCacheIO.kt:220)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO$writeRootBuildStateTo$1.invoke(DefaultConfigurationCacheIO.kt)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO$writeRootBuildStateTo$1.invoke(DefaultConfigurationCacheIO.kt)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO$writeConfigurationCacheStateWithSpecialEncoders$1.invokeSuspend(DefaultConfigurationCacheIO.kt:369)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO$writeConfigurationCacheStateWithSpecialEncoders$1.invoke(DefaultConfigurationCacheIO.kt)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO$writeConfigurationCacheStateWithSpecialEncoders$1.invoke(DefaultConfigurationCacheIO.kt)
-	at org.gradle.internal.serialize.graph.CodecKt$writeWith$1$1.invokeSuspend(Codec.kt:84)
-	at org.gradle.internal.serialize.graph.CodecKt$writeWith$1$1.invoke(Codec.kt)
-	at org.gradle.internal.serialize.graph.CodecKt$writeWith$1$1.invoke(Codec.kt)
-	at org.gradle.internal.serialize.graph.RunningKt$runWriteOperation$1.invokeSuspend(Running.kt:43)
-	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
-	at kotlin.coroutines.ContinuationKt.startCoroutine(Continuation.kt:115)
-	at org.gradle.internal.serialize.graph.RunningKt.runToCompletion(Running.kt:58)
-	at org.gradle.internal.serialize.graph.RunningKt.runWriteOperation(Running.kt:42)
-	at org.gradle.internal.serialize.graph.CodecKt.writeWith(Codec.kt:83)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.withWriteContextFor(DefaultConfigurationCacheIO.kt:521)
-	at org.gradle.internal.cc.impl.ConfigurationCacheBuildTreeIO.withWriteContextFor(ConfigurationCacheBuildTreeIO.kt:131)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.withWriteContextFor(DefaultConfigurationCacheIO.kt:101)
-	at org.gradle.internal.cc.impl.ConfigurationCacheBuildTreeIO.withWriteContextFor$default(ConfigurationCacheBuildTreeIO.kt:124)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.writeConfigurationCacheStateWithSpecialEncoders(DefaultConfigurationCacheIO.kt:368)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.writeConfigurationCacheState$lambda$0$0(DefaultConfigurationCacheIO.kt:272)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.withSharedObjectEncoderFor(DefaultConfigurationCacheIO.kt:331)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.writeConfigurationCacheState$lambda$0(DefaultConfigurationCacheIO.kt:271)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.withStringEncoderFor(DefaultConfigurationCacheIO.kt:319)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.writeConfigurationCacheState(DefaultConfigurationCacheIO.kt:270)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCacheIO.writeRootBuildStateTo(DefaultConfigurationCacheIO.kt:218)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.writeConfigurationCacheState(DefaultConfigurationCache.kt:803)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.saveWorkGraph$lambda$0$0(DefaultConfigurationCache.kt:717)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.runAndStore$lambda$0(DefaultConfigurationCache.kt:732)
-	at org.gradle.internal.cc.impl.ConfigurationCacheRepository$StoreImpl.useForStore$lambda$0(ConfigurationCacheRepository.kt:255)
-	at org.gradle.internal.cc.impl.ConfigurationCacheRepository$withExclusiveAccessToCache$1.get(ConfigurationCacheRepository.kt:321)
-	at org.gradle.cache.internal.LockOnDemandCrossProcessCacheAccess.withFileLock(LockOnDemandCrossProcessCacheAccess.java:90)
-	at org.gradle.cache.internal.DefaultCacheCoordinator.withFileLock(DefaultCacheCoordinator.java:226)
-	at org.gradle.cache.internal.DefaultPersistentDirectoryStore.withFileLock(DefaultPersistentDirectoryStore.java:148)
-	at org.gradle.cache.internal.DefaultCacheFactory$ReferenceTrackingPersistentCache.withFileLock(DefaultCacheFactory.java:245)
-	at org.gradle.internal.cc.impl.ConfigurationCacheRepository.withExclusiveAccessToCache(ConfigurationCacheRepository.kt:319)
-	at org.gradle.internal.cc.impl.ConfigurationCacheRepository.access$withExclusiveAccessToCache(ConfigurationCacheRepository.kt:54)
-	at org.gradle.internal.cc.impl.ConfigurationCacheRepository$StoreImpl.useForStore(ConfigurationCacheRepository.kt:245)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.runAndStore(DefaultConfigurationCache.kt:729)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.saveWorkGraph$lambda$0(DefaultConfigurationCache.kt:716)
-	at org.gradle.internal.cc.operations.ConfigurationCacheBuildOperationsKt$withWorkGraphStoreOperation$1.run(ConfigurationCacheBuildOperations.kt:63)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
-	at org.gradle.internal.cc.operations.ConfigurationCacheBuildOperationsKt.withWorkGraphStoreOperation(ConfigurationCacheBuildOperations.kt:56)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.saveWorkGraph(DefaultConfigurationCache.kt:715)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.loadOrScheduleRequestedTasks$lambda$1$0(DefaultConfigurationCache.kt:282)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.degradeGracefullyOr(DefaultConfigurationCache.kt:342)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.loadOrScheduleRequestedTasks$lambda$1(DefaultConfigurationCache.kt:282)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.runWorkThatContributesToCacheEntry(DefaultConfigurationCache.kt:654)
-	at org.gradle.internal.cc.impl.DefaultConfigurationCache.loadOrScheduleRequestedTasks(DefaultConfigurationCache.kt:279)
-	at org.gradle.internal.cc.impl.ConfigurationCacheAwareBuildTreeWorkController$scheduleAndRunRequestedTasks$executionResult$1$result$1.call(ConfigurationCacheAwareBuildTreeWorkController.kt:57)
-	at org.gradle.internal.cc.impl.ConfigurationCacheAwareBuildTreeWorkController$scheduleAndRunRequestedTasks$executionResult$1$result$1.call(ConfigurationCacheAwareBuildTreeWorkController.kt:56)
-	at org.gradle.internal.Try.ofFailable(Try.java:46)
-	at org.gradle.internal.cc.impl.ConfigurationCacheAwareBuildTreeWorkController$scheduleAndRunRequestedTasks$executionResult$1.apply(ConfigurationCacheAwareBuildTreeWorkController.kt:56)
-	at org.gradle.internal.cc.impl.ConfigurationCacheAwareBuildTreeWorkController$scheduleAndRunRequestedTasks$executionResult$1.apply(ConfigurationCacheAwareBuildTreeWorkController.kt:55)
-	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph.withNewWorkGraph(DefaultIncludedBuildTaskGraph.java:115)
-	at org.gradle.internal.cc.impl.ConfigurationCacheAwareBuildTreeWorkController.scheduleAndRunRequestedTasks(ConfigurationCacheAwareBuildTreeWorkController.kt:55)
-	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.lambda$scheduleAndRunTasks$0(DefaultBuildTreeLifecycleController.java:80)
-	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.lambda$runBuild$0(DefaultBuildTreeLifecycleController.java:166)
-	at org.gradle.internal.model.StateTransitionController.lambda$transition$2(StateTransitionController.java:227)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:324)
-	at org.gradle.internal.model.StateTransitionController.lambda$transition$1(StateTransitionController.java:227)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
-	at org.gradle.internal.model.StateTransitionController.transition(StateTransitionController.java:227)
-	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.runBuild(DefaultBuildTreeLifecycleController.java:163)
-	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.scheduleAndRunTasks(DefaultBuildTreeLifecycleController.java:80)
-	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.scheduleAndRunTasks(DefaultBuildTreeLifecycleController.java:75)
-	at org.gradle.tooling.internal.provider.ExecuteBuildActionRunner.run(ExecuteBuildActionRunner.java:31)
-	at org.gradle.launcher.exec.ChainingBuildActionRunner.run(ChainingBuildActionRunner.java:35)
-	at org.gradle.internal.buildtree.ProblemReportingBuildActionRunner.run(ProblemReportingBuildActionRunner.java:55)
-	at org.gradle.launcher.exec.BuildOutcomeReportingBuildActionRunner.run(BuildOutcomeReportingBuildActionRunner.java:83)
-	at org.gradle.tooling.internal.provider.FileSystemWatchingBuildActionRunner.run(FileSystemWatchingBuildActionRunner.java:118)
-	at org.gradle.launcher.exec.BuildCompletionNotifyingBuildActionRunner.run(BuildCompletionNotifyingBuildActionRunner.java:64)
-	at org.gradle.launcher.exec.RootBuildLifecycleBuildActionExecutor.lambda$execute$0(RootBuildLifecycleBuildActionExecutor.java:97)
-	at org.gradle.composite.internal.DefaultRootBuildState.run(DefaultRootBuildState.java:119)
-	at org.gradle.launcher.exec.RootBuildLifecycleBuildActionExecutor.execute(RootBuildLifecycleBuildActionExecutor.java:97)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.runBuildTreeLifecycle(DefaultBuildTreeActionExecutor.java:126)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.access$100(DefaultBuildTreeActionExecutor.java:52)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor$2.call(DefaultBuildTreeActionExecutor.java:98)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor$2.call(DefaultBuildTreeActionExecutor.java:94)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.runAsBuildOperation(DefaultBuildTreeActionExecutor.java:94)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.lambda$runBuildTreeAction$0(DefaultBuildTreeActionExecutor.java:88)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:302)
-	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:300)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:296)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:288)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:131)
-	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.runBuildTreeAction(DefaultBuildTreeActionExecutor.java:88)
-	at org.gradle.tooling.internal.provider.continuous.ContinuousBuildActionExecutor.execute(ContinuousBuildActionExecutor.java:111)
-	at org.gradle.tooling.internal.provider.SubscribableBuildActionExecutor.execute(SubscribableBuildActionExecutor.java:64)
-	at org.gradle.internal.session.DefaultBuildSessionContext.execute(DefaultBuildSessionContext.java:46)
-	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor$ActionImpl.apply(BuildSessionLifecycleBuildActionExecutor.java:106)
-	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor$ActionImpl.apply(BuildSessionLifecycleBuildActionExecutor.java:94)
-	at org.gradle.internal.session.BuildSessionState.run(BuildSessionState.java:73)
-	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor.execute(BuildSessionLifecycleBuildActionExecutor.java:67)
-	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor.execute(BuildSessionLifecycleBuildActionExecutor.java:45)
-	at org.gradle.internal.buildprocess.execution.StartParamsValidatingActionExecutor.execute(StartParamsValidatingActionExecutor.java:57)
-	at org.gradle.internal.buildprocess.execution.StartParamsValidatingActionExecutor.execute(StartParamsValidatingActionExecutor.java:32)
-	at org.gradle.internal.buildprocess.execution.SessionFailureReportingActionExecutor.execute(SessionFailureReportingActionExecutor.java:51)
-	at org.gradle.internal.buildprocess.execution.SessionFailureReportingActionExecutor.execute(SessionFailureReportingActionExecutor.java:39)
-	at org.gradle.internal.buildprocess.execution.SetupLoggingActionExecutor.execute(SetupLoggingActionExecutor.java:47)
-	at org.gradle.internal.buildprocess.execution.SetupLoggingActionExecutor.execute(SetupLoggingActionExecutor.java:31)
-	at org.gradle.launcher.daemon.server.exec.ExecuteBuild.doBuild(ExecuteBuild.java:70)
-	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.WatchForDisconnection.execute(WatchForDisconnection.java:39)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.ResetDeprecationLogger.execute(ResetDeprecationLogger.java:29)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon.execute(RequestStopIfSingleUsedDaemon.java:35)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.ForwardClientInput.lambda$execute$0(ForwardClientInput.java:40)
-	at org.gradle.internal.daemon.clientinput.ClientInputForwarder.forwardInput(ClientInputForwarder.java:80)
-	at org.gradle.launcher.daemon.server.exec.ForwardClientInput.execute(ForwardClientInput.java:37)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.LogAndCheckHealth.execute(LogAndCheckHealth.java:64)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.ApplyClientEnvironmentVariables.doBuild(ApplyClientEnvironmentVariables.java:80)
-	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.LogToClient.doBuild(LogToClient.java:63)
-	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment.doBuild(EstablishBuildEnvironment.java:74)
-	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
-	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
-	at org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy$1.run(StartBuildOrRespondWithBusy.java:52)
-	at org.gradle.launcher.daemon.server.DaemonStateCoordinator.lambda$runCommand$0(DaemonStateCoordinator.java:321)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:65)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.gradle.api.internal.artifacts.ivyservice.TypedResolveException: Could not resolve all files for configuration ':app:gplayDebugCompileClasspath'.
-	at org.gradle.api.internal.artifacts.ResolveExceptionMapper.mapFailure(ResolveExceptionMapper.java:73)
-	at org.gradle.api.internal.artifacts.ResolveExceptionMapper.mapFailures(ResolveExceptionMapper.java:65)
-	at org.gradle.api.internal.artifacts.configurations.DefaultConfiguration$DefaultResolutionHost.consolidateFailures(DefaultConfiguration.java:1801)
-	at org.gradle.api.internal.artifacts.configurations.ResolutionHost.rethrowFailuresAndReportProblems(ResolutionHost.java:75)
-	at org.gradle.api.internal.artifacts.configurations.ResolutionBackedFileCollection.maybeThrowResolutionFailures(ResolutionBackedFileCollection.java:86)
-	at org.gradle.api.internal.artifacts.configurations.ResolutionBackedFileCollection.visitContents(ResolutionBackedFileCollection.java:76)
-	at org.gradle.api.internal.file.AbstractFileCollection.visitStructure(AbstractFileCollection.java:358)
-	at org.gradle.internal.serialize.codecs.core.CollectingVisitor.startVisit(FileCollectionCodec.kt:208)
-	at org.gradle.api.internal.file.AbstractFileCollection.visitStructure(AbstractFileCollection.java:357)
-	at org.gradle.internal.serialize.codecs.core.FileCollectionCodec.encodeViaCollectingVisitor(FileCollectionCodec.kt:81)
-	at org.gradle.internal.serialize.codecs.core.FileCollectionCodec.encodeContents(FileCollectionCodec.kt:74)
-	at org.gradle.internal.serialize.codecs.core.FileCollectionCodec.encode(FileCollectionCodec.kt:63)
-	at org.gradle.internal.serialize.codecs.core.FileCollectionCodec.encode(FileCollectionCodec.kt:55)
-	at org.gradle.internal.serialize.graph.codecs.BindingsBackedCodec.encode(BindingsBackedCodec.kt:66)
-	at org.gradle.internal.serialize.graph.DefaultWriteContext.write(Contexts.kt:111)
-	at org.gradle.internal.serialize.graph.BeanPropertyExtensionsKt.writePropertyValue(BeanPropertyExtensions.kt:34)
-	... 230 more
-Caused by: org.gradle.internal.resolve.ModuleVersionNotFoundException: Could not find androidx.core:core-telecom:1.1.0-beta01.
-Required by:
-    project ':app'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:432:41 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:435:71 Unnecessary non-null assertion (!!) on a non-null receiver of type 'EmojiEditText'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:492:48 Unnecessary safe call on a non-null receiver of type 'ImageButton'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:497:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'EmojiEditText'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:523:48 Unnecessary safe call on a non-null receiver of type 'ImageButton'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:528:48 Unnecessary safe call on a non-null receiver of type 'ImageButton'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:740:46 Unnecessary non-null assertion (!!) on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:745:48 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:759:13 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:760:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'EmojiEditText'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:819:38 Unnecessary safe call on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:908:78 Unnecessary non-null assertion (!!) on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:911:13 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:912:74 Unnecessary non-null assertion (!!) on a non-null receiver of type 'EmojiEditText'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:914:59 Unnecessary safe call on a non-null receiver of type 'EmojiEditText'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:928:50 Elvis operator (?:) always returns the left operand of non-nullable type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:948:56 Unnecessary non-null assertion (!!) on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:951:46 Unnecessary non-null assertion (!!) on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:955:56 Unnecessary non-null assertion (!!) on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:1040:60 Unnecessary non-null assertion (!!) on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/MessageInputFragment.kt:1089:48 Unnecessary safe call on a non-null receiver of type 'ImageButton'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/io/MediaRecorderManager.kt:83:20 'constructor(): MediaRecorder' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:513:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:514:17 'fun getChatMessageForConversation(internalConversationId: String, messageId: Long): Flow<ChatMessageEntity>' is deprecated. use getChatMessageEntity.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:546:31 'fun getSerializable(p0: String?): Serializable?' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:546:73 Unchecked cast of 'Serializable?' to 'HashMap<String, Int>'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:797:45 'fun getChatMessageForConversation(internalConversationId: String, messageId: Long): Flow<ChatMessageEntity>' is deprecated. use getChatMessageEntity.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:904:14 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/OfflineFirstChatRepository.kt:928:14 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/RetrofitChatNetwork.kt:82:9 The corresponding parameter in the supertype 'ChatNetworkDataSource' is named 'apiVersion'. This may cause problems when calling this function with named arguments.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/data/network/RetrofitChatNetwork.kt:97:9 The corresponding parameter in the supertype 'ChatNetworkDataSource' is named 'apiVersion'. This may cause problems when calling this function with named arguments.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:533:14 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:609:14 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:980:14 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1010:29 'fun getRoom(token: String): Unit' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1020:14 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1026:22 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1057:14 This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1058:23 'fun getRoom(token: String): Unit' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1072:46 Elvis operator (?:) always returns the left operand of non-nullable type 'String'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1123:14 This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1154:40 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1527:19 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1529:17 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1538:9 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1560:32 'fun getRoom(user: User, roomToken: String): Job' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1560:40 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1742:62 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1897:20 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1906:22 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1940:17 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1972:51 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1972:73 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1974:23 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:1983:21 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2001:51 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2001:73 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2003:23 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2012:21 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2130:45 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2205:51 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2215:13 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2215:24 Unnecessary safe call on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2221:51 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2353:20 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2357:21 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2358:21 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2366:44 'suspend fun getLocallyStoredConversation(user: User, roomToken: String): ConversationModel?' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2367:13 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2377:48 'suspend fun getLocallyStoredConversation(user: User, roomToken: String): ConversationModel?' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2378:17 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2389:44 'suspend fun getLocallyStoredConversation(user: User, roomToken: String): ConversationModel?' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2390:13 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2401:48 'suspend fun getLocallyStoredConversation(user: User, roomToken: String): ConversationModel?' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2402:17 'var currentUser: User' is deprecated. use currentUserFlow.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2416:17 'fun getRoom(token: String): Unit' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2426:17 'fun getRoom(token: String): Unit' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2434:17 'fun getRoom(token: String): Unit' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ChatViewModel.kt:2441:13 'fun getRoom(token: String): Unit' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chat/viewmodels/ScheduledMessagesViewModel.kt:242:28 'suspend fun getParentMessageById(messageId: Long): Flow<ChatMessage>' is deprecated. getMessage(messageId: Long, bundle: Bundle).
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chooseaccount/ChooseAccountDialogCompose.kt:111:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chooseaccount/viewmodel/StatusMessageViewModel.kt:39:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/chooseaccount/viewmodel/StatusViewModel.kt:25:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/components/ColoredStatusBar.kt:54:25 'var statusBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/components/StandardAppBar.kt:75:34 Unnecessary safe call on a non-null receiver of type 'List<Pair<String, () -> Unit>>'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/contacts/ContactsRepositoryImpl.kt:32:62 Java type mismatch: inferred type is 'MutableMap<String, String>?', but '(Mutable)Map<out String!, out Any!>' was expected.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/contacts/ContactsRepositoryImpl.kt:84:66 Java type mismatch: inferred type is 'MutableMap<String, String>?', but '(Mutable)Map<out String!, out Any!>' was expected.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationcreation/viewmodel/ConversationCreationViewModel.kt:31:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationcreation/viewmodel/ConversationCreationViewModel.kt:174:25 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:507:21 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:665:19 'fun demoteModeratorToUser(authorization: String!, url: String!, participantId: String!): Observable<GenericOverall!>!' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:668:29 'var userId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:671:19 'fun promoteUserToModerator(authorization: String!, url: String!, participantId: String!): Observable<GenericOverall!>!' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:674:29 'var userId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:706:23 'fun removeParticipantFromConversation(authorization: String!, url: String!, participantId: String!): Observable<GenericOverall!>!' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:708:30 'fun getUrlForRemovingParticipantFromConversation(baseUrl: String?, roomToken: String?, isGuest: Boolean): String' is deprecated. This is only supported on API v1-3, in API v4+ please use {@link ApiUtils#getUrlForAttendees(int, String, String)} instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:709:33 'var sessionId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:712:23 'fun removeParticipantFromConversation(authorization: String!, url: String!, participantId: String!): Observable<GenericOverall!>!' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:714:30 'fun getUrlForRemovingParticipantFromConversation(baseUrl: String?, roomToken: String?, isGuest: Boolean): String' is deprecated. This is only supported on API v1-3, in API v4+ please use {@link ApiUtils#getUrlForAttendees(int, String, String)} instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ConversationInfoActivity.kt:715:33 'var userId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/ParticipantItemAdapter.kt:252:35 'fun getColor(p0: Int): Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/viewmodel/ConversationInfoViewModel.kt:330:58 Elvis operator (?:) always returns the left operand of non-nullable type 'Long'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/viewmodel/ConversationInfoViewModel.kt:331:35 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationinfo/viewmodel/ConversationInfoViewModel.kt:355:13 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/ConversationsListActivity.kt:202:13 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/ConversationsListActivity.kt:1221:48 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/ConversationsListActivity.kt:1221:76 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/ConversationsListActivity.kt:1236:21 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/ConversationsListActivity.kt:1481:21 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/data/network/OfflineFirstConversationsRepository.kt:81:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/data/network/OfflineFirstConversationsRepository.kt:105:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/data/network/OfflineFirstConversationsRepository.kt:114:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/data/network/OfflineFirstConversationsRepository.kt:162:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/ui/ConversationListItem.kt:114:55 'var activeUser: User?' is deprecated. should be deleted in long term.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/viewmodels/ConversationsListViewModel.kt:74:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/viewmodels/ConversationsListViewModel.kt:408:49 Unnecessary safe call on a non-null receiver of type 'String'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationlist/viewmodels/ConversationsListViewModel.kt:537:30 'fun getRooms(user: User): Job' is deprecated. use observeConversation.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/conversationtags/viewmodels/ConversationTagsViewModel.kt:38:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/dagger/modules/ViewModelModule.kt:53:98 Unchecked cast of 'ViewModel?' to 'T (of fun <T : ViewModel> create)'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/data/source/local/converters/HashMapHashMapConverter.kt:29:65 Unchecked cast of '(Mutable)Map<String!, HashMap<*, *>!>!' to 'HashMap<String?, HashMap<String?, String?>>?'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/diagnosis/DiagnosisViewModel.kt:25:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/extensions/ImageViewExtensions.kt:139:17 'var activeUser: User?' is deprecated. should be deleted in long term.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/extensions/ImageViewExtensions.kt:140:17 'var activeUser: User?' is deprecated. should be deleted in long term.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/filebrowser/webdav/ReadFolderListingOperation.kt:84:17 Expression is unused.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/invitation/InvitationsActivity.kt:62:23 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/ContactAddressBookWorker.kt:62:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/ContactAddressBookWorker.kt:467:29 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/ContactAddressBookWorker.kt:487:22 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/ContactAddressBookWorker.kt:499:18 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/DownloadFileToCacheWorker.kt:45:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/LeaveConversationWorker.kt:49:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/SaveFileToStorageWorker.kt:53:21 Condition is always 'true'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/ShareOperationWorker.kt:125:25 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/UploadAndShareFilesWorker.kt:89:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/UploadAndShareFilesWorker.kt:557:25 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/jobs/UploadAndShareFilesWorker.kt:572:25 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/location/components/LocationPickerScreen.kt:151:50 Unnecessary non-null assertion (!!) on a non-null receiver of type 'GeocodingResult'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/location/components/LocationPickerScreen.kt:151:86 Unnecessary non-null assertion (!!) on a non-null receiver of type 'GeocodingResult'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/location/viewmodels/LocationPickerViewModel.kt:37:41 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/lock/LockedActivity.kt:128:39 'fun createConfirmDeviceCredentialIntent(p0: CharSequence!, p1: CharSequence!): Intent!' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/messagesearch/MessageSearchActivity.kt:76:16 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/messagesearch/MessageSearchViewModel.kt:40:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/domain/converters/DomainEnumNotificationLevelConverter.kt:30:13 'when' is exhaustive so 'else' is redundant here.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/participants/Participant.kt:94:17 'var userId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/participants/Participant.kt:108:13 'var userId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/push/DecryptedPushMessage.kt:92:40 Unnecessary safe call on a non-null receiver of type 'String'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/push/DecryptedPushMessage.kt:96:39 Unnecessary safe call on a non-null receiver of type 'Boolean'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/push/DecryptedPushMessage.kt:97:42 Unnecessary safe call on a non-null receiver of type 'Boolean'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/push/DecryptedPushMessage.kt:98:47 Unnecessary safe call on a non-null receiver of type 'Boolean'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/models/json/push/DecryptedPushMessage.kt:101:42 Unnecessary safe call on a non-null receiver of type 'Long'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/openconversations/ListOpenConversationsActivity.kt:43:20 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/polls/ui/PollMainDialogFragment.kt:38:30 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/polls/ui/PollMainDialogFragment.kt:175:24 'fun bundleOf(vararg pairs: Pair<String, Any?>): Bundle' is deprecated. This method does not provide type safety at compile time. Use the platform `Bundle` class directly instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/polls/viewmodels/PollCreateViewModel.kt:26:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/polls/viewmodels/PollMainViewModel.kt:27:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/polls/viewmodels/PollVoteViewModel.kt:26:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/profile/ProfileActivity.kt:175:23 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/raisehand/viewmodel/RaiseHandViewModel.kt:27:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/receivers/DirectReplyReceiver.kt:53:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/receivers/DismissRecordingAvailableReceiver.kt:38:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/receivers/MarkAsReadReceiver.kt:40:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/receivers/ShareRecordingToChatReceiver.kt:41:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/remotefilebrowser/activities/RemoteFileBrowserActivity.kt:55:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/remotefilebrowser/repositories/RemoteFileBrowserItemsRepositoryImpl.kt:30:59 Unchecked cast of 'Any!' to 'List<RemoteFileBrowserItem>'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/remotefilebrowser/viewmodels/RemoteFileBrowserItemsViewModel.kt:52:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/settings/SettingsActivity.kt:340:23 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/settings/SettingsActivity.kt:660:13 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/settings/SettingsActivity.kt:667:17 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/shareditems/activities/SharedItemsActivity.kt:82:20 'var currentUserProviderOld: CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/shareditems/repositories/SharedItemsRepositoryImpl.kt:106:77 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/signaling/SignalingMessageReceiver.kt:323:53 Unchecked cast of 'Any?' to 'Map<String, Any>?'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/signaling/SignalingMessageReceiver.kt:384:49 Unchecked cast of 'Any?' to 'Map<String, Any>?'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/signaling/SignalingMessageReceiver.kt:470:40 Unchecked cast of 'Any?' to 'List<Map<String, Any>>?'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/signaling/SignalingMessageReceiver.kt:517:40 Unchecked cast of 'Map<String?, Any?>' to 'Map<String, Any>'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/signaling/SignalingMessageReceiver.kt:546:21 'var sessionId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/signaling/SignalingMessageReceiver.kt:549:25 'var userId: String?' is deprecated.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/threadsoverview/viewmodels/ThreadsOverviewViewModel.kt:30:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/translate/viewmodels/TranslateViewModel.kt:28:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/chat/MediaMessage.kt:286:69 No cast needed.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/DateTimeCompose.kt:95:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/DialogBanListFragment.kt:44:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/FilterConversationFragment.kt:38:39 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/FilterConversationFragment.kt:49:79 Unchecked cast of 'HashMap<*, *>?' to 'HashMap<String, Boolean>'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/FilterConversationFragment.kt:51:24 'fun getSerializable(p0: String?): Serializable?' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/FilterConversationFragment.kt:51:58 Unchecked cast of 'Serializable?' to 'HashMap<String, Boolean>'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/MoreCallActionsDialog.kt:105:61 Unnecessary safe call on a non-null receiver of type 'User'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/dialog/SaveToStorageDialogFragment.kt:105:21 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/theme/MaterialSchemesProviderImpl.kt:19:31 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/theme/TalkSpecificViewThemeUtils.kt:100:20 'static fun setBackground(p0: View, p1: Drawable?): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/theme/TalkSpecificViewThemeUtils.kt:124:24 'static fun setBackground(p0: View, p1: Drawable?): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/ui/theme/TalkSpecificViewThemeUtils.kt:434:59 'var activeUser: User?' is deprecated. should be deleted in long term.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/upload/chunked/ChunkedFileUploader.kt:141:17 Expression is unused.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/upload/normal/FileUploader.kt:129:25 'fun create(contentType: MediaType?, content: ByteArray, offset: Int = ..., byteCount: Int = ...): RequestBody' is deprecated. Moved to extension function. Put the 'content' argument first to fix Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/AccountUtils.kt:104:29 'field versionCode: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/AccountUtils.kt:105:91 'static field GET_SIGNATURES: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/AccountUtils.kt:105:107 'field signatures: Array<(out) Signature!>?' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/AccountUtils.kt:108:36 'static field GET_SIGNATURES: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/AccountUtils.kt:109:19 'field signatures: Array<(out) Signature!>?' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:152:25 'fun getColor(p0: Int): Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:313:26 'static field SYSTEM_UI_FLAG_LIGHT_STATUS_BAR: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:314:30 'static field SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:316:23 'var systemUiVisibility: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:318:23 'var systemUiVisibility: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:320:20 'var statusBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/DisplayUtils.kt:346:16 'var navigationBarColor: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/FileViewerUtils.kt:322:21 'fun getInstance(): WorkManager' is deprecated. Use the overload receiving Context.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/FileViewerUtils.kt:325:36 The corresponding parameter in the supertype 'Observer' is named 'value'. This may cause problems when calling this function with named arguments.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/ImageEmojiEditText.kt:60:38 'static fun createWrapper(p0: InputConnection, p1: EditorInfo, p2: InputConnectionCompat.OnCommitContentListener): InputConnection' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/NotificationUtils.kt:101:43 'static field USAGE_NOTIFICATION_COMMUNICATION_REQUEST: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/NotificationUtils.kt:122:43 'static field USAGE_NOTIFICATION_COMMUNICATION_INSTANT: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/UnifiedPushUtils.kt:81:21 'fun tryPickDistributor(context: Context, callback: (Boolean) -> Unit): Unit' is deprecated. Use tryPickDistributor(activity, callback) instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/VibrationUtils.kt:17:57 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/database/user/CurrentUserProviderOldImpl.kt:22:94 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/database/user/UserModule.kt:23:37 'class CurrentUserProviderOldImpl : CurrentUserProviderOld' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/database/user/UserModule.kt:24:8 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/power/PowerManagerUtils.kt:45:26 'static field SCREEN_BRIGHT_WAKE_LOCK: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/power/PowerManagerUtils.kt:45:66 'static field ACQUIRE_CAUSES_WAKEUP: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/power/PowerManagerUtils.kt:55:50 'static field WIFI_MODE_FULL_HIGH_PERF: Int' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/power/PowerManagerUtils.kt:152:13 'when' is exhaustive so 'else' is redundant here.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/preview/ComposePreviewUtils.kt:96:23 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/preview/ComposePreviewUtils.kt:97:17 'constructor(userManager: UserManager): CurrentUserProviderOldImpl' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/preview/ComposePreviewUtilsDaos.kt:62:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/preview/ComposePreviewUtilsDaos.kt:72:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/utils/preview/ComposePreviewUtilsDaos.kt:74:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/viewmodels/CallRecordingViewModel.kt:27:38 'interface CurrentUserProviderOld : Any' is deprecated. Use CurrentUserProvider instead.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/webrtc/WebSocketInstance.kt:255:80 Unchecked cast of 'Any?' to 'List<HashMap<String, Any>>?'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/webrtc/WebSocketInstance.kt:260:51 Unchecked cast of 'Any?' to 'HashMap<String, Any>?'.
+w: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/app/src/main/java/com/nextcloud/talk/webrtc/WebSocketInstance.kt:279:82 Unchecked cast of 'Any?' to 'List<String>?'.
 
+[Incubating] Problems report is available at: file:///home/runner/work/Nextcloud_Talk_Android_Auto/Nextcloud_Talk_Android_Auto/build/reports/problems/problems-report.html
 
 Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
@@ -241,6 +240,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD FAILED in 1m 26s
-Configuration cache entry discarded due to serialization error.
+BUILD SUCCESSFUL in 6m 27s
+13 actionable tasks: 13 executed
+Configuration cache entry stored.
 ```
