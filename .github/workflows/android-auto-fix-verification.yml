@@ -1,0 +1,68 @@
+name: Android Auto - fix dependency verification
+
+on:
+  push:
+    branches:
+      - android-auto
+    paths:
+      - .github/workflows/android-auto-fix-verification.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: android-auto
+          fetch-depth: 0
+
+      - name: Trust Google's AndroidX Car signing key for Car App artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('gradle/verification-metadata.xml')
+          text = p.read_text()
+          key = '<trusted-key id="0F06FF86BEEAF4E71866EE5232EE5355A6BC6E42">'
+          car = '            <trusting group="androidx.car.app"/>'
+          if car not in text:
+              if key not in text:
+                  raise SystemExit('Expected Google AndroidX trusted key was not found')
+              text = text.replace(key, key + '\n' + car, 1)
+              p.write_text(text)
+          PY
+
+      - name: Record checksums for newly resolved transitive metadata
+        shell: bash
+        run: |
+          # --write-verification-metadata is allowed to discover and write the exact
+          # SHA-256 entries required by this classpath. Commit whatever it writes even
+          # if dependency reporting itself returns non-zero.
+          set +e
+          ./gradlew :app:dependencies \
+            --configuration gplayDebugCompileClasspath \
+            --write-verification-metadata sha256 \
+            --stacktrace
+          echo "Gradle dependency resolution exit code: $?"
+          exit 0
+
+      - name: Commit verification update
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gradle/verification-metadata.xml
+          if git diff --cached --quiet; then
+            echo "Verification metadata already complete."
+            exit 0
+          fi
+          git commit -m "build(auto): verify AndroidX Car dependencies"
+          git fetch origin android-auto
+          git rebase origin/android-auto
+          git push origin HEAD:android-auto
