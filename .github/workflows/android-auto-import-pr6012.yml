@@ -1,0 +1,58 @@
+name: Android Auto - import upstream messaging support
+
+on:
+  push:
+    branches:
+      - android-auto
+    paths:
+      - .github/workflows/android-auto-import-pr6012.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import-pr6012:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Android Auto branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: android-auto
+
+      - name: Import nextcloud/talk-android PR 6012 as a three-way patch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # The fork shares Git objects with upstream, and this branch was created
+          # directly from the upstream PR head so the exact source is preserved.
+          git fetch origin upstream-pr-6012:refs/remotes/origin/upstream-pr-6012
+
+          PR_BASE="b846aa4fc6467b24bad60e7f347b708dcad793e9"
+          PR_HEAD="origin/upstream-pr-6012"
+
+          git diff --binary "$PR_BASE".."$PR_HEAD" -- \
+            SETUP.md \
+            app/src/main/AndroidManifest.xml \
+            app/src/main/java/com/nextcloud/talk/jobs/NotificationWorker.kt \
+            app/src/main/java/com/nextcloud/talk/utils/NotificationUtils.kt \
+            app/src/main/res/xml/automotive_app_desc.xml \
+            > /tmp/pr6012.patch
+
+          if ! git apply --3way --index /tmp/pr6012.patch; then
+            echo "::error::PR 6012 still has unresolved three-way conflicts. No changes will be pushed."
+            git status --short
+            exit 1
+          fi
+
+          if git diff --cached --quiet; then
+            echo "PR 6012 changes are already present; nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "feat(auto): import upstream Android Auto messaging support"
+          git push origin HEAD:android-auto
