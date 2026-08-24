@@ -55,6 +55,7 @@ import com.nextcloud.talk.api.NcApi
 import com.nextcloud.talk.application.NextcloudTalkApplication
 import com.nextcloud.talk.application.NextcloudTalkApplication.Companion.sharedApplication
 import com.nextcloud.talk.arbitrarystorage.ArbitraryStorageManager
+import com.nextcloud.talk.call.TalkCallInterop
 import com.nextcloud.talk.callnotification.CallNotificationActivity
 import com.nextcloud.talk.chat.data.network.ChatNetworkDataSource
 import com.nextcloud.talk.conversationlist.DirectShareHelper
@@ -358,6 +359,14 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
             val callerPerson = callerPersonBuilder.build()
 
             val isVideoCall = (conversation.callFlag and Participant.InCallFlags.WITH_VIDEO) > 0
+
+            TalkCallInterop.notifyIncomingCall(
+                applicationContext,
+                bundle,
+                conversation.displayName,
+                isVideoCall
+            )
+
             val primaryAnswerIntent = if (isVideoCall) answerVideoPendingIntent else answerVoicePendingIntent
 
             val notification =

@@ -197,7 +197,7 @@ dependencies {
     // Android Auto communication UI is isolated to the Google Play flavor.
     "gplayImplementation"("androidx.car.app:app:1.7.0")
     "gplayImplementation"("androidx.car.app:app-projected:1.7.0")
-    "gplayImplementation"("androidx.core:core-telecom:1.1.0-alpha06")
+    "gplayImplementation"("androidx.core:core-telecom:1.1.0-beta01")
     implementation("androidx.media3:media3-session:1.11.0")
     kapt("org.jetbrains.kotlin:kotlin-metadata-jvm:$kotlinVersion")
     implementation("androidx.room:room-testing-android:$roomVersion")

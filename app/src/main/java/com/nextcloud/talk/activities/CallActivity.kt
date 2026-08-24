@@ -72,6 +72,7 @@ import com.nextcloud.talk.call.MessageSenderMcu
 import com.nextcloud.talk.call.MessageSenderNoMcu
 import com.nextcloud.talk.call.MutableLocalCallParticipantModel
 import com.nextcloud.talk.call.ReactionAnimator
+import com.nextcloud.talk.call.TalkCallInterop
 import com.nextcloud.talk.call.components.ParticipantGrid
 import com.nextcloud.talk.call.components.SelfVideoView
 import com.nextcloud.talk.call.components.screenshare.ScreenShareComponent
@@ -141,6 +142,7 @@ import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_START_CALL_AFTER_ROOM_SWIT
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_SWITCH_TO_ROOM
 import com.nextcloud.talk.utils.permissions.PlatformPermissionUtil
 import com.nextcloud.talk.utils.power.PowerManagerUtils
+import com.nextcloud.talk.utils.registerBroadcastReceiver
 import com.nextcloud.talk.utils.registerPermissionHandlerBroadcastReceiver
 import com.nextcloud.talk.utils.singletons.ApplicationWideCurrentRoomHolder
 import com.nextcloud.talk.viewmodels.CallRecordingViewModel
@@ -253,6 +255,27 @@ class CallActivity : CallBaseActivity() {
     var isVoiceOnlyCall = false
     private var isCallWithoutNotification = false
     private var isIncomingCallFromNotification = false
+    private var telecomControlReceiverRegistered = false
+    private var activeTelecomCallKey: String? = null
+    private val telecomControlReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action ?: return
+            val callKey = intent.getStringExtra(TalkCallInterop.EXTRA_CALL_KEY)
+            if (callKey.isNullOrBlank() || callKey != activeTelecomCallKey) return
+
+            when (action) {
+                TalkCallInterop.ACTION_CONTROL_DISCONNECT ->
+                    hangup(shutDownView = true, endCallForAll = false)
+
+                TalkCallInterop.ACTION_CONTROL_MUTE -> {
+                    val shouldMute = intent.getBooleanExtra(TalkCallInterop.EXTRA_MUTED, false)
+                    if (microphoneOn == shouldMute) {
+                        onMicrophoneClick()
+                    }
+                }
+            }
+        }
+    }
     private val callControlHandler = Handler()
     private val callInfosHandler = Handler()
     private val cameraSwitchHandler = Handler()
@@ -453,6 +476,22 @@ class CallActivity : CallBaseActivity() {
         processExtras(intent.extras!!)
         conversationUser = currentUserProviderOld.currentUser.blockingGet()
 
+        val telecomAccountId = conversationUser.id
+        val telecomRoomToken = roomToken
+        if (telecomAccountId != null && !telecomRoomToken.isNullOrBlank()) {
+            activeTelecomCallKey = TalkCallInterop.callKey(telecomAccountId, telecomRoomToken)
+            registerTelecomControlReceiver()
+            TalkCallInterop.notifyCallStarted(
+                context = this,
+                accountId = telecomAccountId,
+                roomToken = telecomRoomToken,
+                displayName = conversationName.orEmpty(),
+                incoming = isIncomingCallFromNotification,
+                video = !isVoiceOnlyCall,
+                callExtras = Bundle(extras)
+            )
+        }
+
         credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
         if (TextUtils.isEmpty(baseUrl)) {
             baseUrl = conversationUser!!.baseUrl
@@ -473,6 +512,16 @@ class CallActivity : CallBaseActivity() {
         reactionAnimator = ReactionAnimator(context, binding!!.reactionAnimationWrapper, viewThemeUtils)
 
         checkInitialDevicePermissions()
+    }
+
+    private fun registerTelecomControlReceiver() {
+        if (telecomControlReceiverRegistered) return
+        val filter = IntentFilter().apply {
+            addAction(TalkCallInterop.ACTION_CONTROL_DISCONNECT)
+            addAction(TalkCallInterop.ACTION_CONTROL_MUTE)
+        }
+        registerBroadcastReceiver(telecomControlReceiver, filter, ReceiverFlag.NotExported)
+        telecomControlReceiverRegistered = true
     }
 
     private fun initCallRecordingViewModel(recordingState: Int) {
@@ -1391,6 +1440,10 @@ class CallActivity : CallBaseActivity() {
         }
         CallForegroundService.stop(applicationContext)
         powerManagerUtils!!.updatePhoneState(PowerManagerUtils.PhoneState.IDLE)
+        if (telecomControlReceiverRegistered) {
+            unregisterReceiver(telecomControlReceiver)
+            telecomControlReceiverRegistered = false
+        }
         super.onDestroy()
     }
 
@@ -1966,6 +2019,13 @@ class CallActivity : CallBaseActivity() {
 
     private fun hangup(shutDownView: Boolean, endCallForAll: Boolean) {
         Log.d(TAG, "hangup! shutDownView=$shutDownView")
+        if (shutDownView && ::conversationUser.isInitialized) {
+            val accountId = conversationUser.id
+            val token = roomToken
+            if (accountId != null && !token.isNullOrBlank()) {
+                TalkCallInterop.notifyCallEnded(this, accountId, token)
+            }
+        }
         joinRoomInitiated = false
         if (shutDownView) {
             setCallState(CallStatus.LEAVING)
@@ -2639,6 +2699,16 @@ class CallActivity : CallBaseActivity() {
     private fun setCallState(callState: CallStatus) {
         if (currentCallStatus == null || currentCallStatus !== callState) {
             currentCallStatus = callState
+            if (
+                ::conversationUser.isInitialized &&
+                (callState === CallStatus.JOINED || callState === CallStatus.IN_CONVERSATION)
+            ) {
+                val accountId = conversationUser.id
+                val token = roomToken
+                if (accountId != null && !token.isNullOrBlank()) {
+                    TalkCallInterop.notifyCallActive(this, accountId, token)
+                }
+            }
             if (handler == null) {
                 handler = Handler(Looper.getMainLooper())
             } else {
