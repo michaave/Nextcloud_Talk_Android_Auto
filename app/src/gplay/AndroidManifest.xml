@@ -47,6 +47,17 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name=".auto.call.TalkTelecomInteropReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.nextcloud.talk.call.action.INCOMING" />
+                <action android:name="com.nextcloud.talk.call.action.STARTED" />
+                <action android:name="com.nextcloud.talk.call.action.ACTIVE" />
+                <action android:name="com.nextcloud.talk.call.action.ENDED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".services.firebase.NCFirebaseMessagingService"
             android:exported="false">
