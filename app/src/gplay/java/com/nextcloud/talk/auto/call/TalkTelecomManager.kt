@@ -214,7 +214,8 @@ class TalkTelecomManager private constructor(context: Context) {
                         }
                     }
                 ) {
-                    managed.control = this
+                    val callControl = this
+                    managed.control = callControl
 
                     scope.launch {
                         isMuted
@@ -225,7 +226,7 @@ class TalkTelecomManager private constructor(context: Context) {
                     }
 
                     if (managed.activityStarted) {
-                        scope.launch { activateStartedCall(managed, this@addCall) }
+                        scope.launch { activateStartedCall(managed, callControl) }
                     }
                 }
             } catch (t: Throwable) {
