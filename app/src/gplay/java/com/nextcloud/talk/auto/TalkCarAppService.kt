@@ -6,8 +6,8 @@
  */
 package com.nextcloud.talk.auto
 
-import android.content.ApplicationInfo
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import androidx.car.app.CarAppService
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
