@@ -26,7 +26,6 @@
         <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
 
-
         <!-- ConversationItem and communication templates require Car API 7. -->
         <meta-data
             android:name="androidx.car.app.minCarApiLevel"
@@ -37,13 +36,13 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
+        <!-- Keep a single, unambiguous CarAppService while validating templated messaging. -->
         <service
             android:name=".auto.TalkCarAppService"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.MESSAGING" />
-                <category android:name="androidx.car.app.category.CALLING" />
             </intent-filter>
         </service>
 
