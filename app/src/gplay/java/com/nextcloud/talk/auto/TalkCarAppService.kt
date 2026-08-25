@@ -19,12 +19,29 @@ import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.car.app.validation.HostValidator
+import autodagger.AutoInjector
+import com.nextcloud.talk.application.NextcloudTalkApplication
 import com.nextcloud.talk.auto.call.TalkTelecomManager
+import com.nextcloud.talk.data.database.dao.ChatMessagesDao
+import com.nextcloud.talk.data.database.dao.ConversationsDao
+import com.nextcloud.talk.utils.database.user.CurrentUserProvider
+import javax.inject.Inject
 
 /** Android Auto entry point for Talk messaging and calling. */
+@AutoInjector(NextcloudTalkApplication::class)
 class TalkCarAppService : CarAppService() {
+    @Inject
+    lateinit var currentUserProvider: CurrentUserProvider
+
+    @Inject
+    lateinit var conversationsDao: ConversationsDao
+
+    @Inject
+    lateinit var chatMessagesDao: ChatMessagesDao
+
     override fun onCreate() {
         super.onCreate()
+        NextcloudTalkApplication.sharedApplication!!.componentApplication.inject(this)
         TalkTelecomManager.get(applicationContext).registerWithTelecom()
     }
 
@@ -37,27 +54,38 @@ class TalkCarAppService : CarAppService() {
                 .build()
         }
 
-    override fun onCreateSession(): Session = TalkCarSession()
+    override fun onCreateSession(): Session =
+        TalkCarSession(currentUserProvider, conversationsDao, chatMessagesDao)
 }
 
-private class TalkCarSession : Session() {
-    override fun onCreateScreen(intent: Intent): Screen = TalkCarHomeScreen(carContext)
+private class TalkCarSession(
+    private val currentUserProvider: CurrentUserProvider,
+    private val conversationsDao: ConversationsDao,
+    private val chatMessagesDao: ChatMessagesDao
+) : Session() {
+    override fun onCreateScreen(intent: Intent): Screen =
+        TalkCarHomeScreen(carContext, currentUserProvider, conversationsDao, chatMessagesDao)
 }
 
-private class TalkCarHomeScreen(carContext: CarContext) : Screen(carContext) {
+private class TalkCarHomeScreen(
+    carContext: CarContext,
+    private val currentUserProvider: CurrentUserProvider,
+    private val conversationsDao: ConversationsDao,
+    private val chatMessagesDao: ChatMessagesDao
+) : Screen(carContext) {
     override fun onGetTemplate(): Template {
         val items = ItemList.Builder()
             .addItem(
                 Row.Builder()
                     .setTitle("Messages")
-                    .addText("Read, reply to, and start Talk conversations")
+                    .addText("Read and reply to recent Talk conversations")
                     .setOnClickListener {
                         screenManager.push(
-                            TalkCarStatusScreen(
+                            TalkConversationsScreen(
                                 carContext,
-                                "Messages",
-                                "Messaging notifications and voice replies are enabled. " +
-                                    "Conversation history and contact selection are the next layer."
+                                currentUserProvider,
+                                conversationsDao,
+                                chatMessagesDao
                             )
                         )
                     }
@@ -66,14 +94,14 @@ private class TalkCarHomeScreen(carContext: CarContext) : Screen(carContext) {
             .addItem(
                 Row.Builder()
                     .setTitle("Calls")
-                    .addText("Start and control Talk voice calls")
+                    .addText("Control Talk voice calls through Android Telecom")
                     .setOnClickListener {
                         screenManager.push(
                             TalkCarStatusScreen(
                                 carContext,
                                 "Calls",
-                                "Talk is registered with Android Telecom. " +
-                                    "The next layer connects Telecom callbacks to Talk WebRTC calls."
+                                "Incoming and active Talk calls are connected to Android Telecom. " +
+                                    "Contact-selected outgoing calls are the next call UI layer."
                             )
                         )
                     }
