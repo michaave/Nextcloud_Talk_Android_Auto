@@ -24,6 +24,9 @@ plugins {
 
 val kotlinVersion: String by rootProject.extra
 
+val androidAutoSideBySide =
+    providers.gradleProperty("androidAutoSideBySide").orNull == "true"
+
 val coilKtVersion = "2.7.0"
 val daggerVersion = "2.60.1"
 val emojiVersion = "1.6.0"
@@ -110,6 +113,13 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            if (androidAutoSideBySide) {
+                applicationIdSuffix = ".auto"
+                versionNameSuffix = "-auto"
+            }
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
