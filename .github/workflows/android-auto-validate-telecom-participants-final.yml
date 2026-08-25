@@ -1,0 +1,94 @@
+name: Android Auto - validate Telecom participants final
+
+on:
+  push:
+    branches:
+      - android-auto-telecom-participants-final
+    paths:
+      - .github/workflows/android-auto-validate-telecom-participants-final.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: android-auto-telecom-participants-final
+          fetch-depth: 0
+
+      - name: Reuse proven participant patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://raw.githubusercontent.com/michaave/Nextcloud_Talk_Android_Auto/android-auto-telecom-participants/.github/workflows/android-auto-validate-telecom-participants.yml \
+            -o /tmp/participant-validator.yml
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('/tmp/participant-validator.yml').read_text()
+          section = workflow.index('      - name: Apply speaking and participant integration')
+          start_marker = "          python3 - <<'PY'\n"
+          start = workflow.index(start_marker, section) + len(start_marker)
+          end = workflow.index('          PY\n', start)
+          lines = workflow[start:end].splitlines()
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
+          Path('/tmp/apply-participants.py').write_text(script)
+          PY
+          python3 /tmp/apply-participants.py
+
+      - name: Format participant source
+        run: ./gradlew ktlintFormat --stacktrace
+
+      - name: Verify formatting scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/allowed-files <<'EOF'
+          app/src/gplay/AndroidManifest.xml
+          app/src/gplay/java/com/nextcloud/talk/auto/call/TalkTelecomInteropReceiver.kt
+          app/src/gplay/java/com/nextcloud/talk/auto/call/TalkTelecomManager.kt
+          app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt
+          app/src/main/java/com/nextcloud/talk/activities/ParticipantHandler.kt
+          app/src/main/java/com/nextcloud/talk/activities/ParticipantUiState.kt
+          app/src/main/java/com/nextcloud/talk/call/TalkCallInterop.kt
+          app/src/main/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifier.java
+          app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java
+          app/src/test/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifierTest.kt
+          EOF
+          unexpected="$(git diff --name-only | grep -vxFf /tmp/allowed-files || true)"
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected files changed by participant patch/formatting:"
+            echo "$unexpected"
+            exit 1
+          fi
+          git diff --check
+
+      - name: Commit validated candidate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/gplay app/src/main app/src/test
+          git commit -m $'feat(auto): publish call participants to Telecom\n\nAssisted-by: ChatGPT:GPT-5.6-Sol'
+
+      - name: Run speaking notifier tests
+        run: ./gradlew :app:testGplayDebugUnitTest --tests com.nextcloud.talk.webrtc.DataChannelMessageNotifierTest --stacktrace
+
+      - name: Compile Android Auto flavors
+        run: ./gradlew :app:compileGplayDebugKotlin :app:compileGenericDebugKotlin --stacktrace
+
+      - name: Run Kotlin style check
+        run: ./gradlew ktlintCheck --stacktrace
+
+      - name: Push validated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin android-auto-telecom-participants-final
+          git rebase origin/android-auto-telecom-participants-final
+          git push origin HEAD:android-auto-telecom-participants-final
