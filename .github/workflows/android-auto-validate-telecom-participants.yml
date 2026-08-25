@@ -1,0 +1,191 @@
+name: Android Auto - validate Telecom participants
+
+on:
+  push:
+    branches:
+      - android-auto-telecom-participants
+    paths:
+      - .github/workflows/android-auto-validate-telecom-participants.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: android-auto-telecom-participants
+          fetch-depth: 0
+
+      - name: Apply speaking and participant integration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path_str, old, new):
+              path = Path(path_str)
+              text = path.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'Expected source not found in {path_str}: {old[:80]!r}')
+              path.write_text(text.replace(old, new, 1))
+
+          # Receive the speaking/stoppedSpeaking data-channel state that Talk already sends.
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java',
+              '''        void onAudioOn();\n        void onAudioOff();\n        void onVideoOn();''',
+              '''        void onAudioOn();\n        void onAudioOff();\n        void onSpeaking();\n        void onStoppedSpeaking();\n        void onVideoOn();'''
+          )
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java',
+              '''            if ("audioOff".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifyAudioOff();\n\n                return;\n            }\n\n            if ("videoOn".equals(dataChannelMessage.getType())) {''',
+              '''            if ("audioOff".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifyAudioOff();\n\n                return;\n            }\n\n            if ("speaking".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifySpeaking();\n\n                return;\n            }\n\n            if ("stoppedSpeaking".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifyStoppedSpeaking();\n\n                return;\n            }\n\n            if ("videoOn".equals(dataChannelMessage.getType())) {'''
+          )
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifier.java',
+              '''    public synchronized void notifyAudioOff() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onAudioOff();\n        }\n    }\n\n    public synchronized void notifyVideoOn() {''',
+              '''    public synchronized void notifyAudioOff() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onAudioOff();\n        }\n    }\n\n    public synchronized void notifySpeaking() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onSpeaking();\n        }\n    }\n\n    public synchronized void notifyStoppedSpeaking() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onStoppedSpeaking();\n        }\n    }\n\n    public synchronized void notifyVideoOn() {'''
+          )
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/activities/ParticipantUiState.kt',
+              '''    val actorId: String? = null,\n    val isInternal: Boolean\n)''',
+              '''    val actorId: String? = null,\n    val isInternal: Boolean,\n    val isSpeaking: Boolean = false\n)'''
+          )
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/activities/ParticipantHandler.kt',
+              '''        override fun onAudioOff() {\n            Log.d(TAG, "onAudioOff: ${_uiState.value.nick} (sessionId=${_uiState.value.sessionKey})")\n            _uiState.update { it.copy(isAudioEnabled = false) }\n        }\n\n        override fun onVideoOn() {''',
+              '''        override fun onAudioOff() {\n            Log.d(TAG, "onAudioOff: ${_uiState.value.nick} (sessionId=${_uiState.value.sessionKey})")\n            _uiState.update { it.copy(isAudioEnabled = false, isSpeaking = false) }\n        }\n\n        override fun onSpeaking() {\n            _uiState.update { it.copy(isSpeaking = true) }\n        }\n\n        override fun onStoppedSpeaking() {\n            _uiState.update { it.copy(isSpeaking = false) }\n        }\n\n        override fun onVideoOn() {'''
+          )
+          replace_once(
+              'app/src/test/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifierTest.kt',
+              '''    @Test\n    fun testNotifyVideoOn() {''',
+              '''    @Test\n    fun testNotifySpeaking() {\n        notifier.addListener(listener)\n        notifier.notifySpeaking()\n        verify(listener).onSpeaking()\n    }\n\n    @Test\n    fun testNotifyStoppedSpeaking() {\n        notifier.addListener(listener)\n        notifier.notifyStoppedSpeaking()\n        verify(listener).onStoppedSpeaking()\n    }\n\n    @Test\n    fun testNotifyVideoOn() {'''
+          )
+
+          # Flavor-neutral participant snapshot broadcast.
+          interop = 'app/src/main/java/com/nextcloud/talk/call/TalkCallInterop.kt'
+          replace_once(
+              interop,
+              '''    const val ACTION_CALL_ACTIVE = "com.nextcloud.talk.call.action.ACTIVE"\n    const val ACTION_CALL_ENDED = "com.nextcloud.talk.call.action.ENDED"\n''',
+              '''    const val ACTION_CALL_ACTIVE = "com.nextcloud.talk.call.action.ACTIVE"\n    const val ACTION_CALL_ENDED = "com.nextcloud.talk.call.action.ENDED"\n    const val ACTION_CALL_PARTICIPANTS_CHANGED = "com.nextcloud.talk.call.action.PARTICIPANTS_CHANGED"\n'''
+          )
+          replace_once(
+              interop,
+              '''    const val EXTRA_MUTED = "talk_muted"\n    const val EXTRA_AUDIO_ROUTE = "talk_audio_route"\n''',
+              '''    const val EXTRA_MUTED = "talk_muted"\n    const val EXTRA_AUDIO_ROUTE = "talk_audio_route"\n    const val EXTRA_PARTICIPANT_IDS = "talk_participant_ids"\n    const val EXTRA_PARTICIPANT_NAMES = "talk_participant_names"\n    const val EXTRA_ACTIVE_PARTICIPANT_ID = "talk_active_participant_id"\n'''
+          )
+          replace_once(
+              interop,
+              '''    fun notifyCallEnded(context: Context, accountId: Long, roomToken: String) {\n        notifySimple(context, ACTION_CALL_ENDED, accountId, roomToken)\n    }\n\n    fun requestDisconnect''',
+              '''    fun notifyCallEnded(context: Context, accountId: Long, roomToken: String) {\n        notifySimple(context, ACTION_CALL_ENDED, accountId, roomToken)\n    }\n\n    fun notifyCallParticipants(\n        context: Context,\n        accountId: Long,\n        roomToken: String,\n        participantIds: Array<String>,\n        participantNames: Array<String>,\n        activeParticipantId: String?\n    ) {\n        if (accountId < 0L || roomToken.isBlank() || participantIds.size != participantNames.size) return\n        val intent = Intent(ACTION_CALL_PARTICIPANTS_CHANGED)\n            .putExtra(EXTRA_CALL_KEY, callKey(accountId, roomToken))\n            .putExtra(EXTRA_PARTICIPANT_IDS, participantIds)\n            .putExtra(EXTRA_PARTICIPANT_NAMES, participantNames)\n        if (!activeParticipantId.isNullOrBlank()) {\n            intent.putExtra(EXTRA_ACTIVE_PARTICIPANT_ID, activeParticipantId)\n        }\n        send(context, intent)\n    }\n\n    fun requestDisconnect'''
+          )
+
+          # CallActivity publishes the StateFlow maintained by ParticipantHandler/CallViewModel.
+          activity = 'app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt'
+          replace_once(
+              activity,
+              '''import androidx.lifecycle.ViewModelProvider\n''',
+              '''import androidx.lifecycle.ViewModelProvider\nimport androidx.lifecycle.lifecycleScope\n'''
+          )
+          replace_once(
+              activity,
+              '''import kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.launch\n''',
+              '''import kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.flow.collectLatest\nimport kotlinx.coroutines.launch\n'''
+          )
+          replace_once(
+              activity,
+              '''        if (telecomAccountId != null && !telecomRoomToken.isNullOrBlank()) {\n            activeTelecomCallKey = TalkCallInterop.callKey(telecomAccountId, telecomRoomToken)\n            registerTelecomControlReceiver()\n            TalkCallInterop.notifyCallStarted(\n                context = this,\n                accountId = telecomAccountId,\n                roomToken = telecomRoomToken,\n                displayName = conversationName.orEmpty(),\n                incoming = isIncomingCallFromNotification,\n                video = !isVoiceOnlyCall,\n                callExtras = Bundle(extras)\n            )\n        }\n\n        credentials =''',
+              '''        if (telecomAccountId != null && !telecomRoomToken.isNullOrBlank()) {\n            activeTelecomCallKey = TalkCallInterop.callKey(telecomAccountId, telecomRoomToken)\n            registerTelecomControlReceiver()\n            TalkCallInterop.notifyCallStarted(\n                context = this,\n                accountId = telecomAccountId,\n                roomToken = telecomRoomToken,\n                displayName = conversationName.orEmpty(),\n                incoming = isIncomingCallFromNotification,\n                video = !isVoiceOnlyCall,\n                callExtras = Bundle(extras)\n            )\n        }\n\n        lifecycleScope.launch {\n            callViewModel.participants.collectLatest { participants ->\n                publishTelecomParticipants(participants)\n            }\n        }\n\n        credentials ='''
+          )
+          replace_once(
+              activity,
+              '''    private fun registerTelecomControlReceiver() {''',
+              '''    private fun publishTelecomParticipants(participants: List<ParticipantUiState>) {\n        if (!::conversationUser.isInitialized) return\n        val accountId = conversationUser.id ?: return\n        val token = roomToken?.takeIf { it.isNotBlank() } ?: return\n        val connectedParticipants = participants\n            .filter { it.isConnected && !it.sessionKey.isNullOrBlank() }\n            .sortedBy { it.sessionKey }\n\n        val participantIds = mutableListOf("self:$accountId")\n        val participantNames = mutableListOf(\n            conversationUser.displayName?.takeIf { it.isNotBlank() }\n                ?: conversationUser.username?.takeIf { it.isNotBlank() }\n                ?: "You"\n        )\n\n        connectedParticipants.forEach { participant ->\n            val sessionId = participant.sessionKey ?: return@forEach\n            participantIds.add("session:$sessionId")\n            participantNames.add(participant.nick?.takeIf { it.isNotBlank() } ?: "Guest")\n        }\n\n        val activeParticipantId = connectedParticipants\n            .firstOrNull { it.isSpeaking }\n            ?.sessionKey\n            ?.let { "session:$it" }\n\n        TalkCallInterop.notifyCallParticipants(\n            context = this,\n            accountId = accountId,\n            roomToken = token,\n            participantIds = participantIds.toTypedArray(),\n            participantNames = participantNames.toTypedArray(),\n            activeParticipantId = activeParticipantId\n        )\n    }\n\n    private fun registerTelecomControlReceiver() {'''
+          )
+
+          # GPlay receiver and manifest route participant snapshots to Core-Telecom.
+          receiver = 'app/src/gplay/java/com/nextcloud/talk/auto/call/TalkTelecomInteropReceiver.kt'
+          replace_once(
+              receiver,
+              '''            TalkCallInterop.ACTION_CALL_ACTIVE -> manager.onCallActive(callKey)\n            TalkCallInterop.ACTION_CALL_ENDED -> manager.onCallEnded(callKey)\n            TalkCallInterop.ACTION_CONTROL_AUDIO_ENDPOINT -> {''',
+              '''            TalkCallInterop.ACTION_CALL_ACTIVE -> manager.onCallActive(callKey)\n            TalkCallInterop.ACTION_CALL_ENDED -> manager.onCallEnded(callKey)\n            TalkCallInterop.ACTION_CALL_PARTICIPANTS_CHANGED -> {\n                manager.onParticipantsChanged(\n                    callKey = callKey,\n                    participantIds = intent.getStringArrayExtra(TalkCallInterop.EXTRA_PARTICIPANT_IDS) ?: emptyArray(),\n                    participantNames = intent.getStringArrayExtra(TalkCallInterop.EXTRA_PARTICIPANT_NAMES) ?: emptyArray(),\n                    activeParticipantId = intent.getStringExtra(TalkCallInterop.EXTRA_ACTIVE_PARTICIPANT_ID)\n                )\n            }\n            TalkCallInterop.ACTION_CONTROL_AUDIO_ENDPOINT -> {'''
+          )
+          replace_once(
+              'app/src/gplay/AndroidManifest.xml',
+              '''                <action android:name="com.nextcloud.talk.call.action.ENDED" />\n                <action android:name="com.nextcloud.talk.call.action.CONTROL_AUDIO_ENDPOINT" />''',
+              '''                <action android:name="com.nextcloud.talk.call.action.ENDED" />\n                <action android:name="com.nextcloud.talk.call.action.PARTICIPANTS_CHANGED" />\n                <action android:name="com.nextcloud.talk.call.action.CONTROL_AUDIO_ENDPOINT" />'''
+          )
+
+          # Migrate the same call into Core-Telecom's extension-aware API.
+          manager = 'app/src/gplay/java/com/nextcloud/talk/auto/call/TalkTelecomManager.kt'
+          replace_once(
+              manager,
+              '''import androidx.core.telecom.CallsManager\n''',
+              '''import androidx.core.telecom.CallsManager\nimport androidx.core.telecom.extensions.Participant as TelecomParticipant\nimport androidx.core.telecom.extensions.ParticipantExtension\n'''
+          )
+          replace_once(
+              manager,
+              '''    fun requestAudioEndpoint(callKey: String, route: String) {''',
+              '''    fun onParticipantsChanged(\n        callKey: String,\n        participantIds: Array<String>,\n        participantNames: Array<String>,\n        activeParticipantId: String?\n    ) {\n        if (callKey.isBlank() || participantIds.size != participantNames.size) return\n        val managed = calls[callKey] ?: return\n        managed.participants = participantIds.zip(participantNames)\n            .mapNotNull { (id, name) ->\n                id.takeIf { it.isNotBlank() }?.let { TelecomParticipant(it, name.ifBlank { "Guest" }) }\n            }\n            .distinctBy(TelecomParticipant::id)\n        managed.activeParticipantId = activeParticipantId\n        if (managed.participantExtension != null) {\n            scope.launch { publishParticipantState(managed) }\n        }\n    }\n\n    fun requestAudioEndpoint(callKey: String, route: String) {'''
+          )
+          replace_once(
+              manager,
+              '''                callsManager.addCall(\n''',
+              '''                callsManager.addCallWithExtensions(\n'''
+          )
+          replace_once(
+              manager,
+              '''                ) {\n                    val callControl = this\n                    managed.control = callControl\n''',
+              '''                ) {\n                    val participantExtension = addParticipantExtension(\n                        initialParticipants = managed.participants,\n                        initialActiveParticipant = managed.activeParticipant()\n                    )\n                    onCall {\n                        val callControl = this\n                        managed.control = callControl\n                        managed.participantExtension = participantExtension\n                        publishParticipantState(managed)\n'''
+          )
+          replace_once(
+              manager,
+              '''                    if (managed.activityStarted) {\n                        scope.launch { activateStartedCall(managed, callControl) }\n                    }\n                }\n            } catch (t: Throwable) {''',
+              '''                        if (managed.activityStarted) {\n                            scope.launch { activateStartedCall(managed, callControl) }\n                        }\n                    }\n                }\n            } catch (t: Throwable) {'''
+          )
+          replace_once(
+              manager,
+              '''    private fun publishAudioState(managed: ManagedCall) {''',
+              '''    private suspend fun publishParticipantState(managed: ManagedCall) {\n        val participantExtension = managed.participantExtension ?: return\n        participantExtension.updateParticipants(managed.participants)\n        participantExtension.updateActiveParticipant(managed.activeParticipant())\n    }\n\n    private fun publishAudioState(managed: ManagedCall) {'''
+          )
+          replace_once(
+              manager,
+              '''        @Volatile var control: CallControlScope? = null,\n        @Volatile var currentEndpoint: CallEndpointCompat? = null,''',
+              '''        @Volatile var control: CallControlScope? = null,\n        @Volatile var participantExtension: ParticipantExtension? = null,\n        @Volatile var participants: List<TelecomParticipant> = emptyList(),\n        @Volatile var activeParticipantId: String? = null,\n        @Volatile var currentEndpoint: CallEndpointCompat? = null,'''
+          )
+          replace_once(
+              manager,
+              '''    companion object {''',
+              '''    private fun ManagedCall.activeParticipant(): TelecomParticipant? =\n        participants.firstOrNull { it.id == activeParticipantId }\n\n    companion object {'''
+          )
+          PY
+
+      - name: Commit participant integration source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main app/src/gplay app/src/test
+          git commit -m $'feat(auto): publish call participants to Telecom\n\nAssisted-by: ChatGPT:GPT-5.6-Sol'
+
+      - name: Run speaking notifier tests
+        run: ./gradlew :app:testGplayDebugUnitTest --tests com.nextcloud.talk.webrtc.DataChannelMessageNotifierTest --stacktrace
+
+      - name: Compile Android Auto flavors
+        run: ./gradlew :app:compileGplayDebugKotlin :app:compileGenericDebugKotlin --stacktrace
+
+      - name: Run Kotlin style check
+        run: ./gradlew ktlintCheck --stacktrace
+
+      - name: Push validated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin android-auto-telecom-participants
+          git rebase origin/android-auto-telecom-participants
+          git push origin HEAD:android-auto-telecom-participants
