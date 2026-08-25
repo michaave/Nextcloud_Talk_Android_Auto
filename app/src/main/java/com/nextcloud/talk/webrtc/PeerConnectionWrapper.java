@@ -83,6 +83,8 @@ public class PeerConnectionWrapper {
     public interface DataChannelMessageListener {
         void onAudioOn();
         void onAudioOff();
+        void onSpeaking();
+        void onStoppedSpeaking();
         void onVideoOn();
         void onVideoOff();
         void onNickChanged(String nick);
@@ -513,6 +515,18 @@ public class PeerConnectionWrapper {
 
             if ("audioOff".equals(dataChannelMessage.getType())) {
                 dataChannelMessageNotifier.notifyAudioOff();
+
+                return;
+            }
+
+            if ("speaking".equals(dataChannelMessage.getType())) {
+                dataChannelMessageNotifier.notifySpeaking();
+
+                return;
+            }
+
+            if ("stoppedSpeaking".equals(dataChannelMessage.getType())) {
+                dataChannelMessageNotifier.notifyStoppedSpeaking();
 
                 return;
             }

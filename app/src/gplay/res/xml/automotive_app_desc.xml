@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Nextcloud Talk - Android Client
+  ~
+  ~ SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+  ~ SPDX-FileCopyrightText: 2026 Michael Avery
+  ~ SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
+<automotiveApp>
+    <uses name="notification" />
+    <uses name="template" />
+</automotiveApp>

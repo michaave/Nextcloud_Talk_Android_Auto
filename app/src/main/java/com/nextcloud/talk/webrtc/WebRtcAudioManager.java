@@ -30,6 +30,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.util.Log;
 
+import com.nextcloud.talk.call.TalkCallInterop;
 import com.nextcloud.talk.events.ProximitySensorEvent;
 import com.nextcloud.talk.utils.ContextExtensionsKt;
 import com.nextcloud.talk.utils.ReceiverFlag;
@@ -54,6 +55,9 @@ public class WebRtcAudioManager {
     private boolean savedIsSpeakerPhoneOn = false;
     private boolean savedIsMicrophoneMute = false;
     private boolean hasWiredHeadset = false;
+    private boolean telecomManagedAudioSession = false;
+    private boolean wiredHeadsetReceiverRegistered = false;
+    private boolean telecomAudioStateReceiverRegistered = false;
 
     private AudioDevice userSelectedAudioDevice;
     private AudioDevice currentAudioDevice;
@@ -66,6 +70,7 @@ public class WebRtcAudioManager {
     private Set<AudioDevice> internalAudioDevices = new HashSet<>();
 
     private final BroadcastReceiver wiredHeadsetReceiver;
+    private final BroadcastReceiver telecomAudioStateReceiver;
     private AudioManager.OnAudioFocusChangeListener audioFocusChangeListener;
     private AudioFocusRequest audioFocusRequest;
     private final AudioFocusState audioFocusState = new AudioFocusState();
@@ -79,6 +84,14 @@ public class WebRtcAudioManager {
         audioManager = ((AudioManager) context.getSystemService(Context.AUDIO_SERVICE));
         bluetoothManager = WebRtcBluetoothManager.create(context, this);
         wiredHeadsetReceiver = new WiredHeadsetReceiver();
+        telecomAudioStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (TalkCallInterop.ACTION_TELECOM_AUDIO_STATE_CHANGED.equals(intent.getAction())) {
+                    updateAudioDeviceState();
+                }
+            }
+        };
         amState = AudioManagerState.UNINITIALIZED;
 
         powerManagerUtils = new PowerManagerUtils();
@@ -108,6 +121,10 @@ public class WebRtcAudioManager {
     }
 
     public void startBluetoothManager() {
+        if (isTelecomAudioManaged()) {
+            Log.d(TAG, "Telecom owns audio routing; not starting the legacy Bluetooth SCO manager");
+            return;
+        }
         // Initialize and start Bluetooth if a BT device is available or initiate
         // detection of new (enabled) BT devices.
         bluetoothManager.start();
@@ -118,7 +135,7 @@ public class WebRtcAudioManager {
      * NEAR".
      */
     private void onProximitySensorChangedState() {
-        if (!useProximitySensor) {
+        if (!useProximitySensor || isTelecomAudioManaged()) {
             return;
         }
 
@@ -154,6 +171,7 @@ public class WebRtcAudioManager {
         Log.d(TAG, "AudioManager starts...");
         this.audioManagerListener = audioManagerListener;
         amState = AudioManagerState.RUNNING;
+        telecomManagedAudioSession = TalkCallInterop.isTelecomAudioManaged();
 
         // Store current audio state so we can restore it when stop() is called.
         savedAudioMode = audioManager.getMode();
@@ -174,11 +192,14 @@ public class WebRtcAudioManager {
 
         // Start by setting MODE_IN_COMMUNICATION as default audio mode. It is
         // required to be in this mode when playout and/or recording starts for
-        // best possible VoIP performance.
+        // best possible VoIP performance. Telecom owns the endpoint, not this mode.
         audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
 
-        // Always disable microphone mute during a WebRTC call.
-        setMicrophoneMute(false);
+        // Legacy calls use AudioManager mute state. Telecom-managed calls mirror
+        // mute through the WebRTC track instead, so don't override Telecom here.
+        if (!telecomManagedAudioSession) {
+            setMicrophoneMute(false);
+        }
 
         // Set initial device states.
         userSelectedAudioDevice = AudioDevice.NONE;
@@ -187,17 +208,22 @@ public class WebRtcAudioManager {
         audioDevices.clear();
         internalAudioDevices.clear();
 
-        startBluetoothManager();
+        registerReceiver(
+            telecomAudioStateReceiver,
+            new IntentFilter(TalkCallInterop.ACTION_TELECOM_AUDIO_STATE_CHANGED)
+        );
+        telecomAudioStateReceiverRegistered = true;
 
-        // Do initial selection of audio device. This setting can later be changed
-        // either by adding/removing a BT or wired headset or by covering/uncovering
-        // the proximity sensor.
+        if (!telecomManagedAudioSession) {
+            startBluetoothManager();
+            proximitySensor.start();
+            registerReceiver(wiredHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
+            wiredHeadsetReceiverRegistered = true;
+        }
+
+        // Do initial selection of audio device. In a Telecom-managed call this
+        // consumes Telecom's endpoint flows; otherwise it uses Talk's legacy route logic.
         updateAudioDeviceState();
-
-        proximitySensor.start();
-        // Register receiver for broadcast intents related to adding/removing a
-        // wired headset.
-        registerReceiver(wiredHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
         Log.d(TAG, "AudioManager started");
     }
 
@@ -263,15 +289,25 @@ public class WebRtcAudioManager {
         }
         amState = AudioManagerState.UNINITIALIZED;
 
-        unregisterReceiver(wiredHeadsetReceiver);
+        if (wiredHeadsetReceiverRegistered) {
+            unregisterReceiver(wiredHeadsetReceiver);
+            wiredHeadsetReceiverRegistered = false;
+        }
+        if (telecomAudioStateReceiverRegistered) {
+            unregisterReceiver(telecomAudioStateReceiver);
+            telecomAudioStateReceiverRegistered = false;
+        }
 
         if(bluetoothManager.started()) {
             bluetoothManager.stop();
         }
 
-        // Restore previously stored audio states.
-        setSpeakerphoneOn(savedIsSpeakerPhoneOn);
-        setMicrophoneMute(savedIsMicrophoneMute);
+        // Don't alter endpoint or global microphone state for a Telecom-managed
+        // session. Telecom restores the route after the call leaves its scope.
+        if (!telecomManagedAudioSession) {
+            setSpeakerphoneOn(savedIsSpeakerPhoneOn);
+            setMicrophoneMute(savedIsMicrophoneMute);
+        }
         audioManager.setMode(savedAudioMode);
 
         // Abandon audio focus. Gives the previous focus owner, if any, focus.
@@ -290,6 +326,7 @@ public class WebRtcAudioManager {
         powerManagerUtils.updatePhoneState(PowerManagerUtils.PhoneState.IDLE);
 
         audioManagerListener = null;
+        telecomManagedAudioSession = false;
         Log.d(TAG, "AudioManager stopped");
     }
 
@@ -300,6 +337,11 @@ public class WebRtcAudioManager {
      */
     private void setAudioDeviceInternal(AudioDevice audioDevice) {
         Log.d(TAG, "setAudioDeviceInternal(device=" + audioDevice + ")");
+
+        if (isTelecomAudioManaged()) {
+            // Telecom endpoint changes arrive asynchronously through currentCallEndpoint.
+            return;
+        }
 
         if (audioDevices.contains(audioDevice)) {
             switch (audioDevice) {
@@ -324,10 +366,13 @@ public class WebRtcAudioManager {
      */
     public void setDefaultAudioDevice(AudioDevice device) {
         ThreadUtils.checkIsOnMainThread();
+        defaultAudioDevice = device;
+        if (isTelecomAudioManaged()) {
+            return;
+        }
         if (!audioDevices.contains(device)) {
             Log.e(TAG, "Can not select default " + device + " from available " + audioDevices);
         }
-        defaultAudioDevice = device;
         updateAudioDeviceState();
     }
 
@@ -336,6 +381,14 @@ public class WebRtcAudioManager {
      */
     public void selectAudioDevice(AudioDevice device) {
         ThreadUtils.checkIsOnMainThread();
+        if (isTelecomAudioManaged()) {
+            String route = toTelecomAudioRoute(device);
+            if (route != null) {
+                userSelectedAudioDevice = device;
+                TalkCallInterop.requestTelecomAudioRoute(context, route);
+            }
+            return;
+        }
         if (!audioDevices.contains(device)) {
             Log.e(TAG, "Can not select " + device + " from available " + audioDevices);
         }
@@ -377,6 +430,10 @@ public class WebRtcAudioManager {
      * Sets the speaker phone mode.
      */
     private void setSpeakerphoneOn(boolean on) {
+        if (isTelecomAudioManaged()) {
+            Log.d(TAG, "Telecom owns speaker routing; ignoring setSpeakerphoneOn(" + on + ")");
+            return;
+        }
         boolean wasOn = audioManager.isSpeakerphoneOn();
         if (wasOn == on) {
             return;
@@ -388,6 +445,9 @@ public class WebRtcAudioManager {
      * Sets the microphone mute state.
      */
     private void setMicrophoneMute(boolean on) {
+        if (isTelecomAudioManaged()) {
+            return;
+        }
         boolean wasMuted = audioManager.isMicrophoneMute();
         if (wasMuted == on) {
             return;
@@ -425,6 +485,15 @@ public class WebRtcAudioManager {
 
     public final void updateAudioDeviceState() {
         ThreadUtils.checkIsOnMainThread();
+
+        if (TalkCallInterop.isTelecomAudioManaged()) {
+            telecomManagedAudioSession = true;
+        }
+        if (telecomManagedAudioSession) {
+            updateTelecomAudioDeviceState();
+            return;
+        }
+
         Log.d(TAG, "--- updateAudioDeviceState: "
             + "wired headset=" + hasWiredHeadset + ", "
             + "BT state=" + bluetoothManager.getState());
@@ -555,6 +624,92 @@ public class WebRtcAudioManager {
             }
         }
         Log.d(TAG, "--- updateAudioDeviceState done");
+    }
+
+    private void updateTelecomAudioDeviceState() {
+        String currentRoute = TalkCallInterop.getTelecomCurrentAudioRoute();
+        String[] availableRoutes = TalkCallInterop.getTelecomAvailableAudioRoutes();
+        Set<AudioDevice> newAudioDevices = new HashSet<>();
+
+        for (String route : availableRoutes) {
+            AudioDevice device = fromTelecomAudioRoute(route);
+            if (device != AudioDevice.NONE) {
+                newAudioDevices.add(device);
+            }
+        }
+
+        AudioDevice newCurrentAudioDevice = fromTelecomAudioRoute(currentRoute);
+        if (newCurrentAudioDevice != AudioDevice.NONE) {
+            newAudioDevices.add(newCurrentAudioDevice);
+        }
+
+        // beginTelecomAudioManagement() deliberately publishes an empty snapshot
+        // before Telecom's endpoint flows emit. Keep the last visible state until
+        // the real snapshot arrives instead of flashing the picker to an empty list.
+        if (newAudioDevices.isEmpty() && newCurrentAudioDevice == AudioDevice.NONE) {
+            Log.d(TAG, "Waiting for initial Telecom audio endpoint snapshot");
+            return;
+        }
+
+        boolean audioDeviceSetUpdated = !audioDevices.equals(newAudioDevices);
+        boolean currentAudioDeviceUpdated =
+            newCurrentAudioDevice != AudioDevice.NONE && newCurrentAudioDevice != currentAudioDevice;
+
+        internalAudioDevices = new HashSet<>(newAudioDevices);
+        audioDevices = new HashSet<>(newAudioDevices);
+        if (newCurrentAudioDevice != AudioDevice.NONE) {
+            currentAudioDevice = newCurrentAudioDevice;
+        }
+
+        Log.d(TAG, "Telecom audio state: available=" + audioDevices + ", current=" + currentAudioDevice);
+        if ((audioDeviceSetUpdated || currentAudioDeviceUpdated) && audioManagerListener != null) {
+            audioManagerListener.onAudioDeviceChanged(currentAudioDevice, audioDevices);
+        }
+    }
+
+    private boolean isTelecomAudioManaged() {
+        return telecomManagedAudioSession || TalkCallInterop.isTelecomAudioManaged();
+    }
+
+    private static String toTelecomAudioRoute(AudioDevice device) {
+        if (device == null) {
+            return null;
+        }
+        switch (device) {
+            case EARPIECE:
+                return TalkCallInterop.AUDIO_ROUTE_EARPIECE;
+            case BLUETOOTH:
+            case BLUETOOTH_SCO:
+                return TalkCallInterop.AUDIO_ROUTE_BLUETOOTH;
+            case WIRED_HEADSET:
+                return TalkCallInterop.AUDIO_ROUTE_WIRED_HEADSET;
+            case SPEAKER_PHONE:
+                return TalkCallInterop.AUDIO_ROUTE_SPEAKER;
+            default:
+                return null;
+        }
+    }
+
+    private static AudioDevice fromTelecomAudioRoute(String route) {
+        if (route == null) {
+            return AudioDevice.NONE;
+        }
+        switch (route) {
+            case TalkCallInterop.AUDIO_ROUTE_EARPIECE:
+                return AudioDevice.EARPIECE;
+            case TalkCallInterop.AUDIO_ROUTE_BLUETOOTH:
+            case TalkCallInterop.AUDIO_ROUTE_EXTERNAL:
+                // The current Talk picker has one external wireless output row.
+                // Treat Telecom's streaming endpoint as that row until the UI
+                // grows named endpoint support.
+                return AudioDevice.BLUETOOTH;
+            case TalkCallInterop.AUDIO_ROUTE_WIRED_HEADSET:
+                return AudioDevice.WIRED_HEADSET;
+            case TalkCallInterop.AUDIO_ROUTE_SPEAKER:
+                return AudioDevice.SPEAKER_PHONE;
+            default:
+                return AudioDevice.NONE;
+        }
     }
 
     /**

@@ -26,6 +26,7 @@ import com.nextcloud.talk.R
 import com.nextcloud.talk.api.NcApi
 import com.nextcloud.talk.application.NextcloudTalkApplication
 import com.nextcloud.talk.data.user.model.User
+import com.nextcloud.talk.jobs.ChatMessageCatchUpWorker
 import com.nextcloud.talk.models.json.chat.ChatOverallSingleMessage
 import com.nextcloud.talk.users.UserManager
 import com.nextcloud.talk.utils.ApiUtils
@@ -121,6 +122,7 @@ class DirectReplyReceiver : BroadcastReceiver() {
 
     private fun confirmReplySent() {
         appendMessageToNotification(replyMessage!!)
+        ChatMessageCatchUpWorker.enqueue(context, currentUser.id!!, roomToken!!, null)
     }
 
     private fun informReplyFailed() {

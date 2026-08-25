@@ -24,6 +24,9 @@ plugins {
 
 val kotlinVersion: String by rootProject.extra
 
+val androidAutoSideBySide =
+    providers.gradleProperty("androidAutoSideBySide").orNull == "true"
+
 val coilKtVersion = "2.7.0"
 val daggerVersion = "2.60.1"
 val emojiVersion = "1.6.0"
@@ -110,6 +113,13 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            if (androidAutoSideBySide) {
+                applicationIdSuffix = ".auto"
+                versionNameSuffix = "-auto"
+            }
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -194,6 +204,10 @@ configurations.configureEach {
 }
 
 dependencies {
+    // Android Auto communication UI is isolated to the Google Play flavor.
+    "gplayImplementation"("androidx.car.app:app:1.7.0")
+    "gplayImplementation"("androidx.car.app:app-projected:1.7.0")
+    "gplayImplementation"("androidx.core:core-telecom:1.1.0-alpha06")
     implementation("androidx.media3:media3-session:1.11.0")
     kapt("org.jetbrains.kotlin:kotlin-metadata-jvm:$kotlinVersion")
     implementation("androidx.room:room-testing-android:$roomVersion")

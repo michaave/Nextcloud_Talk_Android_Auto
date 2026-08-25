@@ -145,7 +145,15 @@ class ParticipantHandler(
 
         override fun onAudioOff() {
             Log.d(TAG, "onAudioOff: ${_uiState.value.nick} (sessionId=${_uiState.value.sessionKey})")
-            _uiState.update { it.copy(isAudioEnabled = false) }
+            _uiState.update { it.copy(isAudioEnabled = false, isSpeaking = false) }
+        }
+
+        override fun onSpeaking() {
+            _uiState.update { it.copy(isSpeaking = true) }
+        }
+
+        override fun onStoppedSpeaking() {
+            _uiState.update { it.copy(isSpeaking = false) }
         }
 
         override fun onVideoOn() {

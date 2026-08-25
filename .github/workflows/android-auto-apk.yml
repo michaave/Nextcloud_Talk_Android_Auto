@@ -1,0 +1,170 @@
+name: Android Auto test APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - android-auto
+    paths:
+      - app/**
+      - build.gradle.kts
+      - settings.gradle.kts
+      - gradle/**
+      - gradle.properties
+      - .github/workflows/android-auto-apk.yml
+
+permissions: read-all
+
+concurrency:
+  group: android-auto-test-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Public AOSP development test key. Never use this key for production/release signing.
+      AOSP_TESTKEY_REVISION: a246685
+      AOSP_TEST_CERT_SHA256: A40DA80A59D170CAA950CF15C18C454D47A39B26989D8B640ECD745BA71BF5DC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v5
+
+      - name: Prepare stable AOSP test signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="https://android.googlesource.com/platform/build/+/${AOSP_TESTKEY_REVISION}/target/product/security"
+          curl -fsSL "${base_url}/testkey.pk8?format=TEXT" | base64 --decode > "$RUNNER_TEMP/aosp-testkey.pk8"
+          curl -fsSL "${base_url}/testkey.x509.pem?format=TEXT" | base64 --decode > "$RUNNER_TEMP/aosp-testkey.x509.pem"
+          actual="$(openssl x509 -in "$RUNNER_TEMP/aosp-testkey.x509.pem" -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          echo "AOSP test certificate SHA-256: $actual"
+          test "$actual" = "$AOSP_TEST_CERT_SHA256"
+
+      - name: Assemble standard GPlay debug APK
+        run: ./gradlew --no-daemon :app:assembleGplayDebug --stacktrace
+
+      - name: Stage standard APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+
+          output_dir = Path('app/build/outputs/apk/gplay/debug')
+          metadata = output_dir / 'output-metadata.json'
+          if not metadata.exists():
+              raise SystemExit('Standard output-metadata.json not found')
+
+          data = json.loads(metadata.read_text())
+          actual = data.get('applicationId')
+          expected = 'com.nextcloud.talk2'
+          print(f'Standard APK applicationId: {actual}')
+          if actual != expected:
+              raise SystemExit(f'Expected {expected}, got {actual}')
+
+          apks = list(output_dir.glob('*.apk'))
+          if len(apks) != 1:
+              raise SystemExit(f'Expected exactly one standard APK, found {len(apks)}')
+
+          destination = Path('dist/standard')
+          destination.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(apks[0], destination / 'Nextcloud-Talk-Android-Auto-Gplay-Debug.apk')
+          (destination / 'package-id.txt').write_text(expected + '\n')
+          PY
+
+      - name: Sign and verify standard APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="dist/standard/Nextcloud-Talk-Android-Auto-Gplay-Debug.apk"
+          APKSIGNER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -type f -name apksigner | sort -V | tail -n1)"
+          "$APKSIGNER" sign \
+            --key "$RUNNER_TEMP/aosp-testkey.pk8" \
+            --cert "$RUNNER_TEMP/aosp-testkey.x509.pem" \
+            "$APK"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print toupper($NF); exit}')"
+          echo "Signed standard APK certificate SHA-256: $actual"
+          test "$actual" = "$AOSP_TEST_CERT_SHA256"
+          sha256sum "$APK" > "$APK.sha256"
+
+      - name: Upload standard Android Auto APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Nextcloud-Talk-Android-Auto-Gplay-Debug
+          path: dist/standard/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Clean before side-by-side build
+        run: ./gradlew --no-daemon :app:clean
+
+      - name: Assemble side-by-side GPlay debug APK
+        run: ./gradlew --no-daemon -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
+
+      - name: Stage side-by-side APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+
+          output_dir = Path('app/build/outputs/apk/gplay/debug')
+          metadata = output_dir / 'output-metadata.json'
+          if not metadata.exists():
+              raise SystemExit('Side-by-side output-metadata.json not found')
+
+          data = json.loads(metadata.read_text())
+          actual = data.get('applicationId')
+          expected = 'com.nextcloud.talk2.auto'
+          print(f'Side-by-side APK applicationId: {actual}')
+          if actual != expected:
+              raise SystemExit(f'Expected {expected}, got {actual}')
+
+          apks = list(output_dir.glob('*.apk'))
+          if len(apks) != 1:
+              raise SystemExit(f'Expected exactly one side-by-side APK, found {len(apks)}')
+
+          destination = Path('dist/side-by-side')
+          destination.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(apks[0], destination / 'Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide.apk')
+          (destination / 'package-id.txt').write_text(expected + '\n')
+          PY
+
+      - name: Sign and verify side-by-side APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="dist/side-by-side/Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide.apk"
+          APKSIGNER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -type f -name apksigner | sort -V | tail -n1)"
+          "$APKSIGNER" sign \
+            --key "$RUNNER_TEMP/aosp-testkey.pk8" \
+            --cert "$RUNNER_TEMP/aosp-testkey.x509.pem" \
+            "$APK"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print toupper($NF); exit}')"
+          echo "Signed side-by-side APK certificate SHA-256: $actual"
+          test "$actual" = "$AOSP_TEST_CERT_SHA256"
+          sha256sum "$APK" > "$APK.sha256"
+
+      - name: Upload side-by-side Android Auto APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide
+          path: dist/side-by-side/*
+          if-no-files-found: error
+          retention-days: 14
