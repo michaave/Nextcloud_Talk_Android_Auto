@@ -36,10 +36,15 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v5
 
-      - name: Assemble GPlay debug APK
-        run: ./gradlew --no-daemon -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
+      - name: Remove stale build output
+        shell: bash
+        run: |
+          rm -rf app/build build .gradle
 
-      - name: Verify APK output
+      - name: Assemble GPlay debug APK from clean sources
+        run: ./gradlew --no-daemon --no-build-cache clean -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
+
+      - name: Verify APK output and reject stale CarAppService
         shell: bash
         run: |
           set -euo pipefail
@@ -51,10 +56,27 @@ jobs:
           fi
           printf 'Built APK: %s\n' "${apks[@]}"
 
+          apk="${apks[0]}"
+          mkdir -p /tmp/apk-dex
+          cd /tmp/apk-dex
+          unzip -q "$GITHUB_WORKSPACE/$apk" 'classes*.dex'
+
+          if strings classes*.dex | grep -Fq 'Lcom/nextcloud/talk/androidauto/TalkCarAppService;'; then
+            echo 'ERROR: obsolete diagnostic TalkCarAppService is still packaged in the APK'
+            exit 1
+          fi
+
+          if ! strings classes*.dex | grep -Fq 'Lcom/nextcloud/talk/auto/TalkCarAppService;'; then
+            echo 'ERROR: real TalkCarAppService is missing from the APK'
+            exit 1
+          fi
+
+          echo 'Verified: only the intended Talk CarAppService implementation is packaged.'
+
       - name: Upload Android Auto APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-CarAppService
+          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-SingleService
           path: app/build/outputs/apk/gplay/debug/*.apk
           if-no-files-found: error
           retention-days: 14
