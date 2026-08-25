@@ -55,6 +55,7 @@
                 <action android:name="com.nextcloud.talk.call.action.STARTED" />
                 <action android:name="com.nextcloud.talk.call.action.ACTIVE" />
                 <action android:name="com.nextcloud.talk.call.action.ENDED" />
+                <action android:name="com.nextcloud.talk.call.action.PARTICIPANTS_CHANGED" />
                 <action android:name="com.nextcloud.talk.call.action.CONTROL_AUDIO_ENDPOINT" />
             </intent-filter>
         </receiver>

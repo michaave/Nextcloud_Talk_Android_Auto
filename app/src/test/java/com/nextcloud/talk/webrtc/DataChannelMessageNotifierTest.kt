@@ -52,6 +52,20 @@ class DataChannelMessageNotifierTest {
     }
 
     @Test
+    fun testNotifySpeaking() {
+        notifier.addListener(listener)
+        notifier.notifySpeaking()
+        verify(listener).onSpeaking()
+    }
+
+    @Test
+    fun testNotifyStoppedSpeaking() {
+        notifier.addListener(listener)
+        notifier.notifyStoppedSpeaking()
+        verify(listener).onStoppedSpeaking()
+    }
+
+    @Test
     fun testNotifyVideoOn() {
         notifier.addListener(listener)
         notifier.notifyVideoOn()

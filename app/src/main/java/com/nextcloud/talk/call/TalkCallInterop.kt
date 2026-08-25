@@ -25,6 +25,7 @@ object TalkCallInterop {
     const val ACTION_CALL_STARTED = "com.nextcloud.talk.call.action.STARTED"
     const val ACTION_CALL_ACTIVE = "com.nextcloud.talk.call.action.ACTIVE"
     const val ACTION_CALL_ENDED = "com.nextcloud.talk.call.action.ENDED"
+    const val ACTION_CALL_PARTICIPANTS_CHANGED = "com.nextcloud.talk.call.action.PARTICIPANTS_CHANGED"
 
     const val ACTION_CONTROL_DISCONNECT = "com.nextcloud.talk.call.action.CONTROL_DISCONNECT"
     const val ACTION_CONTROL_MUTE = "com.nextcloud.talk.call.action.CONTROL_MUTE"
@@ -44,6 +45,9 @@ object TalkCallInterop {
     const val EXTRA_VIDEO = "talk_video"
     const val EXTRA_MUTED = "talk_muted"
     const val EXTRA_AUDIO_ROUTE = "talk_audio_route"
+    const val EXTRA_PARTICIPANT_IDS = "talk_participant_ids"
+    const val EXTRA_PARTICIPANT_NAMES = "talk_participant_names"
+    const val EXTRA_ACTIVE_PARTICIPANT_ID = "talk_active_participant_id"
 
     @Volatile
     private var activeTelecomCallKey: String? = null
@@ -103,6 +107,25 @@ object TalkCallInterop {
 
     fun notifyCallEnded(context: Context, accountId: Long, roomToken: String) {
         notifySimple(context, ACTION_CALL_ENDED, accountId, roomToken)
+    }
+
+    fun notifyCallParticipants(
+        context: Context,
+        accountId: Long,
+        roomToken: String,
+        participantIds: Array<String>,
+        participantNames: Array<String>,
+        activeParticipantId: String?
+    ) {
+        if (accountId < 0L || roomToken.isBlank() || participantIds.size != participantNames.size) return
+        val intent = Intent(ACTION_CALL_PARTICIPANTS_CHANGED)
+            .putExtra(EXTRA_CALL_KEY, callKey(accountId, roomToken))
+            .putExtra(EXTRA_PARTICIPANT_IDS, participantIds)
+            .putExtra(EXTRA_PARTICIPANT_NAMES, participantNames)
+        if (!activeParticipantId.isNullOrBlank()) {
+            intent.putExtra(EXTRA_ACTIVE_PARTICIPANT_ID, activeParticipantId)
+        }
+        send(context, intent)
     }
 
     fun requestDisconnect(context: Context, callKey: String) {

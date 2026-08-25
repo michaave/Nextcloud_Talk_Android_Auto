@@ -54,6 +54,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import autodagger.AutoInjector
 import com.bluelinelabs.logansquare.LoganSquare
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -164,6 +165,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import okhttp3.Cache
 import org.apache.commons.lang3.StringEscapeUtils
@@ -492,6 +494,12 @@ class CallActivity : CallBaseActivity() {
             )
         }
 
+        lifecycleScope.launch {
+            callViewModel.participants.collectLatest { participants ->
+                publishTelecomParticipants(participants)
+            }
+        }
+
         credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
         if (TextUtils.isEmpty(baseUrl)) {
             baseUrl = conversationUser!!.baseUrl
@@ -512,6 +520,42 @@ class CallActivity : CallBaseActivity() {
         reactionAnimator = ReactionAnimator(context, binding!!.reactionAnimationWrapper, viewThemeUtils)
 
         checkInitialDevicePermissions()
+    }
+
+    private fun publishTelecomParticipants(participants: List<ParticipantUiState>) {
+        if (!::conversationUser.isInitialized) return
+        val accountId = conversationUser.id ?: return
+        val token = roomToken?.takeIf { it.isNotBlank() } ?: return
+        val connectedParticipants = participants
+            .filter { it.isConnected && !it.sessionKey.isNullOrBlank() }
+            .sortedBy { it.sessionKey }
+
+        val participantIds = mutableListOf("self:$accountId")
+        val participantNames = mutableListOf(
+            conversationUser.displayName?.takeIf { it.isNotBlank() }
+                ?: conversationUser.username?.takeIf { it.isNotBlank() }
+                ?: "You"
+        )
+
+        connectedParticipants.forEach { participant ->
+            val sessionId = participant.sessionKey ?: return@forEach
+            participantIds.add("session:$sessionId")
+            participantNames.add(participant.nick?.takeIf { it.isNotBlank() } ?: "Guest")
+        }
+
+        val activeParticipantId = connectedParticipants
+            .firstOrNull { it.isSpeaking }
+            ?.sessionKey
+            ?.let { "session:$it" }
+
+        TalkCallInterop.notifyCallParticipants(
+            context = this,
+            accountId = accountId,
+            roomToken = token,
+            participantIds = participantIds.toTypedArray(),
+            participantNames = participantNames.toTypedArray(),
+            activeParticipantId = activeParticipantId
+        )
     }
 
     private fun registerTelecomControlReceiver() {

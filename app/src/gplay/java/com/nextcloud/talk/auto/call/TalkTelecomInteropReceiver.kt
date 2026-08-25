@@ -42,6 +42,15 @@ class TalkTelecomInteropReceiver : BroadcastReceiver() {
 
             TalkCallInterop.ACTION_CALL_ACTIVE -> manager.onCallActive(callKey)
             TalkCallInterop.ACTION_CALL_ENDED -> manager.onCallEnded(callKey)
+            TalkCallInterop.ACTION_CALL_PARTICIPANTS_CHANGED -> {
+                manager.onParticipantsChanged(
+                    callKey = callKey,
+                    participantIds = intent.getStringArrayExtra(TalkCallInterop.EXTRA_PARTICIPANT_IDS) ?: emptyArray(),
+                    participantNames =
+                    intent.getStringArrayExtra(TalkCallInterop.EXTRA_PARTICIPANT_NAMES) ?: emptyArray(),
+                    activeParticipantId = intent.getStringExtra(TalkCallInterop.EXTRA_ACTIVE_PARTICIPANT_ID)
+                )
+            }
             TalkCallInterop.ACTION_CONTROL_AUDIO_ENDPOINT -> {
                 manager.requestAudioEndpoint(
                     callKey,

@@ -17,6 +17,8 @@ import androidx.core.telecom.CallAttributesCompat
 import androidx.core.telecom.CallControlScope
 import androidx.core.telecom.CallEndpointCompat
 import androidx.core.telecom.CallsManager
+import androidx.core.telecom.extensions.Participant as TelecomParticipant
+import androidx.core.telecom.extensions.ParticipantExtension
 import com.nextcloud.talk.activities.CallActivity
 import com.nextcloud.talk.call.TalkCallInterop
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_CALL_VOICE_ONLY
@@ -110,6 +112,25 @@ class TalkTelecomManager private constructor(context: Context) {
         }
     }
 
+    fun onParticipantsChanged(
+        callKey: String,
+        participantIds: Array<String>,
+        participantNames: Array<String>,
+        activeParticipantId: String?
+    ) {
+        if (callKey.isBlank() || participantIds.size != participantNames.size) return
+        val managed = calls[callKey] ?: return
+        managed.participants = participantIds.zip(participantNames)
+            .mapNotNull { (id, name) ->
+                id.takeIf { it.isNotBlank() }?.let { TelecomParticipant(it, name.ifBlank { "Guest" }) }
+            }
+            .distinctBy(TelecomParticipant::id)
+        managed.activeParticipantId = activeParticipantId
+        if (managed.participantExtension != null) {
+            scope.launch { publishParticipantState(managed) }
+        }
+    }
+
     fun requestAudioEndpoint(callKey: String, route: String) {
         if (callKey.isBlank() || route.isBlank()) return
         val managed = calls[callKey] ?: return
@@ -200,7 +221,7 @@ class TalkTelecomManager private constructor(context: Context) {
                     callCapabilities = 0
                 )
 
-                callsManager.addCall(
+                callsManager.addCallWithExtensions(
                     callAttributes = attributes,
                     onAnswer = { requestedCallType ->
                         managed.answeredByTelecom = true
@@ -236,37 +257,45 @@ class TalkTelecomManager private constructor(context: Context) {
                         }
                     }
                 ) {
-                    val callControl = this
-                    managed.control = callControl
+                    val participantExtension = addParticipantExtension(
+                        initialParticipants = managed.participants,
+                        initialActiveParticipant = managed.activeParticipant()
+                    )
+                    onCall {
+                        val callControl = this
+                        managed.control = callControl
+                        managed.participantExtension = participantExtension
+                        publishParticipantState(managed)
 
-                    scope.launch {
-                        currentCallEndpoint
-                            .distinctUntilChanged()
-                            .collect { endpoint ->
-                                managed.currentEndpoint = endpoint
-                                publishAudioState(managed)
-                            }
-                    }
+                        scope.launch {
+                            currentCallEndpoint
+                                .distinctUntilChanged()
+                                .collect { endpoint ->
+                                    managed.currentEndpoint = endpoint
+                                    publishAudioState(managed)
+                                }
+                        }
 
-                    scope.launch {
-                        availableEndpoints
-                            .distinctUntilChanged()
-                            .collect { endpoints ->
-                                managed.availableEndpoints = endpoints
-                                publishAudioState(managed)
-                            }
-                    }
+                        scope.launch {
+                            availableEndpoints
+                                .distinctUntilChanged()
+                                .collect { endpoints ->
+                                    managed.availableEndpoints = endpoints
+                                    publishAudioState(managed)
+                                }
+                        }
 
-                    scope.launch {
-                        isMuted
-                            .distinctUntilChanged()
-                            .collect { muted ->
-                                TalkCallInterop.requestMute(appContext, managed.callKey, muted)
-                            }
-                    }
+                        scope.launch {
+                            isMuted
+                                .distinctUntilChanged()
+                                .collect { muted ->
+                                    TalkCallInterop.requestMute(appContext, managed.callKey, muted)
+                                }
+                        }
 
-                    if (managed.activityStarted) {
-                        scope.launch { activateStartedCall(managed, callControl) }
+                        if (managed.activityStarted) {
+                            scope.launch { activateStartedCall(managed, callControl) }
+                        }
                     }
                 }
             } catch (t: Throwable) {
@@ -275,6 +304,12 @@ class TalkTelecomManager private constructor(context: Context) {
                 Log.e(TAG, "Unable to add Talk call to Telecom: $callKey", t)
             }
         }
+    }
+
+    private suspend fun publishParticipantState(managed: ManagedCall) {
+        val participantExtension = managed.participantExtension ?: return
+        participantExtension.updateParticipants(managed.participants)
+        participantExtension.updateActiveParticipant(managed.activeParticipant())
     }
 
     private fun publishAudioState(managed: ManagedCall) {
@@ -333,9 +368,15 @@ class TalkTelecomManager private constructor(context: Context) {
         @Volatile var activityStarted: Boolean,
         @Volatile var answeredByTelecom: Boolean = false,
         @Volatile var control: CallControlScope? = null,
+        @Volatile var participantExtension: ParticipantExtension? = null,
+        @Volatile var participants: List<TelecomParticipant> = emptyList(),
+        @Volatile var activeParticipantId: String? = null,
         @Volatile var currentEndpoint: CallEndpointCompat? = null,
         @Volatile var availableEndpoints: List<CallEndpointCompat> = emptyList()
     )
+
+    private fun ManagedCall.activeParticipant(): TelecomParticipant? =
+        participants.firstOrNull { it.id == activeParticipantId }
 
     companion object {
         private const val TAG = "TalkTelecomManager"
