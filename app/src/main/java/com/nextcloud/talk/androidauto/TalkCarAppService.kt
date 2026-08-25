@@ -13,14 +13,15 @@ import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.SessionInfo
-import androidx.car.app.validation.HostValidator
 import androidx.car.app.model.Action
 import androidx.car.app.model.Header
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
+import androidx.car.app.validation.HostValidator
 
+/** Minimal Android Auto entry point used to verify that the template host can discover and launch Talk. */
 class TalkCarAppService : CarAppService() {
     override fun createHostValidator(): HostValidator {
         return if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
