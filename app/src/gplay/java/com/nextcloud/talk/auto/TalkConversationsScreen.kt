@@ -8,6 +8,7 @@ package com.nextcloud.talk.auto
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.messaging.model.CarMessage
@@ -71,7 +72,14 @@ internal class TalkConversationsScreen(
         observeConversations()
     }
 
-    override fun onGetTemplate(): Template {
+    override fun onGetTemplate(): Template = try {
+        buildTemplate()
+    } catch (t: Throwable) {
+        Log.e(TAG, "Failed to build Android Auto Messages template", t)
+        buildErrorTemplate("Unable to display Talk messages")
+    }
+
+    private fun buildTemplate(): Template {
         val itemList = ItemList.Builder()
 
         when {
@@ -81,7 +89,15 @@ internal class TalkConversationsScreen(
             else -> {
                 val activeUser = user ?: return buildListTemplate(itemList.build())
                 snapshots.forEach { snapshot ->
-                    itemList.addItem(buildConversationItem(activeUser, snapshot))
+                    try {
+                        itemList.addItem(buildConversationItem(activeUser, snapshot))
+                    } catch (t: Throwable) {
+                        Log.e(
+                            TAG,
+                            "Failed to build ConversationItem id=${snapshot.conversation.internalId} name=${snapshot.conversation.displayName}",
+                            t
+                        )
+                    }
                 }
             }
         }
@@ -125,7 +141,8 @@ internal class TalkConversationsScreen(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed while loading Android Auto conversations", t)
                 loading = false
                 errorMessage = "Talk conversations are unavailable"
                 invalidate()
@@ -146,16 +163,24 @@ internal class TalkConversationsScreen(
 
         val callback = object : ConversationCallback {
             override fun onMarkAsRead() {
-                val newestMessageId = snapshot.messages.lastOrNull()?.id ?: return
-                sendMarkAsRead(conversation, newestMessageId)
+                try {
+                    val newestMessageId = snapshot.messages.lastOrNull()?.id ?: return
+                    sendMarkAsRead(conversation, newestMessageId)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to mark Android Auto conversation as read", t)
+                }
             }
 
             override fun onTextReply(replyText: String) {
-                if (replyText.isNotBlank() &&
-                    conversation.conversationReadOnlyState ==
-                    ConversationEnums.ConversationReadOnlyState.CONVERSATION_READ_WRITE
-                ) {
-                    sendDirectReply(conversation, replyText)
+                try {
+                    if (replyText.isNotBlank() &&
+                        conversation.conversationReadOnlyState ==
+                        ConversationEnums.ConversationReadOnlyState.CONVERSATION_READ_WRITE
+                    ) {
+                        sendDirectReply(conversation, replyText)
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to send Android Auto text reply", t)
                 }
             }
         }
@@ -235,6 +260,13 @@ internal class TalkConversationsScreen(
             .setSingleList(itemList)
             .build()
 
+    private fun buildErrorTemplate(message: String): Template =
+        buildListTemplate(
+            ItemList.Builder()
+                .addItem(Row.Builder().setTitle(message).build())
+                .build()
+        )
+
     private fun isVisibleConversation(conversation: ConversationEntity): Boolean =
         conversation.type != ConversationEnums.ConversationType.DUMMY &&
             conversation.type != ConversationEnums.ConversationType.ROOM_SYSTEM
@@ -246,6 +278,7 @@ internal class TalkConversationsScreen(
     private data class ConversationSnapshot(val conversation: ConversationEntity, val messages: List<ChatMessageEntity>)
 
     companion object {
+        private const val TAG = "TalkAuto"
         private const val MAX_CONVERSATIONS = 10
         private const val MAX_MESSAGES_PER_CONVERSATION = 5
         private const val MILLISECONDS_PER_SECOND = 1000L
