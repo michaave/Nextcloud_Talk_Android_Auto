@@ -35,25 +35,97 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v5
 
-      - name: Assemble GPlay debug APK
+      - name: Assemble standard GPlay debug APK
         run: ./gradlew --no-daemon :app:assembleGplayDebug --stacktrace
 
-      - name: Verify APK output
+      - name: Stage standard APK
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          apks=(app/build/outputs/apk/gplay/debug/*.apk)
-          if [ ${#apks[@]} -eq 0 ]; then
-            echo "No GPlay debug APK was produced"
-            exit 1
-          fi
-          printf 'Built APK: %s\n' "${apks[@]}"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
 
-      - name: Upload Android Auto APK
+          output_dir = Path('app/build/outputs/apk/gplay/debug')
+          metadata = output_dir / 'output-metadata.json'
+          if not metadata.exists():
+              raise SystemExit('Standard output-metadata.json not found')
+
+          data = json.loads(metadata.read_text())
+          actual = data.get('applicationId')
+          expected = 'com.nextcloud.talk2'
+          print(f'Standard APK applicationId: {actual}')
+          if actual != expected:
+              raise SystemExit(f'Expected {expected}, got {actual}')
+
+          apks = list(output_dir.glob('*.apk'))
+          if len(apks) != 1:
+              raise SystemExit(f'Expected exactly one standard APK, found {len(apks)}')
+
+          destination = Path('dist/standard')
+          destination.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(apks[0], destination / 'Nextcloud-Talk-Android-Auto-Gplay-Debug.apk')
+          (destination / 'package-id.txt').write_text(expected + '\n')
+          PY
+          (
+            cd dist/standard
+            sha256sum Nextcloud-Talk-Android-Auto-Gplay-Debug.apk > Nextcloud-Talk-Android-Auto-Gplay-Debug.apk.sha256
+          )
+
+      - name: Upload standard Android Auto APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Nextcloud-Talk-Android-Auto-Gplay-Debug
-          path: app/build/outputs/apk/gplay/debug/*.apk
+          path: dist/standard/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Clean before side-by-side build
+        run: ./gradlew --no-daemon :app:clean
+
+      - name: Assemble side-by-side GPlay debug APK
+        run: ./gradlew --no-daemon -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
+
+      - name: Stage side-by-side APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+
+          output_dir = Path('app/build/outputs/apk/gplay/debug')
+          metadata = output_dir / 'output-metadata.json'
+          if not metadata.exists():
+              raise SystemExit('Side-by-side output-metadata.json not found')
+
+          data = json.loads(metadata.read_text())
+          actual = data.get('applicationId')
+          expected = 'com.nextcloud.talk2.auto'
+          print(f'Side-by-side APK applicationId: {actual}')
+          if actual != expected:
+              raise SystemExit(f'Expected {expected}, got {actual}')
+
+          apks = list(output_dir.glob('*.apk'))
+          if len(apks) != 1:
+              raise SystemExit(f'Expected exactly one side-by-side APK, found {len(apks)}')
+
+          destination = Path('dist/side-by-side')
+          destination.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(apks[0], destination / 'Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide.apk')
+          (destination / 'package-id.txt').write_text(expected + '\n')
+          PY
+          (
+            cd dist/side-by-side
+            sha256sum Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide.apk > Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide.apk.sha256
+          )
+
+      - name: Upload side-by-side Android Auto APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-SideBySide
+          path: dist/side-by-side/*
           if-no-files-found: error
           retention-days: 14
