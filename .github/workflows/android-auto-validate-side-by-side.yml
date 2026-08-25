@@ -48,7 +48,7 @@ jobs:
               text = text.replace(anchor, anchor + '\n' + addition, 1)
 
           old = '''    buildTypes {\n        release {\n'''
-          new = '''    buildTypes {\n        getByName("debug") {\n            if (androidAutoSideBySide) {\n                applicationIdSuffix = ".auto"\n                versionNameSuffix = "-auto"\n                resValue("string", "nc_app_name", "Nextcloud Talk Auto")\n                resValue("string", "nc_app_product_name", "Nextcloud Talk Auto")\n            }\n        }\n\n        release {\n'''
+          new = '''    buildTypes {\n        getByName("debug") {\n            if (androidAutoSideBySide) {\n                applicationIdSuffix = ".auto"\n                versionNameSuffix = "-auto"\n            }\n        }\n\n        release {\n'''
           if new not in text:
               if old not in text:
                   raise SystemExit('buildTypes anchor not found')
