@@ -7,9 +7,9 @@
 package com.nextcloud.talk.auto
 
 import android.Manifest
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
@@ -61,7 +61,14 @@ internal class TalkCallsScreen(
         observeConversations()
     }
 
-    override fun onGetTemplate(): Template {
+    override fun onGetTemplate(): Template = try {
+        buildTemplate()
+    } catch (t: Throwable) {
+        Log.e(TAG, "Failed to build Android Auto Calls template", t)
+        buildErrorTemplate("Unable to display Talk calls")
+    }
+
+    private fun buildTemplate(): Template {
         val itemList = ItemList.Builder()
 
         when {
@@ -76,33 +83,33 @@ internal class TalkCallsScreen(
             }
 
             else -> conversations.forEach { conversation ->
-                val row = Row.Builder()
-                    .setTitle(conversation.displayName)
-                    .addText(if (conversation.hasCall) "Join ongoing Talk call" else "Start voice call")
+                try {
+                    val row = Row.Builder()
+                        .setTitle(conversation.displayName)
+                        .addText(if (conversation.hasCall) "Join ongoing Talk call" else "Start voice call")
 
-                if (hasMicrophonePermission()) {
-                    row.setOnClickListener { startVoiceCall(conversation) }
-                } else {
-                    row.setOnClickListener(
-                        ParkedOnlyOnClickListener.create {
-                            requestMicrophonePermissionAndStart(conversation)
-                        }
+                    if (hasMicrophonePermission()) {
+                        row.setOnClickListener { startVoiceCall(conversation) }
+                    } else {
+                        row.setOnClickListener(
+                            ParkedOnlyOnClickListener.create {
+                                requestMicrophonePermissionAndStart(conversation)
+                            }
+                        )
+                    }
+
+                    itemList.addItem(row.build())
+                } catch (t: Throwable) {
+                    Log.e(
+                        TAG,
+                        "Failed to build call row id=${conversation.internalId} name=${conversation.displayName}",
+                        t
                     )
                 }
-
-                itemList.addItem(row.build())
             }
         }
 
-        return ListTemplate.Builder()
-            .setHeader(
-                Header.Builder()
-                    .setStartHeaderAction(Action.BACK)
-                    .setTitle("Calls")
-                    .build()
-            )
-            .setSingleList(itemList.build())
-            .build()
+        return buildListTemplate(itemList.build())
     }
 
     private fun observeConversations() {
@@ -124,7 +131,8 @@ internal class TalkCallsScreen(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed while loading Android Auto call conversations", t)
                 loading = false
                 errorMessage = "Talk calls are unavailable"
                 invalidate()
@@ -139,28 +147,39 @@ internal class TalkCallsScreen(
         ) == PackageManager.PERMISSION_GRANTED
 
     private fun requestMicrophonePermissionAndStart(conversation: ConversationEntity) {
-        carContext.requestPermissions(listOf(Manifest.permission.RECORD_AUDIO)) { grantedPermissions, _ ->
-            if (Manifest.permission.RECORD_AUDIO in grantedPermissions) {
-                startVoiceCall(conversation)
-            } else {
-                CarToast.makeText(
-                    carContext,
-                    "Microphone permission is required for Talk calls",
-                    CarToast.LENGTH_LONG
-                ).show()
+        try {
+            carContext.requestPermissions(listOf(Manifest.permission.RECORD_AUDIO)) { grantedPermissions, _ ->
+                try {
+                    if (Manifest.permission.RECORD_AUDIO in grantedPermissions) {
+                        startVoiceCall(conversation)
+                    } else {
+                        CarToast.makeText(
+                            carContext,
+                            "Microphone permission is required for Talk calls",
+                            CarToast.LENGTH_LONG
+                        ).show()
+                    }
+                    invalidate()
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failure in Android Auto microphone permission callback", t)
+                    showCallError()
+                }
             }
-            invalidate()
-        }
 
-        CarToast.makeText(
-            carContext,
-            "Grant microphone access on your phone",
-            CarToast.LENGTH_LONG
-        ).show()
+            CarToast.makeText(
+                carContext,
+                "Grant microphone access on your phone",
+                CarToast.LENGTH_LONG
+            ).show()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to request microphone permission from Android Auto", t)
+            showCallError()
+        }
     }
 
     private fun startVoiceCall(conversation: ConversationEntity) {
         try {
+            Log.i(TAG, "Starting voice call for conversation id=${conversation.internalId}")
             carContext.startActivity(
                 Intent(carContext, ChatActivity::class.java).apply {
                     putExtra(KEY_ROOM_TOKEN, conversation.token)
@@ -169,10 +188,41 @@ internal class TalkCallsScreen(
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }
             )
-        } catch (_: ActivityNotFoundException) {
-            CarToast.makeText(carContext, "Unable to start Talk call", CarToast.LENGTH_SHORT).show()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Unable to start Talk voice call", t)
+            showCallError()
         }
     }
+
+    private fun showCallError() {
+        try {
+            CarToast.makeText(
+                carContext,
+                "Unable to start Talk call — see TalkAuto log",
+                CarToast.LENGTH_LONG
+            ).show()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Unable to display Android Auto call error toast", t)
+        }
+    }
+
+    private fun buildListTemplate(itemList: ItemList): Template =
+        ListTemplate.Builder()
+            .setHeader(
+                Header.Builder()
+                    .setStartHeaderAction(Action.BACK)
+                    .setTitle("Calls")
+                    .build()
+            )
+            .setSingleList(itemList)
+            .build()
+
+    private fun buildErrorTemplate(message: String): Template =
+        buildListTemplate(
+            ItemList.Builder()
+                .addItem(Row.Builder().setTitle(message).build())
+                .build()
+        )
 
     private fun isCallableConversation(conversation: ConversationEntity): Boolean =
         conversation.type != ConversationEnums.ConversationType.DUMMY &&
@@ -180,6 +230,7 @@ internal class TalkCallsScreen(
             (conversation.canStartCall || conversation.hasCall)
 
     companion object {
+        private const val TAG = "TalkAuto"
         private const val MAX_CONVERSATIONS = 10
     }
 }
