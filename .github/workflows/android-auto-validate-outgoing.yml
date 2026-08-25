@@ -6,6 +6,7 @@ on:
       - android-auto-outgoing-calls
     paths:
       - .github/workflows/android-auto-validate-outgoing.yml
+      - app/src/gplay/java/com/nextcloud/talk/auto/TalkCallsScreen.kt
 
 permissions:
   contents: write
