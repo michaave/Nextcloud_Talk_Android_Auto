@@ -54,8 +54,7 @@ class TalkCarAppService : CarAppService() {
                 .build()
         }
 
-    override fun onCreateSession(): Session =
-        TalkCarSession(currentUserProvider, conversationsDao, chatMessagesDao)
+    override fun onCreateSession(): Session = TalkCarSession(currentUserProvider, conversationsDao, chatMessagesDao)
 }
 
 private class TalkCarSession(
@@ -121,11 +120,8 @@ private class TalkCarHomeScreen(
     }
 }
 
-private class TalkCarStatusScreen(
-    carContext: CarContext,
-    private val title: String,
-    private val status: String
-) : Screen(carContext) {
+private class TalkCarStatusScreen(carContext: CarContext, private val title: String, private val status: String) :
+    Screen(carContext) {
     override fun onGetTemplate(): Template =
         ListTemplate.Builder()
             .setHeader(
