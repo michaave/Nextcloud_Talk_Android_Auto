@@ -133,7 +133,10 @@ internal class TalkCallsScreen(
     }
 
     private fun hasMicrophonePermission(): Boolean =
-        ContextCompat.checkSelfPermission(carContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            carContext,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
 
     private fun requestMicrophonePermissionAndStart(conversation: ConversationEntity) {
         carContext.requestPermissions(listOf(Manifest.permission.RECORD_AUDIO)) { grantedPermissions, _ ->
