@@ -1,0 +1,120 @@
+name: Android Auto - validate side-by-side package
+
+on:
+  push:
+    branches:
+      - android-auto-side-by-side
+    paths:
+      - .github/workflows/android-auto-validate-side-by-side.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout side-by-side branch
+        uses: actions/checkout@v6
+        with:
+          ref: android-auto-side-by-side
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v5
+
+      - name: Add opt-in side-by-side packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/build.gradle.kts')
+          text = path.read_text()
+
+          anchor = 'val kotlinVersion: String by rootProject.extra\n'
+          addition = '''val androidAutoSideBySide =\n    providers.gradleProperty("androidAutoSideBySide").orNull == "true"\n'''
+          if addition not in text:
+              if anchor not in text:
+                  raise SystemExit('kotlinVersion anchor not found')
+              text = text.replace(anchor, anchor + '\n' + addition, 1)
+
+          old = '''    buildTypes {\n        release {\n'''
+          new = '''    buildTypes {\n        getByName("debug") {\n            if (androidAutoSideBySide) {\n                applicationIdSuffix = ".auto"\n                versionNameSuffix = "-auto"\n                resValue("string", "nc_app_name", "Nextcloud Talk Auto")\n                resValue("string", "nc_app_product_name", "Nextcloud Talk Auto")\n            }\n        }\n\n        release {\n'''
+          if new not in text:
+              if old not in text:
+                  raise SystemExit('buildTypes anchor not found')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+          git diff --check
+
+      - name: Format Kotlin Gradle source
+        run: ./gradlew ktlintFormat --stacktrace
+
+      - name: Verify patch scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only)"
+          if [ "$changed" != "app/build.gradle.kts" ]; then
+            echo "Unexpected files changed:"
+            echo "$changed"
+            exit 1
+          fi
+          git diff --check
+
+      - name: Compile normal Android Auto flavors
+        run: ./gradlew :app:compileGplayDebugKotlin :app:compileGenericDebugKotlin --stacktrace
+
+      - name: Assemble side-by-side GPlay APK
+        run: ./gradlew --no-daemon -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
+
+      - name: Verify side-by-side package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          metadata = Path('app/build/outputs/apk/gplay/debug/output-metadata.json')
+          if not metadata.exists():
+              raise SystemExit('output-metadata.json not found')
+          data = json.loads(metadata.read_text())
+          actual = data.get('applicationId')
+          expected = 'com.nextcloud.talk2.auto'
+          print(f'APK applicationId: {actual}')
+          if actual != expected:
+              raise SystemExit(f'Expected {expected}, got {actual}')
+
+          apks = list(Path('app/build/outputs/apk/gplay/debug').glob('*.apk'))
+          if not apks:
+              raise SystemExit('No side-by-side APK produced')
+          for apk in apks:
+              print(f'APK: {apk}')
+          PY
+
+      - name: Run Kotlin style check
+        run: ./gradlew ktlintCheck --stacktrace
+
+      - name: Commit validated packaging source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts
+          git commit -m $'build(auto): add opt-in side-by-side package\n\nAssisted-by: ChatGPT:GPT-5.6-Sol'
+          git fetch origin android-auto-side-by-side
+          git rebase origin/android-auto-side-by-side
+          git push origin HEAD:android-auto-side-by-side
