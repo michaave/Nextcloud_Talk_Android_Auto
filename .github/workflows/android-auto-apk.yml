@@ -95,7 +95,7 @@ jobs:
             --cert "$RUNNER_TEMP/aosp-testkey.x509.pem" \
             "$APK"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print toupper($2); exit}')"
+          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print toupper($NF); exit}')"
           echo "Signed standard APK certificate SHA-256: $actual"
           test "$actual" = "$AOSP_TEST_CERT_SHA256"
           sha256sum "$APK" > "$APK.sha256"
@@ -156,7 +156,7 @@ jobs:
             --cert "$RUNNER_TEMP/aosp-testkey.x509.pem" \
             "$APK"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print toupper($2); exit}')"
+          actual="$($APKSIGNER verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print toupper($NF); exit}')"
           echo "Signed side-by-side APK certificate SHA-256: $actual"
           test "$actual" = "$AOSP_TEST_CERT_SHA256"
           sha256sum "$APK" > "$APK.sha256"
