@@ -38,6 +38,7 @@ import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_MESSAGE_ID
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_SYSTEM_NOTIFICATION_ID
 import com.nextcloud.talk.utils.database.user.CurrentUserProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -119,7 +120,9 @@ internal class TalkConversationsScreen(
                     errorMessage = null
                     invalidate()
                 }
-            } catch (_: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
                 loading = false
                 errorMessage = "Talk conversations are unavailable"
                 invalidate()
@@ -131,7 +134,7 @@ internal class TalkConversationsScreen(
         val conversation = snapshot.conversation
         val self = Person.Builder()
             .setName(activeUser.displayName ?: activeUser.userId ?: activeUser.username ?: "You")
-            .setKey(activeUser.userId ?: activeUser.username ?: activeUser.id.toString())
+            .setKey(activeUser.userId ?: activeUser.username ?: activeUser.id?.toString() ?: "self")
             .build()
 
         val messages = snapshot.messages.map { message ->
