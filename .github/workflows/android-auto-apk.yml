@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - android-auto
+      - android-auto-carappservice
     paths:
       - app/**
       - build.gradle.kts
@@ -36,7 +37,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@v5
 
       - name: Assemble GPlay debug APK
-        run: ./gradlew --no-daemon :app:assembleGplayDebug --stacktrace
+        run: ./gradlew --no-daemon -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
 
       - name: Verify APK output
         shell: bash
@@ -53,7 +54,7 @@ jobs:
       - name: Upload Android Auto APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Nextcloud-Talk-Android-Auto-Gplay-Debug
+          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-CarAppService
           path: app/build/outputs/apk/gplay/debug/*.apk
           if-no-files-found: error
           retention-days: 14
