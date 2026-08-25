@@ -56,12 +56,7 @@ object TalkCallInterop {
 
     fun callKey(accountId: Long, roomToken: String): String = "$accountId@$roomToken"
 
-    fun notifyIncomingCall(
-        context: Context,
-        callExtras: Bundle,
-        displayName: String,
-        video: Boolean
-    ) {
+    fun notifyIncomingCall(context: Context, callExtras: Bundle, displayName: String, video: Boolean) {
         val accountId = callExtras.getLong(KEY_INTERNAL_USER_ID, -1L)
         val roomToken = callExtras.getString(KEY_ROOM_TOKEN).orEmpty()
         if (accountId < 0L || roomToken.isBlank()) return
