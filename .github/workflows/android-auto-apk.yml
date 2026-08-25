@@ -73,10 +73,50 @@ jobs:
 
           echo 'Verified: only the intended Talk CarAppService implementation is packaged.'
 
-      - name: Upload Android Auto APK
+      - name: Sign APK with persistent Talk Auto key
+        shell: bash
+        env:
+          ANDROID_AUTO_KEYSTORE_BASE64: ${{ secrets.ANDROID_AUTO_KEYSTORE_BASE64 }}
+          ANDROID_AUTO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_AUTO_KEYSTORE_PASSWORD }}
+          ANDROID_AUTO_KEY_PASSWORD: ${{ secrets.ANDROID_AUTO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ANDROID_AUTO_KEYSTORE_BASE64:-}" ] || \
+             [ -z "${ANDROID_AUTO_KEYSTORE_PASSWORD:-}" ] || \
+             [ -z "${ANDROID_AUTO_KEY_PASSWORD:-}" ]; then
+            echo 'ERROR: Android Auto signing secrets are missing.'
+            exit 1
+          fi
+
+          keystore=/tmp/talk-auto-signing.jks
+          printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+
+          unsigned_apk=$(find app/build/outputs/apk/gplay/debug -maxdepth 1 -type f -name '*.apk' ! -name '*talk-auto-signed.apk' | head -n1)
+          if [ -z "$unsigned_apk" ]; then
+            echo 'ERROR: APK to sign was not found.'
+            exit 1
+          fi
+
+          signed_apk=app/build/outputs/apk/gplay/debug/app-gplay-debug-talk-auto-signed.apk
+          apksigner=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)
+
+          "$apksigner" sign \
+            --ks "$keystore" \
+            --ks-key-alias talk-auto \
+            --ks-pass env:ANDROID_AUTO_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_AUTO_KEY_PASSWORD \
+            --out "$signed_apk" \
+            "$unsigned_apk"
+
+          "$apksigner" verify --verbose --print-certs "$signed_apk"
+          rm -f "$keystore"
+
+      - name: Upload signed Android Auto APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-SingleService
-          path: app/build/outputs/apk/gplay/debug/*.apk
+          name: Nextcloud-Talk-Android-Auto-Gplay-Debug-PersistentSigned
+          path: app/build/outputs/apk/gplay/debug/app-gplay-debug-talk-auto-signed.apk
           if-no-files-found: error
           retention-days: 14
