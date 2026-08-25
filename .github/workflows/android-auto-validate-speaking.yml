@@ -1,0 +1,105 @@
+name: Android Auto - validate speaking state
+
+on:
+  push:
+    branches:
+      - android-auto-speaking-state
+    paths:
+      - .github/workflows/android-auto-validate-speaking.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: android-auto-speaking-state
+          fetch-depth: 0
+
+      - name: Apply speaking-state plumbing
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path_str, old, new):
+              path = Path(path_str)
+              text = path.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'Expected source not found in {path_str}')
+              path.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java',
+              '''        void onAudioOn();\n        void onAudioOff();\n        void onVideoOn();''',
+              '''        void onAudioOn();\n        void onAudioOff();\n        void onSpeaking();\n        void onStoppedSpeaking();\n        void onVideoOn();'''
+          )
+
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java',
+              '''            if ("audioOff".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifyAudioOff();\n\n                return;\n            }\n\n            if ("videoOn".equals(dataChannelMessage.getType())) {''',
+              '''            if ("audioOff".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifyAudioOff();\n\n                return;\n            }\n\n            if ("speaking".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifySpeaking();\n\n                return;\n            }\n\n            if ("stoppedSpeaking".equals(dataChannelMessage.getType())) {\n                dataChannelMessageNotifier.notifyStoppedSpeaking();\n\n                return;\n            }\n\n            if ("videoOn".equals(dataChannelMessage.getType())) {'''
+          )
+
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifier.java',
+              '''    public synchronized void notifyAudioOff() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onAudioOff();\n        }\n    }\n\n    public synchronized void notifyVideoOn() {''',
+              '''    public synchronized void notifyAudioOff() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onAudioOff();\n        }\n    }\n\n    public synchronized void notifySpeaking() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onSpeaking();\n        }\n    }\n\n    public synchronized void notifyStoppedSpeaking() {\n        for (PeerConnectionWrapper.DataChannelMessageListener listener : new ArrayList<>(dataChannelMessageListeners)) {\n            listener.onStoppedSpeaking();\n        }\n    }\n\n    public synchronized void notifyVideoOn() {'''
+          )
+
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/activities/ParticipantUiState.kt',
+              '''    val actorId: String? = null,\n    val isInternal: Boolean\n)''',
+              '''    val actorId: String? = null,\n    val isInternal: Boolean,\n    val isSpeaking: Boolean = false\n)'''
+          )
+
+          replace_once(
+              'app/src/main/java/com/nextcloud/talk/activities/ParticipantHandler.kt',
+              '''        override fun onAudioOff() {\n            Log.d(TAG, "onAudioOff: ${_uiState.value.nick} (sessionId=${_uiState.value.sessionKey})")\n            _uiState.update { it.copy(isAudioEnabled = false) }\n        }\n\n        override fun onVideoOn() {''',
+              '''        override fun onAudioOff() {\n            Log.d(TAG, "onAudioOff: ${_uiState.value.nick} (sessionId=${_uiState.value.sessionKey})")\n            _uiState.update { it.copy(isAudioEnabled = false, isSpeaking = false) }\n        }\n\n        override fun onSpeaking() {\n            _uiState.update { it.copy(isSpeaking = true) }\n        }\n\n        override fun onStoppedSpeaking() {\n            _uiState.update { it.copy(isSpeaking = false) }\n        }\n\n        override fun onVideoOn() {'''
+          )
+
+          replace_once(
+              'app/src/test/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifierTest.kt',
+              '''    @Test\n    fun testNotifyVideoOn() {''',
+              '''    @Test\n    fun testNotifySpeaking() {\n        notifier.addListener(listener)\n        notifier.notifySpeaking()\n        verify(listener).onSpeaking()\n    }\n\n    @Test\n    fun testNotifyStoppedSpeaking() {\n        notifier.addListener(listener)\n        notifier.notifyStoppedSpeaking()\n        verify(listener).onStoppedSpeaking()\n    }\n\n    @Test\n    fun testNotifyVideoOn() {'''
+          )
+          PY
+
+      - name: Commit speaking-state source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java \
+            app/src/main/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifier.java \
+            app/src/main/java/com/nextcloud/talk/activities/ParticipantUiState.kt \
+            app/src/main/java/com/nextcloud/talk/activities/ParticipantHandler.kt \
+            app/src/test/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifierTest.kt
+          if ! git diff --cached --quiet; then
+            git commit -m $'feat(auto): expose remote speaking state\n\nAssisted-by: ChatGPT:GPT-5.6-Sol'
+          fi
+
+      - name: Run speaking notifier tests
+        run: ./gradlew :app:testGplayDebugUnitTest --tests com.nextcloud.talk.webrtc.DataChannelMessageNotifierTest --stacktrace
+
+      - name: Compile Android Auto flavors
+        run: ./gradlew :app:compileGplayDebugKotlin :app:compileGenericDebugKotlin --stacktrace
+
+      - name: Run Kotlin style check
+        run: ./gradlew ktlintCheck --stacktrace
+
+      - name: Push validated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin android-auto-speaking-state
+          git rebase origin/android-auto-speaking-state
+          git push origin HEAD:android-auto-speaking-state
