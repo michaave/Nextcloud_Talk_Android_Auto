@@ -6,8 +6,10 @@
  */
 package com.nextcloud.talk.auto
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
@@ -15,8 +17,10 @@ import androidx.car.app.model.Action
 import androidx.car.app.model.Header
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
+import androidx.car.app.model.ParkedOnlyOnClickListener
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.nextcloud.talk.chat.ChatActivity
@@ -72,13 +76,21 @@ internal class TalkCallsScreen(
             }
 
             else -> conversations.forEach { conversation ->
-                itemList.addItem(
-                    Row.Builder()
-                        .setTitle(conversation.displayName)
-                        .addText(if (conversation.hasCall) "Join ongoing Talk call" else "Start voice call")
-                        .setOnClickListener { startVoiceCall(conversation) }
-                        .build()
-                )
+                val row = Row.Builder()
+                    .setTitle(conversation.displayName)
+                    .addText(if (conversation.hasCall) "Join ongoing Talk call" else "Start voice call")
+
+                if (hasMicrophonePermission()) {
+                    row.setOnClickListener { startVoiceCall(conversation) }
+                } else {
+                    row.setOnClickListener(
+                        ParkedOnlyOnClickListener.create {
+                            requestMicrophonePermissionAndStart(conversation)
+                        }
+                    )
+                }
+
+                itemList.addItem(row.build())
             }
         }
 
@@ -118,6 +130,30 @@ internal class TalkCallsScreen(
                 invalidate()
             }
         }
+    }
+
+    private fun hasMicrophonePermission(): Boolean =
+        ContextCompat.checkSelfPermission(carContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestMicrophonePermissionAndStart(conversation: ConversationEntity) {
+        carContext.requestPermissions(listOf(Manifest.permission.RECORD_AUDIO)) { grantedPermissions, _ ->
+            if (Manifest.permission.RECORD_AUDIO in grantedPermissions) {
+                startVoiceCall(conversation)
+            } else {
+                CarToast.makeText(
+                    carContext,
+                    "Microphone permission is required for Talk calls",
+                    CarToast.LENGTH_LONG
+                ).show()
+            }
+            invalidate()
+        }
+
+        CarToast.makeText(
+            carContext,
+            "Grant microphone access on your phone",
+            CarToast.LENGTH_LONG
+        ).show()
     }
 
     private fun startVoiceCall(conversation: ConversationEntity) {
