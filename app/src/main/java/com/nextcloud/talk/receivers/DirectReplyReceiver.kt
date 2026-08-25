@@ -26,6 +26,7 @@ import com.nextcloud.talk.R
 import com.nextcloud.talk.api.NcApi
 import com.nextcloud.talk.application.NextcloudTalkApplication
 import com.nextcloud.talk.data.user.model.User
+import com.nextcloud.talk.jobs.ChatMessageCatchUpWorker
 import com.nextcloud.talk.models.json.chat.ChatOverallSingleMessage
 import com.nextcloud.talk.users.UserManager
 import com.nextcloud.talk.utils.ApiUtils
@@ -106,6 +107,7 @@ class DirectReplyReceiver : BroadcastReceiver() {
 
                 override fun onNext(message: ChatOverallSingleMessage) {
                     confirmReplySent()
+                    refreshConversation()
                 }
 
                 override fun onError(e: Throwable) {
@@ -117,6 +119,12 @@ class DirectReplyReceiver : BroadcastReceiver() {
                     // unused atm
                 }
             })
+    }
+
+    private fun refreshConversation() {
+        val userId = currentUser.id ?: return
+        val token = roomToken?.takeIf { it.isNotBlank() } ?: return
+        ChatMessageCatchUpWorker.enqueue(context, userId, token, null)
     }
 
     private fun confirmReplySent() {
