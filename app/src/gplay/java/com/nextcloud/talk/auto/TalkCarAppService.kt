@@ -93,14 +93,13 @@ private class TalkCarHomeScreen(
             .addItem(
                 Row.Builder()
                     .setTitle("Calls")
-                    .addText("Control Talk voice calls through Android Telecom")
+                    .addText("Start or join Talk voice calls")
                     .setOnClickListener {
                         screenManager.push(
-                            TalkCarStatusScreen(
+                            TalkCallsScreen(
                                 carContext,
-                                "Calls",
-                                "Incoming and active Talk calls are connected to Android Telecom. " +
-                                    "Contact-selected outgoing calls are the next call UI layer."
+                                currentUserProvider,
+                                conversationsDao
                             )
                         )
                     }
@@ -118,22 +117,4 @@ private class TalkCarHomeScreen(
             .setSingleList(items)
             .build()
     }
-}
-
-private class TalkCarStatusScreen(carContext: CarContext, private val title: String, private val status: String) :
-    Screen(carContext) {
-    override fun onGetTemplate(): Template =
-        ListTemplate.Builder()
-            .setHeader(
-                Header.Builder()
-                    .setStartHeaderAction(Action.BACK)
-                    .setTitle(title)
-                    .build()
-            )
-            .setSingleList(
-                ItemList.Builder()
-                    .addItem(Row.Builder().setTitle(status).build())
-                    .build()
-            )
-            .build()
 }
