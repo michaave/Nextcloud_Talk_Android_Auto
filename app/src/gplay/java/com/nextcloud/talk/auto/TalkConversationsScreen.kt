@@ -97,24 +97,27 @@ internal class TalkConversationsScreen(
                 user = activeUser
 
                 conversationsDao.getConversationsForUser(accountId).collectLatest { conversations ->
-                    snapshots = conversations
+                    val recentConversations = conversations
                         .asSequence()
                         .filter(::isVisibleConversation)
                         .sortedByDescending(ConversationEntity::lastActivity)
                         .take(MAX_CONVERSATIONS)
-                        .map { conversation ->
-                            val messages = chatMessagesDao
-                                .getMessagesForConversation(conversation.internalId, null)
-                                .first()
-                                .asSequence()
-                                .filter { !it.deleted && it.message.isNotBlank() }
-                                .take(MAX_MESSAGES_PER_CONVERSATION)
-                                .toList()
-                                .asReversed()
-
-                            ConversationSnapshot(conversation, messages)
-                        }
                         .toList()
+
+                    val updatedSnapshots = mutableListOf<ConversationSnapshot>()
+                    for (conversation in recentConversations) {
+                        val messages = chatMessagesDao
+                            .getMessagesForConversation(conversation.internalId, null)
+                            .first()
+                            .asSequence()
+                            .filter { !it.deleted && it.message.isNotBlank() }
+                            .take(MAX_MESSAGES_PER_CONVERSATION)
+                            .toList()
+                            .asReversed()
+
+                        updatedSnapshots.add(ConversationSnapshot(conversation, messages))
+                    }
+                    snapshots = updatedSnapshots
 
                     loading = false
                     errorMessage = null
@@ -184,7 +187,7 @@ internal class TalkConversationsScreen(
         }
 
         val timestampMillis = if (message.timestamp < TIMESTAMP_MILLISECONDS_THRESHOLD) {
-            message.timestamp * 1000L
+            message.timestamp * MILLISECONDS_PER_SECOND
         } else {
             message.timestamp
         }
@@ -199,7 +202,7 @@ internal class TalkConversationsScreen(
 
     private fun sendDirectReply(conversation: ConversationEntity, replyText: String) {
         val intent = Intent(carContext, DirectReplyReceiver::class.java)
-            .putExtra(KEY_SYSTEM_NOTIFICATION_ID, 0)
+            .putExtra(KEY_SYSTEM_NOTIFICATION_ID, NO_SYSTEM_NOTIFICATION_ID)
             .putExtra(KEY_ROOM_TOKEN, conversation.token)
             .putExtra(KEY_INTERNAL_USER_ID, conversation.accountId)
 
@@ -214,7 +217,7 @@ internal class TalkConversationsScreen(
     private fun sendMarkAsRead(conversation: ConversationEntity, messageId: Long) {
         carContext.sendBroadcast(
             Intent(carContext, MarkAsReadReceiver::class.java)
-                .putExtra(KEY_SYSTEM_NOTIFICATION_ID, 0)
+                .putExtra(KEY_SYSTEM_NOTIFICATION_ID, NO_SYSTEM_NOTIFICATION_ID)
                 .putExtra(KEY_ROOM_TOKEN, conversation.token)
                 .putExtra(KEY_INTERNAL_USER_ID, conversation.accountId)
                 .putExtra(KEY_MESSAGE_ID, messageId.toInt())
@@ -240,14 +243,13 @@ internal class TalkConversationsScreen(
         conversation.type == ConversationEnums.ConversationType.ROOM_GROUP_CALL ||
             conversation.type == ConversationEnums.ConversationType.ROOM_PUBLIC_CALL
 
-    private data class ConversationSnapshot(
-        val conversation: ConversationEntity,
-        val messages: List<ChatMessageEntity>
-    )
+    private data class ConversationSnapshot(val conversation: ConversationEntity, val messages: List<ChatMessageEntity>)
 
     companion object {
         private const val MAX_CONVERSATIONS = 10
         private const val MAX_MESSAGES_PER_CONVERSATION = 5
+        private const val MILLISECONDS_PER_SECOND = 1000L
+        private const val NO_SYSTEM_NOTIFICATION_ID = 0
         private const val TIMESTAMP_MILLISECONDS_THRESHOLD = 10_000_000_000L
     }
 }
