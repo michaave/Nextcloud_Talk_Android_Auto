@@ -6,23 +6,16 @@
  */
 package com.nextcloud.talk.auto
 
-import android.content.Intent
-import android.os.Bundle
 import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
-import androidx.car.app.messaging.model.CarMessage
-import androidx.car.app.messaging.model.ConversationCallback
-import androidx.car.app.messaging.model.ConversationItem
+import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.Action
-import androidx.car.app.model.CarText
 import androidx.car.app.model.Header
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
-import androidx.core.app.Person
-import androidx.core.app.RemoteInput
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.nextcloud.talk.data.database.dao.ChatMessagesDao
@@ -31,13 +24,6 @@ import com.nextcloud.talk.data.database.model.ChatMessageEntity
 import com.nextcloud.talk.data.database.model.ConversationEntity
 import com.nextcloud.talk.data.user.model.User
 import com.nextcloud.talk.models.json.conversations.ConversationEnums
-import com.nextcloud.talk.receivers.DirectReplyReceiver
-import com.nextcloud.talk.receivers.MarkAsReadReceiver
-import com.nextcloud.talk.utils.NotificationUtils
-import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_INTERNAL_USER_ID
-import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_MESSAGE_ID
-import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
-import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_SYSTEM_NOTIFICATION_ID
 import com.nextcloud.talk.utils.database.user.CurrentUserProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +34,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/** Lists recent Talk conversations and opens a dedicated message-history screen. */
 internal class TalkConversationsScreen(
     carContext: CarContext,
     private val currentUserProvider: CurrentUserProvider,
@@ -88,16 +75,36 @@ internal class TalkConversationsScreen(
             snapshots.isEmpty() -> itemList.addItem(Row.Builder().setTitle("No recent conversations").build())
             else -> {
                 val activeUser = user ?: return buildListTemplate(itemList.build())
-                snapshots.forEach { snapshot ->
-                    try {
-                        itemList.addItem(buildConversationItem(activeUser, snapshot))
-                    } catch (t: Throwable) {
-                        Log.e(
-                            TAG,
-                            "Failed to build ConversationItem id=${snapshot.conversation.internalId} name=${snapshot.conversation.displayName}",
-                            t
+                snapshots.take(getListContentLimit()).forEach { snapshot ->
+                    val conversation = snapshot.conversation
+                    val latestMessage = snapshot.latestMessage
+
+                    val row = Row.Builder()
+                        .setTitle(conversation.displayName)
+                        .addText(
+                            latestMessage?.let { message ->
+                                val sender = if (message.actorId == activeUser.userId) {
+                                    "You"
+                                } else {
+                                    message.actorDisplayName.ifBlank { "Talk user" }
+                                }
+                                "$sender: ${message.message}"
+                            } ?: "No recent messages"
                         )
-                    }
+                        .setBrowsable(true)
+                        .setOnClickListener {
+                            screenManager.push(
+                                TalkConversationHistoryScreen(
+                                    carContext,
+                                    activeUser,
+                                    conversation,
+                                    chatMessagesDao
+                                )
+                            )
+                        }
+                        .build()
+
+                    itemList.addItem(row)
                 }
             }
         }
@@ -120,20 +127,14 @@ internal class TalkConversationsScreen(
                         .take(MAX_CONVERSATIONS)
                         .toList()
 
-                    val updatedSnapshots = mutableListOf<ConversationSnapshot>()
-                    for (conversation in recentConversations) {
-                        val messages = chatMessagesDao
+                    snapshots = recentConversations.map { conversation ->
+                        val latestMessage = chatMessagesDao
                             .getMessagesForConversation(conversation.internalId, null)
                             .first()
-                            .asSequence()
-                            .filter { !it.deleted && it.message.isNotBlank() }
-                            .take(MAX_MESSAGES_PER_CONVERSATION)
-                            .toList()
-                            .asReversed()
+                            .firstOrNull { !it.deleted && it.message.isNotBlank() }
 
-                        updatedSnapshots.add(ConversationSnapshot(conversation, messages))
+                        ConversationSnapshot(conversation, latestMessage)
                     }
-                    snapshots = updatedSnapshots
 
                     loading = false
                     errorMessage = null
@@ -150,103 +151,14 @@ internal class TalkConversationsScreen(
         }
     }
 
-    private fun buildConversationItem(activeUser: User, snapshot: ConversationSnapshot): ConversationItem {
-        val conversation = snapshot.conversation
-        val self = Person.Builder()
-            .setName(activeUser.displayName ?: activeUser.userId ?: activeUser.username ?: "You")
-            .setKey(activeUser.userId ?: activeUser.username ?: activeUser.id?.toString() ?: "self")
-            .build()
-
-        val messages = snapshot.messages.map { message ->
-            buildCarMessage(activeUser, conversation, message)
-        }
-
-        val callback = object : ConversationCallback {
-            override fun onMarkAsRead() {
-                try {
-                    val newestMessageId = snapshot.messages.lastOrNull()?.id ?: return
-                    sendMarkAsRead(conversation, newestMessageId)
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Failed to mark Android Auto conversation as read", t)
-                }
-            }
-
-            override fun onTextReply(replyText: String) {
-                try {
-                    if (replyText.isNotBlank() &&
-                        conversation.conversationReadOnlyState ==
-                        ConversationEnums.ConversationReadOnlyState.CONVERSATION_READ_WRITE
-                    ) {
-                        sendDirectReply(conversation, replyText)
-                    }
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Failed to send Android Auto text reply", t)
-                }
-            }
-        }
-
-        return ConversationItem.Builder(
-            conversation.internalId,
-            CarText.create(conversation.displayName),
-            self,
-            messages,
-            callback
-        )
-            .setGroupConversation(isGroupConversation(conversation))
-            .build()
-    }
-
-    private fun buildCarMessage(
-        activeUser: User,
-        conversation: ConversationEntity,
-        message: ChatMessageEntity
-    ): CarMessage {
-        val sentBySelf = message.actorId == activeUser.userId
-        val sender = if (sentBySelf) {
-            null
-        } else {
-            Person.Builder()
-                .setName(message.actorDisplayName.ifBlank { "Talk user" })
-                .setKey("${conversation.internalId}:${message.actorType}:${message.actorId}")
-                .build()
-        }
-
-        val timestampMillis = if (message.timestamp < TIMESTAMP_MILLISECONDS_THRESHOLD) {
-            message.timestamp * MILLISECONDS_PER_SECOND
-        } else {
-            message.timestamp
-        }
-
-        return CarMessage.Builder()
-            .setBody(CarText.create(message.message))
-            .setRead(sentBySelf || message.id <= conversation.lastReadMessage.toLong())
-            .setReceivedTimeEpochMillis(timestampMillis)
-            .apply { sender?.let(::setSender) }
-            .build()
-    }
-
-    private fun sendDirectReply(conversation: ConversationEntity, replyText: String) {
-        val intent = Intent(carContext, DirectReplyReceiver::class.java)
-            .putExtra(KEY_SYSTEM_NOTIFICATION_ID, NO_SYSTEM_NOTIFICATION_ID)
-            .putExtra(KEY_ROOM_TOKEN, conversation.token)
-            .putExtra(KEY_INTERNAL_USER_ID, conversation.accountId)
-
-        val remoteInput = RemoteInput.Builder(NotificationUtils.KEY_DIRECT_REPLY).build()
-        val results = Bundle().apply {
-            putCharSequence(NotificationUtils.KEY_DIRECT_REPLY, replyText)
-        }
-        RemoteInput.addResultsToIntent(arrayOf(remoteInput), intent, results)
-        carContext.sendBroadcast(intent)
-    }
-
-    private fun sendMarkAsRead(conversation: ConversationEntity, messageId: Long) {
-        carContext.sendBroadcast(
-            Intent(carContext, MarkAsReadReceiver::class.java)
-                .putExtra(KEY_SYSTEM_NOTIFICATION_ID, NO_SYSTEM_NOTIFICATION_ID)
-                .putExtra(KEY_ROOM_TOKEN, conversation.token)
-                .putExtra(KEY_INTERNAL_USER_ID, conversation.accountId)
-                .putExtra(KEY_MESSAGE_ID, messageId.toInt())
-        )
+    private fun getListContentLimit(): Int = try {
+        carContext
+            .getCarService(ConstraintManager::class.java)
+            .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
+            .coerceAtLeast(1)
+    } catch (t: Throwable) {
+        Log.w(TAG, "Unable to query Android Auto conversation list limit; using fallback", t)
+        FALLBACK_LIST_LIMIT
     }
 
     private fun buildListTemplate(itemList: ItemList): Template =
@@ -271,18 +183,14 @@ internal class TalkConversationsScreen(
         conversation.type != ConversationEnums.ConversationType.DUMMY &&
             conversation.type != ConversationEnums.ConversationType.ROOM_SYSTEM
 
-    private fun isGroupConversation(conversation: ConversationEntity): Boolean =
-        conversation.type == ConversationEnums.ConversationType.ROOM_GROUP_CALL ||
-            conversation.type == ConversationEnums.ConversationType.ROOM_PUBLIC_CALL
-
-    private data class ConversationSnapshot(val conversation: ConversationEntity, val messages: List<ChatMessageEntity>)
+    private data class ConversationSnapshot(
+        val conversation: ConversationEntity,
+        val latestMessage: ChatMessageEntity?
+    )
 
     companion object {
         private const val TAG = "TalkAuto"
-        private const val MAX_CONVERSATIONS = 10
-        private const val MAX_MESSAGES_PER_CONVERSATION = 5
-        private const val MILLISECONDS_PER_SECOND = 1000L
-        private const val NO_SYSTEM_NOTIFICATION_ID = 0
-        private const val TIMESTAMP_MILLISECONDS_THRESHOLD = 10_000_000_000L
+        private const val MAX_CONVERSATIONS = 20
+        private const val FALLBACK_LIST_LIMIT = 6
     }
 }
