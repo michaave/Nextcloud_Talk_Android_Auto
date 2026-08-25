@@ -55,12 +55,7 @@ class TalkTelecomManager private constructor(context: Context) {
         registered = true
     }
 
-    fun onIncomingCall(
-        callKey: String,
-        callExtras: Bundle,
-        displayName: String,
-        video: Boolean
-    ) {
+    fun onIncomingCall(callKey: String, callExtras: Bundle, displayName: String, video: Boolean) {
         addCallIfNeeded(
             callKey = callKey,
             callExtras = callExtras,
@@ -71,13 +66,7 @@ class TalkTelecomManager private constructor(context: Context) {
         )
     }
 
-    fun onCallStarted(
-        callKey: String,
-        callExtras: Bundle,
-        displayName: String,
-        incoming: Boolean,
-        video: Boolean
-    ) {
+    fun onCallStarted(callKey: String, callExtras: Bundle, displayName: String, incoming: Boolean, video: Boolean) {
         val existing = calls[callKey]
         if (existing != null) {
             existing.activityStarted = true
