@@ -63,7 +63,14 @@ internal class TalkCallsScreen(
         when {
             loading -> itemList.addItem(Row.Builder().setTitle("Loading calls…").build())
             errorMessage != null -> itemList.addItem(Row.Builder().setTitle(errorMessage!!).build())
-            conversations.isEmpty() -> itemList.addItem(Row.Builder().setTitle("No conversations available for calls").build())
+            conversations.isEmpty() -> {
+                itemList.addItem(
+                    Row.Builder()
+                        .setTitle("No conversations available for calls")
+                        .build()
+                )
+            }
+
             else -> conversations.forEach { conversation ->
                 itemList.addItem(
                     Row.Builder()
