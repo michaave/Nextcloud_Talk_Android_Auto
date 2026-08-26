@@ -43,6 +43,7 @@ internal class TalkConversationHistoryScreen(
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    // Stored newest-first so the top of each page is the newest visible message.
     private var messages: List<ChatMessageEntity> = emptyList()
     private var loading = true
     private var errorMessage: String? = null
@@ -124,8 +125,10 @@ internal class TalkConversationHistoryScreen(
             )
         }
 
-        val endExclusive = messages.size - (pageFromNewest * pageSize)
-        val startInclusive = max(0, endExclusive - pageSize)
+        val startInclusive = pageFromNewest * pageSize
+        val endExclusive = (startInclusive + pageSize).coerceAtMost(messages.size)
+
+        // messages is newest-first, so scrolling down always moves backward in time.
         messages.subList(startInclusive, endExclusive).forEach { message ->
             val sender = if (message.actorId == activeUser.userId) {
                 "You"
@@ -141,7 +144,7 @@ internal class TalkConversationHistoryScreen(
             )
         }
 
-        if (startInclusive > 0) {
+        if (endExclusive < messages.size) {
             itemList.addItem(
                 Row.Builder()
                     .setTitle("Older messages")
@@ -179,7 +182,6 @@ internal class TalkConversationHistoryScreen(
                             .filter { !it.deleted && it.message.isNotBlank() }
                             .take(MAX_HISTORY_MESSAGES)
                             .toList()
-                            .asReversed()
 
                         loading = false
                         errorMessage = null
@@ -198,7 +200,7 @@ internal class TalkConversationHistoryScreen(
     }
 
     private fun speakLatestMessage() {
-        val latest = messages.lastOrNull()
+        val latest = messages.firstOrNull()
         if (latest == null) {
             CarToast.makeText(carContext, "No message to read", CarToast.LENGTH_SHORT).show()
             return
