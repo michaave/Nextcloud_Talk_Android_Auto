@@ -6,6 +6,7 @@
  */
 package com.nextcloud.talk.auto
 
+import android.content.Intent
 import android.media.AudioAttributes
 import android.speech.tts.TextToSpeech
 import android.util.Log
@@ -21,10 +22,15 @@ import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.nextcloud.talk.chat.ChatActivity
+import com.nextcloud.talk.chat.data.network.ChatNetworkDataSource
 import com.nextcloud.talk.data.database.dao.ChatMessagesDao
 import com.nextcloud.talk.data.database.model.ChatMessageEntity
 import com.nextcloud.talk.data.database.model.ConversationEntity
 import com.nextcloud.talk.data.user.model.User
+import com.nextcloud.talk.utils.bundle.BundleKeys
+import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_CALL_VOICE_ONLY
+import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,12 +40,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-/** Displays a driver-safe, paged window of recent Talk messages for one conversation. */
+/** Displays the selected conversation and its driver-safe Talk actions. */
 internal class TalkConversationHistoryScreen(
     carContext: CarContext,
     private val activeUser: User,
     private val conversation: ConversationEntity,
-    private val chatMessagesDao: ChatMessagesDao
+    private val chatMessagesDao: ChatMessagesDao,
+    private val chatNetworkDataSource: ChatNetworkDataSource
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -91,6 +98,10 @@ internal class TalkConversationHistoryScreen(
     private fun buildTemplate(): Template {
         val itemList = ItemList.Builder()
 
+        if (pageFromNewest == 0) {
+            addConversationActions(itemList)
+        }
+
         when {
             loading -> itemList.addItem(Row.Builder().setTitle("Loading messages…").build())
             errorMessage != null -> itemList.addItem(Row.Builder().setTitle(errorMessage!!).build())
@@ -109,13 +120,36 @@ internal class TalkConversationHistoryScreen(
             .build()
     }
 
-    private fun addHistoryRows(itemList: ItemList.Builder) {
-        val listLimit = getListContentLimit()
-        val pageSize = max(1, listLimit - RESERVED_CONTROL_ROWS)
-        val pageCount = ((messages.size + pageSize - 1) / pageSize).coerceAtLeast(1)
-        pageFromNewest = pageFromNewest.coerceIn(0, pageCount - 1)
+    private fun addConversationActions(itemList: ItemList.Builder) {
+        itemList.addItem(
+            Row.Builder()
+                .setTitle("Send message")
+                .addText("Dictate or type a new Talk message")
+                .setBrowsable(true)
+                .setOnClickListener {
+                    screenManager.push(
+                        TalkMessageComposeScreen(
+                            carContext,
+                            activeUser,
+                            conversation,
+                            chatNetworkDataSource
+                        )
+                    )
+                }
+                .build()
+        )
 
-        if (pageFromNewest == 0) {
+        if (conversation.canStartCall || conversation.hasCall) {
+            itemList.addItem(
+                Row.Builder()
+                    .setTitle(if (conversation.hasCall) "Join voice call" else "Start voice call")
+                    .addText("Use Talk audio through Android Auto")
+                    .setOnClickListener { startVoiceCall() }
+                    .build()
+            )
+        }
+
+        if (messages.isNotEmpty()) {
             itemList.addItem(
                 Row.Builder()
                     .setTitle(if (ttsReady) "Read latest message aloud" else "Preparing read aloud…")
@@ -124,11 +158,18 @@ internal class TalkConversationHistoryScreen(
                     .build()
             )
         }
+    }
+
+    private fun addHistoryRows(itemList: ItemList.Builder) {
+        val listLimit = getListContentLimit()
+        val reserved = if (pageFromNewest == 0) RESERVED_FIRST_PAGE_ROWS else RESERVED_PAGING_ROWS
+        val pageSize = max(1, listLimit - reserved)
+        val pageCount = ((messages.size + pageSize - 1) / pageSize).coerceAtLeast(1)
+        pageFromNewest = pageFromNewest.coerceIn(0, pageCount - 1)
 
         val startInclusive = pageFromNewest * pageSize
         val endExclusive = (startInclusive + pageSize).coerceAtMost(messages.size)
 
-        // messages is newest-first, so scrolling down always moves backward in time.
         messages.subList(startInclusive, endExclusive).forEach { message ->
             val sender = if (message.actorId == activeUser.userId) {
                 "You"
@@ -168,6 +209,27 @@ internal class TalkConversationHistoryScreen(
                     }
                     .build()
             )
+        }
+    }
+
+    private fun startVoiceCall() {
+        try {
+            // Important: use the phone application context, not CarContext. CarContext would
+            // attempt to launch Talk's normal activity on the Android Auto virtual display.
+            val appContext = carContext.applicationContext
+            Log.i(TAG, "Starting phone-side voice call for conversation=${conversation.internalId}")
+            appContext.startActivity(
+                Intent(appContext, ChatActivity::class.java).apply {
+                    putExtra(KEY_ROOM_TOKEN, conversation.token)
+                    putExtra(BundleKeys.KEY_FROM_NOTIFICATION_START_CALL, true)
+                    putExtra(KEY_CALL_VOICE_ONLY, true)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
+            )
+            CarToast.makeText(carContext, "Starting Talk voice call", CarToast.LENGTH_SHORT).show()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Unable to start phone-side Talk voice call", t)
+            CarToast.makeText(carContext, "Unable to start Talk call", CarToast.LENGTH_LONG).show()
         }
     }
 
@@ -218,9 +280,8 @@ internal class TalkConversationHistoryScreen(
             latest.actorDisplayName.ifBlank { "Talk user" }
         }
 
-        val spokenText = "$sender says: ${latest.message}"
         val result = tts.speak(
-            spokenText,
+            "$sender says: ${latest.message}",
             TextToSpeech.QUEUE_FLUSH,
             null,
             "talk-auto-${conversation.internalId}-${latest.id}"
@@ -260,7 +321,8 @@ internal class TalkConversationHistoryScreen(
     companion object {
         private const val TAG = "TalkAuto"
         private const val MAX_HISTORY_MESSAGES = 100
-        private const val RESERVED_CONTROL_ROWS = 3
+        private const val RESERVED_FIRST_PAGE_ROWS = 5
+        private const val RESERVED_PAGING_ROWS = 2
         private const val MIN_LIST_LIMIT = 4
         private const val FALLBACK_LIST_LIMIT = 6
     }
