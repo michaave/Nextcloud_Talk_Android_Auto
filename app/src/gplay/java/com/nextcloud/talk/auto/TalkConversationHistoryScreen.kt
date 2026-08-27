@@ -15,6 +15,7 @@ import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.Action
+import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Header
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
@@ -50,13 +51,13 @@ internal class TalkConversationHistoryScreen(
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    // Stored newest-first so the top of each page is the newest visible message.
     private var messages: List<ChatMessageEntity> = emptyList()
     private var loading = true
     private var errorMessage: String? = null
     private var pageFromNewest = 0
     private var ttsReady = false
     private var textToSpeech: TextToSpeech? = null
+    private val messageImages = mutableMapOf<String, CarIcon>()
 
     init {
         lifecycle.addObserver(
@@ -177,12 +178,20 @@ internal class TalkConversationHistoryScreen(
                 message.actorDisplayName.ifBlank { "Talk user" }
             }
 
-            itemList.addItem(
-                Row.Builder()
-                    .setTitle(sender)
-                    .addText(message.message)
-                    .build()
-            )
+            val imageName = TalkCarImageLoader.imageAttachmentName(message)
+            val rowBuilder = Row.Builder().setTitle(sender)
+            val body = when {
+                imageName != null && message.message == "{file}" -> imageName
+                imageName != null && message.message.isBlank() -> imageName
+                else -> message.message
+            }
+            if (body.isNotBlank()) {
+                rowBuilder.addText(body)
+            }
+            messageImages[message.internalId]?.let { image ->
+                rowBuilder.setImage(image, Row.IMAGE_TYPE_LARGE)
+            }
+            itemList.addItem(rowBuilder.build())
         }
 
         if (endExclusive < messages.size) {
@@ -192,6 +201,7 @@ internal class TalkConversationHistoryScreen(
                     .addText("Show the previous page")
                     .setOnClickListener {
                         pageFromNewest++
+                        loadVisibleImages()
                         invalidate()
                     }
                     .build()
@@ -205,6 +215,7 @@ internal class TalkConversationHistoryScreen(
                     .addText("Return toward the latest messages")
                     .setOnClickListener {
                         pageFromNewest--
+                        loadVisibleImages()
                         invalidate()
                     }
                     .build()
@@ -214,8 +225,6 @@ internal class TalkConversationHistoryScreen(
 
     private fun startVoiceCall() {
         try {
-            // Important: use the phone application context, not CarContext. CarContext would
-            // attempt to launch Talk's normal activity on the Android Auto virtual display.
             val appContext = carContext.applicationContext
             Log.i(TAG, "Starting phone-side voice call for conversation=${conversation.internalId}")
             appContext.startActivity(
@@ -241,7 +250,10 @@ internal class TalkConversationHistoryScreen(
                     .collectLatest { messageList ->
                         messages = messageList
                             .asSequence()
-                            .filter { !it.deleted && it.message.isNotBlank() }
+                            .filter {
+                                !it.deleted &&
+                                    (it.message.isNotBlank() || TalkCarImageLoader.hasImageAttachment(it))
+                            }
                             .take(MAX_HISTORY_MESSAGES)
                             .toList()
 
@@ -249,6 +261,7 @@ internal class TalkConversationHistoryScreen(
                         errorMessage = null
                         pageFromNewest = 0
                         invalidate()
+                        loadVisibleImages()
                     }
             } catch (e: CancellationException) {
                 throw e
@@ -257,6 +270,26 @@ internal class TalkConversationHistoryScreen(
                 loading = false
                 errorMessage = "Talk message history is unavailable"
                 invalidate()
+            }
+        }
+    }
+
+    private fun loadVisibleImages() {
+        val listLimit = getListContentLimit()
+        val reserved = if (pageFromNewest == 0) RESERVED_FIRST_PAGE_ROWS else RESERVED_PAGING_ROWS
+        val pageSize = max(1, listLimit - reserved)
+        val start = (pageFromNewest * pageSize).coerceAtMost(messages.size)
+        val end = (start + pageSize).coerceAtMost(messages.size)
+        messages.subList(start, end).forEach { message ->
+            if (!TalkCarImageLoader.hasImageAttachment(message) || messageImages.containsKey(message.internalId)) {
+                return@forEach
+            }
+            scope.launch {
+                val image = TalkCarImageLoader.loadMessageImage(activeUser, message)
+                if (image != null) {
+                    messageImages[message.internalId] = image
+                    invalidate()
+                }
             }
         }
     }
@@ -279,9 +312,11 @@ internal class TalkConversationHistoryScreen(
         } else {
             latest.actorDisplayName.ifBlank { "Talk user" }
         }
+        val spokenBody = TalkCarImageLoader.imageAttachmentName(latest)?.let { "an image named $it" }
+            ?: latest.message
 
         val result = tts.speak(
-            "$sender says: ${latest.message}",
+            "$sender sent $spokenBody",
             TextToSpeech.QUEUE_FLUSH,
             null,
             "talk-auto-${conversation.internalId}-${latest.id}"
