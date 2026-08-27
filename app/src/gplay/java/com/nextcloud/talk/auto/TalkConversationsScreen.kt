@@ -6,18 +6,26 @@
  */
 package com.nextcloud.talk.auto
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.Action
+import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Header
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
+import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.nextcloud.talk.chat.data.network.ChatNetworkDataSource
 import com.nextcloud.talk.data.database.dao.ChatMessagesDao
 import com.nextcloud.talk.data.database.dao.ConversationsDao
 import com.nextcloud.talk.data.database.model.ChatMessageEntity
@@ -34,12 +42,14 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/** Lists recent Talk conversations and opens a dedicated message-history screen. */
+/** Conversation-first Android Auto home screen. */
 internal class TalkConversationsScreen(
     carContext: CarContext,
     private val currentUserProvider: CurrentUserProvider,
     private val conversationsDao: ConversationsDao,
-    private val chatMessagesDao: ChatMessagesDao
+    private val chatMessagesDao: ChatMessagesDao,
+    private val chatNetworkDataSource: ChatNetworkDataSource,
+    private val isRootScreen: Boolean = false
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -62,8 +72,8 @@ internal class TalkConversationsScreen(
     override fun onGetTemplate(): Template = try {
         buildTemplate()
     } catch (t: Throwable) {
-        Log.e(TAG, "Failed to build Android Auto Messages template", t)
-        buildErrorTemplate("Unable to display Talk messages")
+        Log.e(TAG, "Failed to build Android Auto conversation template", t)
+        buildErrorTemplate("Unable to display Talk conversations")
     }
 
     private fun buildTemplate(): Template {
@@ -78,19 +88,25 @@ internal class TalkConversationsScreen(
                 snapshots.take(getListContentLimit()).forEach { snapshot ->
                     val conversation = snapshot.conversation
                     val latestMessage = snapshot.latestMessage
+                    val preview = latestMessage?.let { message ->
+                        val sender = if (message.actorId == activeUser.userId) {
+                            "You"
+                        } else {
+                            message.actorDisplayName.ifBlank { "Talk user" }
+                        }
+                        "$sender: ${message.message}"
+                    } ?: "No recent messages"
 
                     val row = Row.Builder()
-                        .setTitle(conversation.displayName)
-                        .addText(
-                            latestMessage?.let { message ->
-                                val sender = if (message.actorId == activeUser.userId) {
-                                    "You"
-                                } else {
-                                    message.actorDisplayName.ifBlank { "Talk user" }
-                                }
-                                "$sender: ${message.message}"
-                            } ?: "No recent messages"
+                        .setTitle(
+                            if (conversation.unreadMessages > 0) {
+                                "${conversation.displayName} (${conversation.unreadMessages})"
+                            } else {
+                                conversation.displayName
+                            }
                         )
+                        .addText(preview)
+                        .setImage(createConversationAvatar(conversation), Row.IMAGE_TYPE_LARGE)
                         .setBrowsable(true)
                         .setOnClickListener {
                             screenManager.push(
@@ -98,7 +114,8 @@ internal class TalkConversationsScreen(
                                     carContext,
                                     activeUser,
                                     conversation,
-                                    chatMessagesDao
+                                    chatMessagesDao,
+                                    chatNetworkDataSource
                                 )
                             )
                         }
@@ -132,7 +149,6 @@ internal class TalkConversationsScreen(
                             .getMessagesForConversation(conversation.internalId, null)
                             .first()
                             .firstOrNull { !it.deleted && it.message.isNotBlank() }
-
                         ConversationSnapshot(conversation, latestMessage)
                     }
 
@@ -151,6 +167,38 @@ internal class TalkConversationsScreen(
         }
     }
 
+    /**
+     * Local avatar badge used by the car host. It is deliberately generated in-process so
+     * Android Auto does not need authenticated access to a Nextcloud avatar URL.
+     */
+    private fun createConversationAvatar(conversation: ConversationEntity): CarIcon {
+        val size = 128
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.DKGRAY }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, background)
+
+        val initials = conversation.displayName
+            .trim()
+            .split(Regex("\\s+"))
+            .filter(String::isNotBlank)
+            .take(2)
+            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+            .joinToString("")
+            .ifBlank { "T" }
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textSize = 52f
+        }
+        val y = size / 2f - (textPaint.ascent() + textPaint.descent()) / 2f
+        canvas.drawText(initials, size / 2f, y, textPaint)
+
+        return CarIcon.Builder(IconCompat.createWithBitmap(bitmap)).build()
+    }
+
     private fun getListContentLimit(): Int = try {
         carContext
             .getCarService(ConstraintManager::class.java)
@@ -165,8 +213,8 @@ internal class TalkConversationsScreen(
         ListTemplate.Builder()
             .setHeader(
                 Header.Builder()
-                    .setStartHeaderAction(Action.BACK)
-                    .setTitle("Messages")
+                    .setStartHeaderAction(if (isRootScreen) Action.APP_ICON else Action.BACK)
+                    .setTitle("Nextcloud Talk")
                     .build()
             )
             .setSingleList(itemList)
