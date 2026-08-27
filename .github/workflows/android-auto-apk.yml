@@ -1,4 +1,4 @@
-name: Android Auto test APK
+name: Android Auto test APK and Play AAB
 
 on:
   workflow_dispatch:
@@ -107,7 +107,6 @@ jobs:
             -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
             -alias talk-auto >/dev/null 2>&1; then
             echo 'ERROR: Cannot open the reconstructed keystore with ANDROID_AUTO_KEYSTORE_PASSWORD, or alias talk-auto is missing.'
-            echo 'Re-create ANDROID_AUTO_KEYSTORE_BASE64 from the original talk-auto-signing.jks and verify the keystore password.'
             rm -f "$keystore"
             exit 1
           fi
@@ -139,5 +138,103 @@ jobs:
         with:
           name: Nextcloud-Talk-Android-Auto-Gplay-Debug-PersistentSigned
           path: app/build/outputs/apk/gplay/debug/app-gplay-debug-talk-auto-signed.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Prepare Play release identity and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout -- app/build.gradle.kts
+          rm -rf app/build build .gradle
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path('app/build.gradle.kts')
+          text = path.read_text()
+
+          old_flavor = '''        create("gplay") {
+              applicationId = "com.nextcloud.talk2"
+              dimension = "default"
+          }'''
+          new_flavor = '''        create("gplay") {
+              applicationId = "com.nextcloud.talk2.auto"
+              dimension = "default"
+          }'''
+          if old_flavor not in text:
+              raise SystemExit('Could not locate the expected gplay applicationId block')
+          text = text.replace(old_flavor, new_flavor, 1)
+
+          old_version = '        versionCode = 250010003'
+          play_version_code = 250010000 + int(os.environ['GITHUB_RUN_NUMBER'])
+          if old_version not in text:
+              raise SystemExit('Could not locate the expected base versionCode')
+          text = text.replace(old_version, f'        versionCode = {play_version_code}', 1)
+
+          path.write_text(text)
+          print(f'Play applicationId: com.nextcloud.talk2.auto')
+          print(f'Play versionCode: {play_version_code}')
+          PY
+
+      - name: Build GPlay release AAB for Play Console
+        run: ./gradlew --no-daemon --no-build-cache :app:bundleGplayRelease --stacktrace
+
+      - name: Verify release merged manifest identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=$(find app/build/intermediates -type f -path '*gplayRelease*' -name AndroidManifest.xml | head -n1 || true)
+          if [ -n "$manifest" ]; then
+            if ! grep -a -q 'com.nextcloud.talk2.auto' "$manifest"; then
+              echo 'ERROR: release manifest does not contain com.nextcloud.talk2.auto'
+              exit 1
+            fi
+            echo 'Verified release manifest contains com.nextcloud.talk2.auto.'
+          else
+            echo 'Merged manifest path not found; continuing to AAB signing verification.'
+          fi
+
+      - name: Sign Play AAB with persistent Talk Auto upload key
+        shell: bash
+        env:
+          ANDROID_AUTO_KEYSTORE_BASE64: ${{ secrets.ANDROID_AUTO_KEYSTORE_BASE64 }}
+          ANDROID_AUTO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_AUTO_KEYSTORE_PASSWORD }}
+          ANDROID_AUTO_KEY_PASSWORD: ${{ secrets.ANDROID_AUTO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore=/tmp/talk-auto-signing.jks
+          printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+
+          keytool -list \
+            -keystore "$keystore" \
+            -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
+            -alias talk-auto >/dev/null
+
+          unsigned_aab=$(find app/build/outputs/bundle/gplayRelease -maxdepth 1 -type f -name '*.aab' ! -name '*talk-auto-play.aab' | head -n1)
+          if [ -z "$unsigned_aab" ]; then
+            echo 'ERROR: GPlay release AAB was not produced.'
+            rm -f "$keystore"
+            exit 1
+          fi
+
+          signed_aab=app/build/outputs/bundle/gplayRelease/Nextcloud-Talk-Android-Auto-PlayUpload.aab
+          jarsigner \
+            -keystore "$keystore" \
+            -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_AUTO_KEY_PASSWORD" \
+            -signedjar "$signed_aab" \
+            "$unsigned_aab" \
+            talk-auto
+
+          jarsigner -verify -verbose -certs "$signed_aab"
+          rm -f "$keystore"
+
+      - name: Upload Play Console AAB
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Nextcloud-Talk-Android-Auto-PlayUpload-AAB
+          path: app/build/outputs/bundle/gplayRelease/Nextcloud-Talk-Android-Auto-PlayUpload.aab
           if-no-files-found: error
           retention-days: 14
