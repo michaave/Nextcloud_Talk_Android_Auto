@@ -90,12 +90,33 @@ jobs:
           fi
 
           keystore=/tmp/talk-auto-signing.jks
-          printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          if ! printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > "$keystore"; then
+            echo 'ERROR: ANDROID_AUTO_KEYSTORE_BASE64 is not valid Base64.'
+            exit 1
+          fi
           chmod 600 "$keystore"
+
+          if [ ! -s "$keystore" ]; then
+            echo 'ERROR: Reconstructed Android Auto keystore is empty.'
+            exit 1
+          fi
+
+          echo 'Validating reconstructed Talk Auto keystore and alias...'
+          if ! keytool -list \
+            -keystore "$keystore" \
+            -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
+            -alias talk-auto >/dev/null 2>&1; then
+            echo 'ERROR: Cannot open the reconstructed keystore with ANDROID_AUTO_KEYSTORE_PASSWORD, or alias talk-auto is missing.'
+            echo 'Re-create ANDROID_AUTO_KEYSTORE_BASE64 from the original talk-auto-signing.jks and verify the keystore password.'
+            rm -f "$keystore"
+            exit 1
+          fi
+          echo 'Verified: Talk Auto keystore opens successfully and alias talk-auto exists.'
 
           unsigned_apk=$(find app/build/outputs/apk/gplay/debug -maxdepth 1 -type f -name '*.apk' ! -name '*talk-auto-signed.apk' | head -n1)
           if [ -z "$unsigned_apk" ]; then
             echo 'ERROR: APK to sign was not found.'
+            rm -f "$keystore"
             exit 1
           fi
 
