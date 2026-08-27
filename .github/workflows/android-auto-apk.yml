@@ -149,31 +149,36 @@ jobs:
           rm -rf app/build build .gradle
           python3 - <<'PY'
           import os
+          import re
           from pathlib import Path
 
           path = Path('app/build.gradle.kts')
           text = path.read_text()
 
-          old_flavor = '''        create("gplay") {
-              applicationId = "com.nextcloud.talk2"
-              dimension = "default"
-          }'''
-          new_flavor = '''        create("gplay") {
-              applicationId = "com.nextcloud.talk2.auto"
-              dimension = "default"
-          }'''
-          if old_flavor not in text:
-              raise SystemExit('Could not locate the expected gplay applicationId block')
-          text = text.replace(old_flavor, new_flavor, 1)
+          flavor_pattern = re.compile(
+              r'(create\("gplay"\)\s*\{\s*applicationId\s*=\s*")com\.nextcloud\.talk2(")',
+              re.MULTILINE,
+          )
+          text, flavor_count = flavor_pattern.subn(
+              r'\1com.nextcloud.talk2.auto\2',
+              text,
+              count=1,
+          )
+          if flavor_count != 1:
+              raise SystemExit(f'Expected to patch exactly one gplay applicationId, patched {flavor_count}')
 
-          old_version = '        versionCode = 250010003'
           play_version_code = 250010000 + int(os.environ['GITHUB_RUN_NUMBER'])
-          if old_version not in text:
-              raise SystemExit('Could not locate the expected base versionCode')
-          text = text.replace(old_version, f'        versionCode = {play_version_code}', 1)
+          version_pattern = re.compile(r'(?m)^(\s*versionCode\s*=\s*)250010003\s*$')
+          text, version_count = version_pattern.subn(
+              rf'\g<1>{play_version_code}',
+              text,
+              count=1,
+          )
+          if version_count != 1:
+              raise SystemExit(f'Expected to patch exactly one base versionCode, patched {version_count}')
 
           path.write_text(text)
-          print(f'Play applicationId: com.nextcloud.talk2.auto')
+          print('Play applicationId: com.nextcloud.talk2.auto')
           print(f'Play versionCode: {play_version_code}')
           PY
 
@@ -212,7 +217,7 @@ jobs:
             -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
             -alias talk-auto >/dev/null
 
-          unsigned_aab=$(find app/build/outputs/bundle/gplayRelease -maxdepth 1 -type f -name '*.aab' ! -name '*talk-auto-play.aab' | head -n1)
+          unsigned_aab=$(find app/build/outputs/bundle/gplayRelease -maxdepth 1 -type f -name '*.aab' ! -name 'Nextcloud-Talk-Android-Auto-PlayUpload.aab' | head -n1)
           if [ -z "$unsigned_aab" ]; then
             echo 'ERROR: GPlay release AAB was not produced.'
             rm -f "$keystore"
