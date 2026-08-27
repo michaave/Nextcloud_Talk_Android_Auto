@@ -6,11 +6,6 @@
  */
 package com.nextcloud.talk.auto
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Typeface
 import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
@@ -22,7 +17,6 @@ import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
-import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.nextcloud.talk.chat.data.network.ChatNetworkDataSource
@@ -57,6 +51,7 @@ internal class TalkConversationsScreen(
     private var snapshots: List<ConversationSnapshot> = emptyList()
     private var loading = true
     private var errorMessage: String? = null
+    private val avatarIcons = mutableMapOf<String, CarIcon>()
 
     init {
         lifecycle.addObserver(
@@ -94,10 +89,15 @@ internal class TalkConversationsScreen(
                         } else {
                             message.actorDisplayName.ifBlank { "Talk user" }
                         }
-                        "$sender: ${message.message}"
+                        val body = if (TalkCarImageLoader.hasImageAttachment(message)) {
+                            TalkCarImageLoader.imageAttachmentName(message) ?: "Image"
+                        } else {
+                            message.message
+                        }
+                        "$sender: $body"
                     } ?: "No recent messages"
 
-                    val row = Row.Builder()
+                    val rowBuilder = Row.Builder()
                         .setTitle(
                             if (conversation.unreadMessages > 0) {
                                 "${conversation.displayName} (${conversation.unreadMessages})"
@@ -106,7 +106,6 @@ internal class TalkConversationsScreen(
                             }
                         )
                         .addText(preview)
-                        .setImage(createConversationAvatar(conversation), Row.IMAGE_TYPE_LARGE)
                         .setBrowsable(true)
                         .setOnClickListener {
                             screenManager.push(
@@ -119,9 +118,11 @@ internal class TalkConversationsScreen(
                                 )
                             )
                         }
-                        .build()
 
-                    itemList.addItem(row)
+                    avatarIcons[conversation.internalId]?.let { icon ->
+                        rowBuilder.setImage(icon, Row.IMAGE_TYPE_LARGE)
+                    }
+                    itemList.addItem(rowBuilder.build())
                 }
             }
         }
@@ -155,6 +156,7 @@ internal class TalkConversationsScreen(
                     loading = false
                     errorMessage = null
                     invalidate()
+                    loadAvatars(activeUser, recentConversations)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -167,36 +169,17 @@ internal class TalkConversationsScreen(
         }
     }
 
-    /**
-     * Local avatar badge used by the car host. It is deliberately generated in-process so
-     * Android Auto does not need authenticated access to a Nextcloud avatar URL.
-     */
-    private fun createConversationAvatar(conversation: ConversationEntity): CarIcon {
-        val size = 128
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.DKGRAY }
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f, background)
-
-        val initials = conversation.displayName
-            .trim()
-            .split(Regex("\\s+"))
-            .filter(String::isNotBlank)
-            .take(2)
-            .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-            .joinToString("")
-            .ifBlank { "T" }
-
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textAlign = Paint.Align.CENTER
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = 52f
+    private fun loadAvatars(activeUser: User, conversations: List<ConversationEntity>) {
+        conversations.take(getListContentLimit()).forEach { conversation ->
+            if (avatarIcons.containsKey(conversation.internalId)) return@forEach
+            scope.launch {
+                val icon = TalkCarImageLoader.loadConversationAvatar(activeUser, conversation)
+                if (icon != null) {
+                    avatarIcons[conversation.internalId] = icon
+                    invalidate()
+                }
+            }
         }
-        val y = size / 2f - (textPaint.ascent() + textPaint.descent()) / 2f
-        canvas.drawText(initials, size / 2f, y, textPaint)
-
-        return CarIcon.Builder(IconCompat.createWithBitmap(bitmap)).build()
     }
 
     private fun getListContentLimit(): Int = try {
