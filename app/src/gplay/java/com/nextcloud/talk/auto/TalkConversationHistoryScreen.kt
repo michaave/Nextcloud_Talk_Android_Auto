@@ -144,7 +144,7 @@ internal class TalkConversationHistoryScreen(
             itemList.addItem(
                 Row.Builder()
                     .setTitle(if (conversation.hasCall) "Join voice call" else "Start voice call")
-                    .addText("Use Talk audio through Android Auto")
+                    .addText("Call ${conversation.displayName} through Talk")
                     .setOnClickListener { startVoiceCall() }
                     .build()
             )
@@ -183,6 +183,7 @@ internal class TalkConversationHistoryScreen(
             val body = when {
                 imageName != null && message.message == "{file}" -> imageName
                 imageName != null && message.message.isBlank() -> imageName
+                message.message == "{file}" -> TalkCarImageLoader.attachmentDisplayName(message) ?: "Attachment"
                 else -> message.message
             }
             if (body.isNotBlank()) {
@@ -226,16 +227,27 @@ internal class TalkConversationHistoryScreen(
     private fun startVoiceCall() {
         try {
             val appContext = carContext.applicationContext
-            Log.i(TAG, "Starting phone-side voice call for conversation=${conversation.internalId}")
+            Log.i(
+                TAG,
+                "Starting phone-side voice call internalId=${conversation.internalId} " +
+                    "token=${conversation.token} name=${conversation.displayName} account=${activeUser.id}"
+            )
             appContext.startActivity(
                 Intent(appContext, ChatActivity::class.java).apply {
                     putExtra(KEY_ROOM_TOKEN, conversation.token)
                     putExtra(BundleKeys.KEY_FROM_NOTIFICATION_START_CALL, true)
                     putExtra(KEY_CALL_VOICE_ONLY, true)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    putExtra(BundleKeys.KEY_CONVERSATION_DISPLAY_NAME, conversation.displayName)
+                    putExtra(BundleKeys.KEY_CONVERSATION_NAME, conversation.name)
+                    activeUser.id?.let { putExtra(BundleKeys.KEY_INTERNAL_USER_ID, it) }
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             )
-            CarToast.makeText(carContext, "Starting Talk voice call", CarToast.LENGTH_SHORT).show()
+            CarToast.makeText(
+                carContext,
+                "Calling ${conversation.displayName}",
+                CarToast.LENGTH_SHORT
+            ).show()
         } catch (t: Throwable) {
             Log.e(TAG, "Unable to start phone-side Talk voice call", t)
             CarToast.makeText(carContext, "Unable to start Talk call", CarToast.LENGTH_LONG).show()
@@ -313,7 +325,11 @@ internal class TalkConversationHistoryScreen(
             latest.actorDisplayName.ifBlank { "Talk user" }
         }
         val spokenBody = TalkCarImageLoader.imageAttachmentName(latest)?.let { "an image named $it" }
-            ?: latest.message
+            ?: if (latest.message == "{file}") {
+                TalkCarImageLoader.attachmentDisplayName(latest)?.let { "a file named $it" } ?: "a file"
+            } else {
+                latest.message
+            }
 
         val result = tts.speak(
             "$sender sent $spokenBody",
