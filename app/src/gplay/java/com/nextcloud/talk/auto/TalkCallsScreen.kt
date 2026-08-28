@@ -45,70 +45,40 @@ internal class TalkCallsScreen(
     private val conversationsDao: ConversationsDao
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
     private var conversations: List<ConversationEntity> = emptyList()
     private var loading = true
     private var errorMessage: String? = null
 
     init {
-        lifecycle.addObserver(
-            object : DefaultLifecycleObserver {
-                override fun onDestroy(owner: LifecycleOwner) {
-                    scope.cancel()
-                }
-            }
-        )
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) { scope.cancel() }
+        })
         observeConversations()
     }
 
-    override fun onGetTemplate(): Template = try {
-        buildTemplate()
-    } catch (t: Throwable) {
+    override fun onGetTemplate(): Template = try { buildTemplate() } catch (t: Throwable) {
         Log.e(TAG, "Failed to build Android Auto Calls template", t)
         buildErrorTemplate("Unable to display Talk calls")
     }
 
     private fun buildTemplate(): Template {
         val itemList = ItemList.Builder()
-
         when {
             loading -> itemList.addItem(Row.Builder().setTitle("Loading calls…").build())
             errorMessage != null -> itemList.addItem(Row.Builder().setTitle(errorMessage!!).build())
-            conversations.isEmpty() -> {
-                itemList.addItem(
-                    Row.Builder()
-                        .setTitle("No conversations available for calls")
-                        .build()
-                )
-            }
-
+            conversations.isEmpty() -> itemList.addItem(Row.Builder().setTitle("No conversations available for calls").build())
             else -> conversations.forEach { conversation ->
-                try {
-                    val row = Row.Builder()
-                        .setTitle(conversation.displayName)
-                        .addText(if (conversation.hasCall) "Join ongoing Talk call" else "Start voice call")
-
-                    if (hasMicrophonePermission()) {
-                        row.setOnClickListener { startVoiceCall(conversation) }
-                    } else {
-                        row.setOnClickListener(
-                            ParkedOnlyOnClickListener.create {
-                                requestMicrophonePermissionAndStart(conversation)
-                            }
-                        )
-                    }
-
-                    itemList.addItem(row.build())
-                } catch (t: Throwable) {
-                    Log.e(
-                        TAG,
-                        "Failed to build call row id=${conversation.internalId} name=${conversation.displayName}",
-                        t
-                    )
+                val row = Row.Builder()
+                    .setTitle(conversation.displayName)
+                    .addText(if (conversation.hasCall) "Join ongoing Talk call" else "Start voice call")
+                if (hasMicrophonePermission()) {
+                    row.setOnClickListener { startVoiceCall(conversation) }
+                } else {
+                    row.setOnClickListener(ParkedOnlyOnClickListener.create { requestMicrophonePermissionAndStart(conversation) })
                 }
+                itemList.addItem(row.build())
             }
         }
-
         return buildListTemplate(itemList.build())
     }
 
@@ -117,10 +87,8 @@ internal class TalkCallsScreen(
             try {
                 val activeUser = currentUserProvider.getCurrentUser().getOrElse { throw it }
                 val accountId = activeUser.id ?: error("Current Talk account has no local ID")
-
                 conversationsDao.getConversationsForUser(accountId).collectLatest { conversationList ->
-                    conversations = conversationList
-                        .asSequence()
+                    conversations = conversationList.asSequence()
                         .filter(::isCallableConversation)
                         .sortedByDescending(ConversationEntity::lastActivity)
                         .take(MAX_CONVERSATIONS)
@@ -141,36 +109,19 @@ internal class TalkCallsScreen(
     }
 
     private fun hasMicrophonePermission(): Boolean =
-        ContextCompat.checkSelfPermission(
-            carContext,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(carContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private fun requestMicrophonePermissionAndStart(conversation: ConversationEntity) {
         try {
             carContext.requestPermissions(listOf(Manifest.permission.RECORD_AUDIO)) { grantedPermissions, _ ->
-                try {
-                    if (Manifest.permission.RECORD_AUDIO in grantedPermissions) {
-                        startVoiceCall(conversation)
-                    } else {
-                        CarToast.makeText(
-                            carContext,
-                            "Microphone permission is required for Talk calls",
-                            CarToast.LENGTH_LONG
-                        ).show()
-                    }
-                    invalidate()
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Failure in Android Auto microphone permission callback", t)
-                    showCallError()
+                if (Manifest.permission.RECORD_AUDIO in grantedPermissions) {
+                    startVoiceCall(conversation)
+                } else {
+                    CarToast.makeText(carContext, "Microphone permission is required for Talk calls", CarToast.LENGTH_LONG).show()
                 }
+                invalidate()
             }
-
-            CarToast.makeText(
-                carContext,
-                "Grant microphone access on your phone",
-                CarToast.LENGTH_LONG
-            ).show()
+            CarToast.makeText(carContext, "Grant microphone access on your phone", CarToast.LENGTH_LONG).show()
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to request microphone permission from Android Auto", t)
             showCallError()
@@ -179,13 +130,16 @@ internal class TalkCallsScreen(
 
     private fun startVoiceCall(conversation: ConversationEntity) {
         try {
-            Log.i(TAG, "Starting voice call for conversation id=${conversation.internalId}")
-            carContext.startActivity(
-                Intent(carContext, ChatActivity::class.java).apply {
+            val appContext = carContext.applicationContext
+            Log.i(TAG, "Starting voice call id=${conversation.internalId} token=${conversation.token}")
+            appContext.startActivity(
+                Intent(appContext, ChatActivity::class.java).apply {
                     putExtra(KEY_ROOM_TOKEN, conversation.token)
                     putExtra(BundleKeys.KEY_FROM_NOTIFICATION_START_CALL, true)
                     putExtra(KEY_CALL_VOICE_ONLY, true)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    putExtra(BundleKeys.KEY_CONVERSATION_DISPLAY_NAME, conversation.displayName)
+                    putExtra(BundleKeys.KEY_CONVERSATION_NAME, conversation.name)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             )
         } catch (t: Throwable) {
@@ -195,37 +149,20 @@ internal class TalkCallsScreen(
     }
 
     private fun showCallError() {
-        try {
-            CarToast.makeText(
-                carContext,
-                "Unable to start Talk call — see TalkAuto log",
-                CarToast.LENGTH_LONG
-            ).show()
-        } catch (t: Throwable) {
-            Log.e(TAG, "Unable to display Android Auto call error toast", t)
-        }
+        CarToast.makeText(carContext, "Unable to start Talk call — see TalkAuto log", CarToast.LENGTH_LONG).show()
     }
 
-    private fun buildListTemplate(itemList: ItemList): Template =
-        ListTemplate.Builder()
-            .setHeader(
-                Header.Builder()
-                    .setStartHeaderAction(Action.BACK)
-                    .setTitle("Calls")
-                    .build()
-            )
-            .setSingleList(itemList)
-            .build()
+    private fun buildListTemplate(itemList: ItemList): Template = ListTemplate.Builder()
+        .setHeader(Header.Builder().setStartHeaderAction(Action.BACK).setTitle("Calls").build())
+        .setSingleList(itemList)
+        .build()
 
     private fun buildErrorTemplate(message: String): Template =
-        buildListTemplate(
-            ItemList.Builder()
-                .addItem(Row.Builder().setTitle(message).build())
-                .build()
-        )
+        buildListTemplate(ItemList.Builder().addItem(Row.Builder().setTitle(message).build()).build())
 
     private fun isCallableConversation(conversation: ConversationEntity): Boolean =
-        conversation.type != ConversationEnums.ConversationType.DUMMY &&
+        !conversation.hasArchived &&
+            conversation.type != ConversationEnums.ConversationType.DUMMY &&
             conversation.type != ConversationEnums.ConversationType.ROOM_SYSTEM &&
             (conversation.canStartCall || conversation.hasCall)
 
