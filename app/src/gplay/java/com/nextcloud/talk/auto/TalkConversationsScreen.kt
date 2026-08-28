@@ -89,10 +89,12 @@ internal class TalkConversationsScreen(
                         } else {
                             message.actorDisplayName.ifBlank { "Talk user" }
                         }
-                        val body = if (TalkCarImageLoader.hasImageAttachment(message)) {
-                            TalkCarImageLoader.imageAttachmentName(message) ?: "Image"
-                        } else {
-                            message.message
+                        val body = when {
+                            TalkCarImageLoader.hasImageAttachment(message) ->
+                                TalkCarImageLoader.imageAttachmentName(message) ?: "Image"
+                            message.message == "{file}" ->
+                                TalkCarImageLoader.attachmentDisplayName(message) ?: "Attachment"
+                            else -> message.message
                         }
                         "$sender: $body"
                     } ?: "No recent messages"
@@ -149,7 +151,10 @@ internal class TalkConversationsScreen(
                         val latestMessage = chatMessagesDao
                             .getMessagesForConversation(conversation.internalId, null)
                             .first()
-                            .firstOrNull { !it.deleted && it.message.isNotBlank() }
+                            .firstOrNull {
+                                !it.deleted &&
+                                    (it.message.isNotBlank() || TalkCarImageLoader.hasImageAttachment(it))
+                            }
                         ConversationSnapshot(conversation, latestMessage)
                     }
 
@@ -211,7 +216,8 @@ internal class TalkConversationsScreen(
         )
 
     private fun isVisibleConversation(conversation: ConversationEntity): Boolean =
-        conversation.type != ConversationEnums.ConversationType.DUMMY &&
+        !conversation.hasArchived &&
+            conversation.type != ConversationEnums.ConversationType.DUMMY &&
             conversation.type != ConversationEnums.ConversationType.ROOM_SYSTEM
 
     private data class ConversationSnapshot(
