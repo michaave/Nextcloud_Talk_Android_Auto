@@ -1,0 +1,81 @@
+name: Port Android Auto onto current upstream
+
+on:
+  push:
+    branches:
+      - android-auto-sync-work
+    paths:
+      - .github/workflows/port-android-auto-upstream.yml
+
+permissions:
+  contents: write
+
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current upstream-based branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch existing Android Auto branch
+        run: git fetch origin android-auto-carappservice
+
+      - name: Restore Android Auto-only and non-overlapping integration files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout origin/android-auto-carappservice -- \
+            .github/workflows/android-auto-apk.yml \
+            .github/workflows/android-auto-build.yml \
+            app/src/gplay/AndroidManifest.xml \
+            app/src/gplay/java/com/nextcloud/talk/auto \
+            app/src/gplay/res/xml/automotive_app_desc.xml \
+            app/src/main/java/com/nextcloud/talk/call/TalkCallInterop.kt \
+            app/src/main/java/com/nextcloud/talk/activities/ParticipantHandler.kt \
+            app/src/main/java/com/nextcloud/talk/activities/ParticipantUiState.kt \
+            app/src/main/java/com/nextcloud/talk/receivers/DirectReplyReceiver.kt \
+            app/src/main/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifier.java \
+            app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java \
+            app/src/main/java/com/nextcloud/talk/webrtc/WebRtcAudioManager.java \
+            app/src/test/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifierTest.kt \
+            scripts/android-auto-update-dependencies.py \
+            scripts/android-auto-wire-call-bridge.py \
+            tools/android_auto_bootstrap.py
+
+      - name: Adapt build workflow to sync branch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/android-auto-apk.yml')
+          s = p.read_text()
+          marker = '      - android-auto-carappservice\n'
+          if '      - android-auto-sync-work\n' not in s:
+              s = s.replace(marker, marker + '      - android-auto-sync-work\n', 1)
+          p.write_text(s)
+          PY
+
+      - name: Reapply Android Auto Gradle/manifest foundation
+        run: python tools/android_auto_bootstrap.py
+
+      - name: Reapply Talk/Core-Telecom bridge hooks
+        run: python scripts/android-auto-wire-call-bridge.py
+
+      - name: Refresh dependency verification metadata
+        run: ./gradlew --no-daemon --write-verification-metadata sha256 :app:dependencies >/tmp/dependencies.log
+
+      - name: Commit ported Android Auto layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'Port Android Auto layer onto current upstream Talk'
+          git push origin HEAD:android-auto-sync-work
