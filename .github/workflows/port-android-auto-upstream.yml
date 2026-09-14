@@ -60,6 +60,36 @@ jobs:
       - name: Reapply Android Auto Gradle/manifest foundation
         run: python tools/android_auto_bootstrap.py
 
+      - name: Normalize current upstream CallActivity bridge anchor
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt')
+          s = p.read_text()
+          old = '''        processExtras(intent.extras!!)
+        conversationUser = currentUserProviderOld.currentUser.blockingGet()
+
+        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
+            return
+        }
+
+        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
+'''
+          new = '''        processExtras(intent.extras!!)
+        conversationUser = currentUserProviderOld.currentUser.blockingGet()
+
+        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
+
+        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
+            return
+        }
+'''
+          if old not in s:
+              raise SystemExit('Current upstream CallActivity initialization block was not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
       - name: Reapply Talk/Core-Telecom bridge hooks
         run: python scripts/android-auto-wire-call-bridge.py
 
