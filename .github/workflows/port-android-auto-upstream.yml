@@ -6,6 +6,7 @@ on:
       - android-auto-sync-work
     paths:
       - .github/workflows/port-android-auto-upstream.yml
+      - scripts/android-auto-adapt-current-upstream.py
 
 permissions:
   contents: write
@@ -47,48 +48,13 @@ jobs:
       - name: Adapt build workflow to sync branch
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('.github/workflows/android-auto-apk.yml')
-          s = p.read_text()
-          marker = '      - android-auto-carappservice\n'
-          if '      - android-auto-sync-work\n' not in s:
-              s = s.replace(marker, marker + '      - android-auto-sync-work\n', 1)
-          p.write_text(s)
-          PY
+          python -c "from pathlib import Path; p=Path('.github/workflows/android-auto-apk.yml'); s=p.read_text(); m='      - android-auto-carappservice\\n'; p.write_text(s if '      - android-auto-sync-work\\n' in s else s.replace(m, m+'      - android-auto-sync-work\\n', 1))"
 
       - name: Reapply Android Auto Gradle/manifest foundation
         run: python tools/android_auto_bootstrap.py
 
-      - name: Normalize current upstream CallActivity bridge anchor
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt')
-          s = p.read_text()
-          old = '''        processExtras(intent.extras!!)
-        conversationUser = currentUserProviderOld.currentUser.blockingGet()
-
-        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
-            return
-        }
-
-        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
-'''
-          new = '''        processExtras(intent.extras!!)
-        conversationUser = currentUserProviderOld.currentUser.blockingGet()
-
-        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
-
-        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
-            return
-        }
-'''
-          if old not in s:
-              raise SystemExit('Current upstream CallActivity initialization block was not found')
-          p.write_text(s.replace(old, new, 1))
-          PY
+      - name: Adapt current upstream call initialization
+        run: python scripts/android-auto-adapt-current-upstream.py
 
       - name: Reapply Talk/Core-Telecom bridge hooks
         run: python scripts/android-auto-wire-call-bridge.py
