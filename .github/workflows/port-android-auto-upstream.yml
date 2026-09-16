@@ -34,9 +34,6 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-          # Merge current Talk. For overlapping application source, start from the
-          # upstream version and then reapply our Android Auto integration below.
           if ! git merge --no-commit --no-ff upstream/master; then
             while IFS= read -r path; do
               [ -z "$path" ] && continue
@@ -45,10 +42,6 @@ jobs:
               git add "$path"
             done < <(git diff --name-only --diff-filter=U)
           fi
-
-          # The Actions token deliberately has no workflow-edit permission. Keep
-          # the Android Auto branch's workflow files byte-for-byte unchanged; the
-          # upstream workflow updates are unrelated to the application build.
           git checkout HEAD -- .github/workflows
           git add .github/workflows
 
@@ -56,36 +49,7 @@ jobs:
         run: python tools/android_auto_bootstrap.py
 
       - name: Adapt current upstream CallActivity initialization
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt')
-          text = path.read_text()
-          old = '''        processExtras(intent.extras!!)
-        conversationUser = currentUserProviderOld.currentUser.blockingGet()
-
-        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
-            return
-        }
-
-        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
-'''
-          new = '''        processExtras(intent.extras!!)
-        conversationUser = currentUserProviderOld.currentUser.blockingGet()
-
-        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
-
-        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
-            return
-        }
-'''
-          if old in text:
-              path.write_text(text.replace(old, new, 1))
-          elif 'TalkCallInterop.notifyCallStarted(' not in text:
-              raise SystemExit('Current upstream CallActivity initialization block was not recognized')
-          PY
+        run: python scripts/android-auto-adapt-current-upstream.py
 
       - name: Reapply Talk/Core-Telecom bridge hooks
         run: python scripts/android-auto-wire-call-bridge.py
@@ -98,16 +62,13 @@ jobs:
         run: |
           set -euo pipefail
           git add -A
-          # Reassert that this automated commit does not alter workflow files.
           git reset HEAD -- .github/workflows
           git checkout HEAD -- .github/workflows
           git add .github/workflows
-
           if git diff --cached --quiet; then
             echo 'Android Auto branch is already synchronized with upstream.'
             git merge --abort 2>/dev/null || true
             exit 0
           fi
-
           git commit -m 'Merge current upstream Talk into Android Auto build'
           git push origin HEAD:android-auto-carappservice
