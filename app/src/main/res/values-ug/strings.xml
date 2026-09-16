@@ -136,6 +136,7 @@
     <string name="nc_call_notifications">تېلېفون ئۇقتۇرۇشى</string>
     <string name="nc_call_ongoing_notification_content">چاقىرىشقا قايتىش ئۈچۈن چىكىڭ</string>
     <string name="nc_call_ongoing_notification_default_title">چاقىرىش داۋاملىشىۋاتىدۇ</string>
+    <string name="nc_call_ongoing_notification_end_action">ئاخىرلىشىش تېلېفونى</string>
     <string name="nc_call_raised_hand">%1$s قولىنى كۆتۈردى</string>
     <string name="nc_call_reconnecting">قايتا ئۇلىنىش…</string>
     <string name="nc_call_ringing">جىرىڭلاۋاتىدۇ</string>
@@ -198,6 +199,7 @@
     <string name="nc_conversations_empty_details">دوستلىرىڭىز ۋە خىزمەتداشلىرىڭىزغا سالام!</string>
     <string name="nc_copy_message">كۆچۈرۈڭ</string>
     <string name="nc_copy_message_link">ئۇچۇر ئۇلانمىسىنى كۆچۈرۈڭ</string>
+    <string name="nc_copy_password">پارول كۆچۈر</string>
     <string name="nc_create_new_conversation">يېڭى سۆھبەت قۇر</string>
     <string name="nc_create_poll">راي سىناش</string>
     <string name="nc_custom_color">ئىختىيارى رەڭ</string>
@@ -211,6 +213,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">ئۇچۇر مۇۋەپپەقىيەتلىك ئۆچۈرۈلدى ، ئەمما ئۇ باشقا مۇلازىمەتلەرگە ئاشكارىلانغان بولۇشى مۇمكىن</string>
     <string name="nc_delete_now">ھازىرلا ئۆچۈر</string>
     <string name="nc_deleted_user">ئىشلەتكۈچى%1$s چىقىرىۋېتىلدى</string>
+    <string name="nc_deleted_user_display_name">ئىشلەتكۈچى ئۆچۈرۈلدى</string>
     <string name="nc_demote">رىياسەتچىدىن تۆۋەنلەش</string>
     <string name="nc_description_record_voice">ئاۋازلىق ئۇچۇرنى خاتىرىلەڭ</string>
     <string name="nc_description_send_message_button">ئۇچۇر ئەۋەتىڭ</string>
@@ -251,6 +254,7 @@
     <string name="nc_federation_no_invitations">كۈتۈلمىگەن تەكلىپلەر يوق</string>
     <string name="nc_federation_pending_invitation_hint">تەكلىپنامىڭىز ساقلىنىۋاتىدۇ</string>
     <string name="nc_file_browser_back">قايتىش</string>
+    <string name="nc_file_permission_editable">تەھرىرلەشكە بولىدۇ</string>
     <string name="nc_file_storage_permission">ھۆججەتلەرنى زىيارەت قىلىش ئىجازەتنامىسى تەلەپ قىلىنىدۇ</string>
     <string name="nc_filter">سۆھبەتنى سۈز</string>
     <string name="nc_following_link">ئاممىۋى ئۇلىنىشقا ئەگىشىدىغان ئىشلەتكۈچى</string>
@@ -347,6 +351,7 @@
     <string name="nc_offline">ھازىر تورسىز ، ئۇلىنىشىڭىزنى تەكشۈرۈپ بېقىڭ</string>
     <string name="nc_ok">ماقۇل</string>
     <string name="nc_ongoing_meeting">نۆۋەتتىكى يىغىن</string>
+    <string name="nc_open_conversation">ئوچۇق سۆھبەت</string>
     <string name="nc_open_conversation_to_registered_users">تىزىملاتقان ئابونتلارغا ئوچۇق سۆھبەت</string>
     <string name="nc_open_to_guest_app_users">مېھمان ئەپ ئىشلەتكۈچىلەرگىمۇ ئېچىڭ</string>
     <string name="nc_owner">ئىگىسى</string>
@@ -363,6 +368,7 @@
     <string name="nc_pip_microphone_mute">ئۈنسىز مىكروفون</string>
     <string name="nc_pip_microphone_unmute">مىكروفوننى قوزغىتىڭ</string>
     <string name="nc_plain_old_messages">ئۇچۇرلار</string>
+    <string name="nc_presentation">لېكسىيە</string>
     <string name="nc_profile_personal_info_title">شەخسىي ئۇچۇر</string>
     <string name="nc_promote">رىياسەتچىگە تەشۋىق قىلىڭ</string>
     <string name="nc_public_call_status">ئاممىۋى سۆھبەت</string>
@@ -381,6 +387,7 @@
     <string name="nc_rename_confirm">ئىسىم ئۆزگەرتىش</string>
     <string name="nc_reply">جاۋاب</string>
     <string name="nc_reply_privately">شەخسىي جاۋاب قايتۇرۇڭ</string>
+    <string name="nc_retry">قايتا سىناڭ</string>
     <string name="nc_room_retention">ئۆيگە قايتا ئېرىشىلدى</string>
     <string name="nc_save_message">ساقلاش</string>
     <string name="nc_save_success">مۇۋەپپەقىيەتلىك ساقلاندى</string>
@@ -511,6 +518,7 @@
     <string name="nc_test_results">سىناش نەتىنجىسى</string>
     <string name="nc_today_meeting">بۈگۈن %1$s</string>
     <string name="nc_tomorrow_meeting">ئەتە %1$s</string>
+    <string name="nc_undo">ئەمەلدىن قالدۇرۇش</string>
     <string name="nc_upload_choose_local_files">ھۆججەتلەرنى تاللاڭ</string>
     <string name="nc_upload_confirm_send_multiple">بۇ ھۆججەتلەرنى%1$s غا ئەۋەتىڭ؟</string>
     <string name="nc_upload_confirm_send_single">بۇ ھۆججەتنى %1$s غا ئەۋەتىڭ؟</string>

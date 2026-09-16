@@ -29,6 +29,7 @@ import com.nextcloud.talk.chat.viewmodels.ChatViewModel
 import com.nextcloud.talk.contacts.ContactsRepository
 import com.nextcloud.talk.contacts.ContactsRepositoryImpl
 import com.nextcloud.talk.contacts.ContactsViewModel
+import com.nextcloud.talk.conversationcreation.ConversationCreator
 import com.nextcloud.talk.conversationcreation.data.ConversationCreationRepositoryImpl
 import com.nextcloud.talk.conversationcreation.viewmodel.ConversationCreationViewModel
 import com.nextcloud.talk.conversationlist.data.OfflineConversationsRepository
@@ -43,6 +44,7 @@ import com.nextcloud.talk.data.network.NetworkMonitorImpl
 import com.nextcloud.talk.data.user.UsersDao
 import com.nextcloud.talk.data.user.UsersRepository
 import com.nextcloud.talk.data.user.UsersRepositoryImpl
+import com.nextcloud.talk.repositories.passwordpolicy.PasswordPolicyRepositoryImpl
 import com.nextcloud.talk.repositories.reactions.ReactionsRepository
 import com.nextcloud.talk.repositories.reactions.ReactionsRepositoryImpl
 import com.nextcloud.talk.repositories.unifiedsearch.UnifiedSearchRepository
@@ -243,8 +245,12 @@ class ComposePreviewUtils private constructor(context: Context) {
         get() = ContactsViewModel(contactsRepository, currentUserProvider)
 
     val conversationCreationViewModel: ConversationCreationViewModel
-        get() = ConversationCreationViewModel(
-            ConversationCreationRepositoryImpl(ncApiCoroutines),
-            userProvider
-        )
+        get() = ConversationCreationRepositoryImpl(ncApiCoroutines).let { repository ->
+            ConversationCreationViewModel(
+                repository,
+                ConversationCreator(repository),
+                PasswordPolicyRepositoryImpl(ncApiCoroutines),
+                currentUserProvider
+            )
+        }
 }

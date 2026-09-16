@@ -110,6 +110,7 @@
     <string name="nc_call_name">会話名</string>
     <string name="nc_call_notifications">通話通知</string>
     <string name="nc_call_ongoing_notification_default_title">呼び出し中</string>
+    <string name="nc_call_ongoing_notification_end_action">通話終了</string>
     <string name="nc_call_raised_hand">%1$sさんが手を挙げました</string>
     <string name="nc_call_reconnecting">再接続中 …</string>
     <string name="nc_call_ringing">呼び出し中</string>
@@ -173,6 +174,7 @@
     <string name="nc_conversations_empty_details">友達や同僚に挨拶しましょう！</string>
     <string name="nc_copy_message">コピー</string>
     <string name="nc_copy_message_link">メッセージリンクのコピー</string>
+    <string name="nc_copy_password">パスワードをコピー</string>
     <string name="nc_create_new_conversation">新しい会話を作成する</string>
     <string name="nc_create_poll">投票を作成</string>
     <string name="nc_custom_color">カスタム色</string>
@@ -186,6 +188,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">メッセージは削除されましたが、他サービスへは転送されている可能性があります。</string>
     <string name="nc_delete_now">今すぐ削除</string>
     <string name="nc_deleted_user">ユーザー%1$sは削除されました</string>
+    <string name="nc_deleted_user_display_name">ユーザーを削除</string>
     <string name="nc_demote">モデレータから降格</string>
     <string name="nc_description_record_voice">ボイスメッセージを録音</string>
     <string name="nc_description_send_message_button">メッセージを送信</string>
@@ -310,6 +313,7 @@
     <string name="nc_notify_me_never">決して通知しない</string>
     <string name="nc_offline">現在オフラインです。接続を確認してください。</string>
     <string name="nc_ok">OK</string>
+    <string name="nc_open_conversation">オープンな会話</string>
     <string name="nc_open_conversation_to_registered_users">登録ユーザーに会話を公開</string>
     <string name="nc_open_to_guest_app_users">ゲストアプリユーザーにも開放</string>
     <string name="nc_owner">オーナー</string>
@@ -326,6 +330,7 @@
     <string name="nc_pip_microphone_mute">マイクをミュート</string>
     <string name="nc_pip_microphone_unmute">マイクを有効にする</string>
     <string name="nc_plain_old_messages">メッセージ</string>
+    <string name="nc_presentation">プレゼンテーション</string>
     <string name="nc_profile_personal_info_title">パーソナル情報</string>
     <string name="nc_promote">モデレータに昇格</string>
     <string name="nc_public_call_status">公開会話</string>
@@ -340,6 +345,7 @@
     <string name="nc_rename_confirm">名前を変更</string>
     <string name="nc_reply">返信</string>
     <string name="nc_reply_privately">個人的に返信する</string>
+    <string name="nc_retry">リトライ</string>
     <string name="nc_save_message">保存</string>
     <string name="nc_save_success">保存しました</string>
     <string name="nc_screen_lock_timeout_30">30 秒</string>
@@ -453,6 +459,7 @@
     <string name="nc_start_time">開始時刻</string>
     <string name="nc_switch_account">アカウントの切り替え</string>
     <string name="nc_team">チーム</string>
+    <string name="nc_undo">元に戻す</string>
     <string name="nc_upload_choose_local_files">ファイルを選択</string>
     <string name="nc_upload_confirm_send_multiple">%1$sへこれらのファイルを送信しますか?</string>
     <string name="nc_upload_confirm_send_single">%1$sへこのファイルを送信しますか?</string>

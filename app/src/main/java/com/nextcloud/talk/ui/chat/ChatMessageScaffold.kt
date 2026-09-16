@@ -69,7 +69,9 @@ import com.nextcloud.talk.chat.ui.model.MessageReactionUi
 import com.nextcloud.talk.chat.ui.model.MessageStatusIcon
 import com.nextcloud.talk.chat.ui.model.MessageTypeContent
 import com.nextcloud.talk.contacts.loadImage
+import com.nextcloud.talk.ui.ActorAvatarImage
 import com.nextcloud.talk.ui.theme.LocalViewThemeUtils
+import com.nextcloud.talk.utils.CharacterAvatarUtils
 import com.nextcloud.talk.utils.DateUtils
 import com.nextcloud.talk.utils.DisplayUtils
 import com.nextcloud.talk.utils.TextMatchers
@@ -158,6 +160,7 @@ fun MessageScaffold(
     forceTimeBelow: Boolean = false,
     forceTimeOverlay: Boolean = false,
     bubbleColor: Color? = null,
+    contentWidthFraction: (availableWidth: Dp) -> Float = { 1f },
     content: @Composable () -> Unit
 ) {
     val incoming = uiMessage.incoming
@@ -227,6 +230,7 @@ fun MessageScaffold(
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val messageBubbleMaxWidth = maxWidth * MESSAGE_BUBBLE_MAX_WIDTH_FRACTION
+        val resolvedContentMinWidth = messageBubbleMaxWidth * contentWidthFraction(messageBubbleMaxWidth)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -249,6 +253,7 @@ fun MessageScaffold(
                 captionText = captionText,
                 showInlineMetadata = showInlineMetadata,
                 showQuote = showQuote,
+                contentMinWidth = resolvedContentMinWidth,
                 content = content
             )
         }
@@ -259,22 +264,38 @@ fun MessageScaffold(
 private fun RowScope.MessageLeadingDecoration(uiMessage: ChatMessageUi, isOneToOneConversation: Boolean) {
     val onAvatarClick = LocalAvatarClickHandler.current
     if (uiMessage.incoming && isOneToOneConversation && !uiMessage.isGrouped) {
-        val errorPlaceholderImage: Int = R.drawable.account_circle_96dp
-        val avatarContext = LocalContext.current
-        val loadedImage = remember(uiMessage.avatarUrl) {
-            loadImage(uiMessage.avatarUrl, avatarContext, errorPlaceholderImage)
+        val avatarModifier = Modifier
+            .size(48.dp)
+            .align(Alignment.Top)
+            .padding(end = 8.dp)
+            .combinedClickable(
+                onClick = { onAvatarClick(uiMessage.id) }
+            )
+        val guestLabel = stringResource(R.string.nc_guest)
+        // Guests, email participants and bots have no avatar on the server, so theirs is drawn here
+        val actorAvatar = remember(uiMessage.actorType, uiMessage.actorId, uiMessage.actorDisplayName, guestLabel) {
+            CharacterAvatarUtils.avatarFor(
+                actorType = uiMessage.actorType,
+                actorId = uiMessage.actorId,
+                displayName = uiMessage.actorDisplayName,
+                guestLabel = guestLabel
+            )
         }
-        AsyncImage(
-            model = loadedImage,
-            contentDescription = stringResource(R.string.user_avatar),
-            modifier = Modifier
-                .size(48.dp)
-                .align(Alignment.Top)
-                .padding(end = 8.dp)
-                .combinedClickable(
-                    onClick = { onAvatarClick(uiMessage.id) }
-                )
-        )
+
+        if (actorAvatar != null) {
+            ActorAvatarImage(avatar = actorAvatar, modifier = avatarModifier)
+        } else {
+            val errorPlaceholderImage: Int = R.drawable.account_circle_96dp
+            val avatarContext = LocalContext.current
+            val loadedImage = remember(uiMessage.avatarUrl) {
+                loadImage(uiMessage.avatarUrl, avatarContext, errorPlaceholderImage)
+            }
+            AsyncImage(
+                model = loadedImage,
+                contentDescription = stringResource(R.string.user_avatar),
+                modifier = avatarModifier
+            )
+        }
     } else if (uiMessage.incoming && isOneToOneConversation) {
         Spacer(Modifier.width(48.dp))
     } else if (uiMessage.incoming) {
@@ -297,6 +318,7 @@ private fun MessageBubbleWithReactions(
     captionText: String?,
     showInlineMetadata: Boolean,
     showQuote: Boolean,
+    contentMinWidth: Dp,
     content: @Composable () -> Unit
 ) {
     val bubbleModifier = Modifier
@@ -328,6 +350,8 @@ private fun MessageBubbleWithReactions(
                 captionText = captionText,
                 showInlineMetadata = showInlineMetadata,
                 showQuote = showQuote,
+                contentMinWidth = contentMinWidth,
+                contentMaxWidth = maxBubbleWidth,
                 content = content
             )
         }
@@ -353,6 +377,8 @@ private fun MessageBubbleContent(
     captionText: String?,
     showInlineMetadata: Boolean,
     showQuote: Boolean,
+    contentMinWidth: Dp,
+    contentMaxWidth: Dp,
     content: @Composable () -> Unit
 ) {
     val bubbleContentModifier = if (includePadding) {
@@ -369,13 +395,16 @@ private fun MessageBubbleContent(
             uiMessage = uiMessage,
             paddingAlreadyApplied = includePadding,
             showQuote = showQuote,
-            conversationThreadId = conversationThreadId
+            conversationThreadId = conversationThreadId,
+            contentMinWidth = contentMinWidth
         )
         MessageBodyWithMetadata(
             uiMessage = uiMessage,
             metadataLayoutMode = metadataLayoutMode,
             captionText = captionText,
             showInlineMetadata = showInlineMetadata,
+            contentMinWidth = contentMinWidth,
+            contentMaxWidth = contentMaxWidth,
             content = content
         )
     }
@@ -386,11 +415,12 @@ private fun MessageHeader(
     uiMessage: ChatMessageUi,
     paddingAlreadyApplied: Boolean,
     showQuote: Boolean,
-    conversationThreadId: Long?
+    conversationThreadId: Long?,
+    contentMinWidth: Dp
 ) {
     if (showQuote) {
         uiMessage.parentMessage?.let {
-            CommonMessageQuote(it)
+            CommonMessageQuote(it, contentMinWidth = contentMinWidth)
         }
     }
 
@@ -401,12 +431,15 @@ private fun MessageHeader(
     )
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun ColumnScope.MessageBodyWithMetadata(
     uiMessage: ChatMessageUi,
     metadataLayoutMode: MetadataLayoutMode,
     captionText: String?,
     showInlineMetadata: Boolean,
+    contentMinWidth: Dp,
+    contentMaxWidth: Dp,
     suppressMetadata: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -417,6 +450,8 @@ private fun ColumnScope.MessageBodyWithMetadata(
                 captionText = captionText.orEmpty(),
                 uiMessage = uiMessage,
                 showInlineMetadata = showInlineMetadata,
+                contentMinWidth = contentMinWidth,
+                contentMaxWidth = contentMaxWidth,
                 suppressMetadata = suppressMetadata
             )
         }
@@ -425,8 +460,7 @@ private fun ColumnScope.MessageBodyWithMetadata(
             // Not fillMaxWidth(): OVERLAY is media-only, and media's own content already decides
             // its width (e.g. shrinking narrower for portrait) - forcing full width here would
             // leave the bubble at full size with empty space beside a narrower image instead of
-            // letting the bubble shrink to match. OverlayMetadataBadge's alignment is relative to
-            // this Box's own bounds either way, so it still lands correctly on the content's corner.
+            // letting the bubble shrink to match.
             Box {
                 content()
                 if (!suppressMetadata) {
@@ -477,14 +511,16 @@ private fun ColumnScope.MessageBodyWithMetadata(
 
 @Composable
 private fun BoxScope.OverlayMetadataBadge(uiMessage: ChatMessageUi) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .padding(bottom = 8.dp, end = 8.dp)
-            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-    ) {
-        MessageMetadata(uiMessage = uiMessage, color = Color.White)
+    Box(modifier = Modifier.matchParentSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 8.dp, end = 8.dp)
+                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+        ) {
+            MessageMetadata(uiMessage = uiMessage, color = Color.White)
+        }
     }
 }
 
@@ -618,21 +654,22 @@ private fun ColumnScope.CaptionWithMetadata(
     captionText: String,
     uiMessage: ChatMessageUi,
     showInlineMetadata: Boolean,
+    contentMinWidth: Dp,
+    contentMaxWidth: Dp,
     suppressMetadata: Boolean = false
 ) {
     val highlightSearchTerm = LocalHighlightSearchTerm.current
     if (!suppressMetadata && showInlineMetadata) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .widthIn(min = contentMinWidth)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
             EnrichedText(
                 uiMessage,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp),
+                modifier = Modifier.padding(end = 8.dp),
                 highlightSearchTerm = highlightSearchTerm
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -643,7 +680,7 @@ private fun ColumnScope.CaptionWithMetadata(
         EnrichedText(
             uiMessage,
             modifier = Modifier
-                // .widthIn(20.dp, 280.dp)
+                .widthIn(min = contentMinWidth, max = contentMaxWidth)
                 .padding(start = 8.dp, end = 8.dp),
             highlightSearchTerm = highlightSearchTerm
         )
@@ -662,7 +699,7 @@ private fun ColumnScope.CaptionWithMetadata(
 
 @Suppress("LongMethod")
 @Composable
-fun CommonMessageQuote(message: ChatMessageUi) {
+fun CommonMessageQuote(message: ChatMessageUi, contentMinWidth: Dp = 0.dp) {
     val lineColor = if (!message.incoming) {
         colorScheme.primary
     } else {
@@ -674,7 +711,7 @@ fun CommonMessageQuote(message: ChatMessageUi) {
         modifier = Modifier
             .padding(vertical = 4.dp)
             .combinedClickable(onClick = { onQuotedMessageClick(message.id) })
-            .fillMaxWidth()
+            .widthIn(min = contentMinWidth)
             .drawBehind {
                 val barWidth = 4.dp.toPx()
                 val r = 8.dp.toPx()

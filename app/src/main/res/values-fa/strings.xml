@@ -151,6 +151,7 @@
     <string name="nc_call_notifications">اعلان‌های تماس</string>
     <string name="nc_call_ongoing_notification_content">برای بازگشت به تماس ضربه بزنید.</string>
     <string name="nc_call_ongoing_notification_default_title">تماس در حال انجام</string>
+    <string name="nc_call_ongoing_notification_end_action">پایان تماس</string>
     <string name="nc_call_raised_hand">%1$s دست بلند کرد</string>
     <string name="nc_call_reconnecting">در حال اتصال مجدد …</string>
     <string name="nc_call_ringing">زنگ می‌خورد</string>
@@ -216,6 +217,7 @@
     <string name="nc_conversations_empty_details">به رفقا و هم‌قطاران‌تان سلام کنید!</string>
     <string name="nc_copy_message">کپی کردن</string>
     <string name="nc_copy_message_link">کپی لینک پیام</string>
+    <string name="nc_copy_password">کپی رمز عبور</string>
     <string name="nc_create_new_conversation">ایجاد یک گفتگوی جدید</string>
     <string name="nc_create_poll">ایجاد نظرسنجی</string>
     <string name="nc_custom_color">رنگ سفارشی</string>
@@ -229,6 +231,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">پیام با موفقیت حذف شد، اما ممکن است به سرویس‌های دیگر نشت کرده باشد</string>
     <string name="nc_delete_now">حذف کن</string>
     <string name="nc_deleted_user">کاربر %1$s حذف شد</string>
+    <string name="nc_deleted_user_display_name">کاربر حذف‌شده</string>
     <string name="nc_demote">تنزل مقام از مدیر</string>
     <string name="nc_description_record_voice">ضبط پیام صوتی</string>
     <string name="nc_description_send_message_button">ارسال پیام</string>
@@ -271,6 +274,7 @@
     <string name="nc_federation_no_invitations">هیچ دعوتنامه‌ای در انتظار نیست</string>
     <string name="nc_federation_pending_invitation_hint">شما دعوتنامه‌های در انتظار دارید</string>
     <string name="nc_file_browser_back">بازگشت</string>
+    <string name="nc_file_permission_editable">قابل ویرایش</string>
     <string name="nc_file_storage_permission">دسترسی به فایل الزامی است</string>
     <string name="nc_filter">فیلتر مکالمات</string>
     <string name="nc_following_link">کاربر پس از یک پیوند عمومی</string>
@@ -389,12 +393,14 @@
     <string name="nc_offline">در حال حاضر آفلاین است، لطفاً اتصال خود را بررسی کنید</string>
     <string name="nc_ok">تأیید</string>
     <string name="nc_ongoing_meeting">جلسه در حال انجام</string>
+    <string name="nc_open_conversation">باز کردن گفتگو</string>
     <string name="nc_open_conversation_to_registered_users">مکالمه برای کاربران ثبت‌نام‌شده باز است</string>
     <string name="nc_open_to_guest_app_users">همچنین برای کاربران مهمان برنامه باز است</string>
     <string name="nc_owner">مالک</string>
     <string name="nc_participants">شرکت‌کنندگان</string>
     <string name="nc_participants_add">افزودن شرکت‌کننده</string>
     <string name="nc_password">گذرواژه</string>
+    <string name="nc_password_copied">رمز عبور کپی شد</string>
     <string name="nc_permissions_ask">تنظیم دسترسی‌ها</string>
     <string name="nc_permissions_denied">برخی از دسترسی‌ها رد شدند.</string>
     <string name="nc_permissions_rationale_dialog_title">لطفاً دسترسی‌ها را مجاز کنید</string>
@@ -405,6 +411,7 @@
     <string name="nc_pip_microphone_mute">بی‌صدا کردن میکروفن</string>
     <string name="nc_pip_microphone_unmute">فعال کردن میکروفن</string>
     <string name="nc_plain_old_messages">پیام‌ها</string>
+    <string name="nc_presentation">ارائه</string>
     <string name="nc_profile_personal_info_title">مشخصات شخصی</string>
     <string name="nc_promote">ترفیع به مدیر</string>
     <string name="nc_public_call_status">گفتگوی عمومی</string>
@@ -427,6 +434,7 @@
     <string name="nc_reply_to_thread">پاسخ به موضوع: %1$s</string>
     <string name="nc_reschedule_message_with_notification">برنامه‌ریزی مجدد با اعلان</string>
     <string name="nc_reschedule_message_without_notification">برنامه‌ریزی مجدد بدون اعلان</string>
+    <string name="nc_retry">تلاش مجدد</string>
     <string name="nc_room_retention">اتاق با موفقیت نگه داشته شد</string>
     <string name="nc_save_message">ذخیره</string>
     <string name="nc_save_success">با موفقیت ذخیره شد</string>
@@ -571,6 +579,7 @@
     <string name="nc_test_results">نتایج تست</string>
     <string name="nc_today_meeting">امروز در %1$s</string>
     <string name="nc_tomorrow_meeting">فردا در %1$s</string>
+    <string name="nc_undo">برگرداندن</string>
     <string name="nc_upcoming_event_dismissed">تماس آینده در اطلاعات گفتگو قابل مشاهده است</string>
     <string name="nc_upload_choose_local_files">انتخاب پرونده‌ها</string>
     <string name="nc_upload_confirm_send_multiple">این پرونده‌ها را به %1$s بفرستم؟</string>

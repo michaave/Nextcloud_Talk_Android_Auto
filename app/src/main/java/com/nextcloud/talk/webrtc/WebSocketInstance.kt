@@ -313,6 +313,13 @@ class WebSocketInstance internal constructor(conversationUser: User, connectionU
                 restartWebSocket()
             } else if ("hello_expected" == message.code) {
                 restartWebSocket()
+            } else if ("no_such_room" == message.code) {
+                // The room session is stale (e.g. reaped by the server). Clear the cached join state so a retry
+                // actually sends, and let the call UI fetch a fresh room session via the joinRoom API.
+                Log.d(TAG, "Joining the room was rejected, the room session needs to be refreshed")
+                currentRoomToken = ""
+                currentNormalBackendSession = ""
+                eventBus!!.post(WebSocketCommunicationEvent("roomJoinFailed", HashMap()))
             }
         }
     }
@@ -526,7 +533,7 @@ class WebSocketInstance internal constructor(conversationUser: User, connectionU
         private const val TAG = "WebSocketInstance"
         private const val NORMAL_CLOSURE = 1000
         private const val ONE_SECOND: Long = 1000
-        private const val PING_INTERVAL_SECONDS: Long = 10
+        private const val PING_INTERVAL_SECONDS: Long = 30
 
         // Dedicated client with pings, so half-open WebSocket connections
         // (e.g. after a WiFi to cellular switch without TCP reset) fail and trigger the reconnect path.

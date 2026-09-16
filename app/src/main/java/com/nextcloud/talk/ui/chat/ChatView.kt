@@ -57,6 +57,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CollectionInfo
+import androidx.compose.ui.semantics.collectionInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -87,6 +90,8 @@ private const val STICKY_HEADER_HIDE_DELAY_MILLIS = 1200L
 private const val UNREAD_MARKER_LAYOUT_TIMEOUT_MS = 500L
 private const val PREVIEW_SAMPLE_CHAT_COUNT = 50
 private const val PREVIEW_UNREAD_MARKER_OFFSET = 15
+
+private const val NO_COLLECTION_INFO_COUNT = 1
 
 private data class QuoteHighlightEvent(val messageId: Int, val nonce: Long)
 
@@ -296,9 +301,9 @@ fun ChatView(
 
                 val oldestLoadedMessageId = latestChatItems
                     .asReversed()
-                    .firstNotNullOfOrNull { (it as? ChatViewModel.ChatItem.MessageItem)?.uiMessage?.id }
+                    .firstNotNullOfOrNull { it.messageOrNull()?.id }
                 val newestLoadedMessageId = latestChatItems
-                    .firstNotNullOfOrNull { (it as? ChatViewModel.ChatItem.MessageItem)?.uiMessage?.id }
+                    .firstNotNullOfOrNull { it.messageOrNull()?.id }
 
                 if (shouldLoadOlder && oldestLoadedMessageId != null) {
                     callbacks.onLoadMore?.invoke(oldestLoadedMessageId, ChatViewModel.LoadMoreDirection.OLDER)
@@ -328,18 +333,8 @@ fun ChatView(
             }
             targetItem?.let { itemInfo ->
                 state.chatItems.getOrNull(itemInfo.index)?.let { item ->
-                    when (item) {
-                        is ChatViewModel.ChatItem.MessageItem ->
-                            formatTime(item.uiMessage.timestamp * LONG_1000)
-
-                        is ChatViewModel.ChatItem.DateHeaderItem ->
-                            formatTime(item.date)
-
-                        is ChatViewModel.ChatItem.UnreadMessagesMarkerItem ->
-                            formatTime(item.date)
-
-                        else -> ""
-                    }
+                    item.dateOrNull()?.let { formatTime(it) }
+                        ?: item.messageOrNull()?.let { formatTime(it.timestamp * LONG_1000) }
                 } ?: ""
             } ?: ""
         }
@@ -368,7 +363,7 @@ fun ChatView(
         if (!isAtNewest) return@LaunchedEffect
 
         state.chatItems
-            .firstNotNullOfOrNull { (it as? ChatViewModel.ChatItem.MessageItem)?.uiMessage?.id }
+            .firstNotNullOfOrNull { it.messageOrNull()?.id }
             ?.let { newestId ->
                 callbacks.advanceLocalLastReadMessageIfNeeded?.invoke(newestId)
             }
@@ -388,6 +383,12 @@ fun ChatView(
             contentPadding = PaddingValues(bottom = 20.dp),
             modifier = Modifier
                 .fillMaxSize()
+                .semantics {
+                    collectionInfo = CollectionInfo(
+                        rowCount = NO_COLLECTION_INFO_COUNT,
+                        columnCount = NO_COLLECTION_INFO_COUNT
+                    )
+                }
         ) {
             items(
                 items = state.chatItems,
@@ -426,6 +427,35 @@ fun ChatView(
                                     onOpenThreadClick = callbacks.messageCallbacks.onOpenThreadClick,
                                     onQuotedMessageClick = handleQuotedMessageClick,
                                     onSystemMessageExpandClick = callbacks.messageCallbacks.onSystemMessageExpandClick,
+                                    onAvatarClick = callbacks.messageCallbacks.onAvatarClick,
+                                    onCancelUpload = callbacks.messageCallbacks.onCancelUpload
+                                )
+                            )
+                        }
+                    }
+
+                    is ChatViewModel.ChatItem.MediaGroupItem -> {
+                        Box(
+                            modifier = Modifier.padding(
+                                top = if (!chatItem.messages.first().isGrouped) 4.dp else 0.dp
+                            )
+                        ) {
+                            MediaGroupMessage(
+                                messages = chatItem.messages,
+                                context = ChatMessageContext(
+                                    isOneToOneConversation = state.isOneToOneConversation,
+                                    conversationThreadId = state.conversationThreadId,
+                                    hasChatPermission = state.hasChatPermission,
+                                    downloadingFileState = state.downloadingFileState
+                                ),
+                                callbacks = ChatMessageCallbacks(
+                                    onLongClick = callbacks.messageCallbacks.onLongClick,
+                                    onSwipeReply = callbacks.messageCallbacks.onSwipeReply,
+                                    onFileClick = callbacks.messageCallbacks.onFileClick,
+                                    onReactionClick = callbacks.messageCallbacks.onReactionClick,
+                                    onReactionLongClick = callbacks.messageCallbacks.onReactionLongClick,
+                                    onOpenThreadClick = callbacks.messageCallbacks.onOpenThreadClick,
+                                    onQuotedMessageClick = handleQuotedMessageClick,
                                     onAvatarClick = callbacks.messageCallbacks.onAvatarClick,
                                     onCancelUpload = callbacks.messageCallbacks.onCancelUpload
                                 )

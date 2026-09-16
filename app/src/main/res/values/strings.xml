@@ -169,6 +169,8 @@ How to translate with transifex:
     <string name="nc_media_quality_original">Original quality</string>
     <string name="nc_media_quality_reduced">Reduced quality</string>
     <string name="nc_media_quality_original_hint">Sending original quality uses more mobile data.</string>
+    <string name="nc_file_permission_view_only">View-only</string>
+    <string name="nc_file_permission_editable">Editable</string>
     <string name="nc_close_video_playback">Close video playback</string>
     <string name="nc_settings_read_privacy_key" translatable="false">read_privacy</string>
     <string name="nc_locked_tap_to_unlock">Tap to unlock</string>
@@ -302,6 +304,7 @@ How to translate with transifex:
     <string name="nc_diagnosis_notification_permission" translatable="false">Notification permissions</string>
     <string name="nc_diagnosis_notification_calls_channel_permission" translatable="false">Calls notification channel enabled?</string>
     <string name="nc_diagnosis_notification_messages_channel_permission" translatable="false">Messages notification channel enabled?</string>
+    <string name="nc_diagnosis_full_screen_intent_permission_title" translatable="false">Show incoming call over lock screen</string>
     <string name="nc_diagnosis_firebase_push_token_title" translatable="false">Firebase push token</string>
     <string name="nc_diagnosis_firebase_push_token_latest_generated" translatable="false">Latest firebase push token generation</string>
     <string name="nc_diagnosis_firebase_push_token_latest_fetch" translatable="false">Latest firebase push token fetch</string>
@@ -331,6 +334,7 @@ How to translate with transifex:
 
     <!-- Conversation menu -->
     <string name="nc_leave">Leave conversation</string>
+    <string name="nc_undo">Undo</string>
     <string name="nc_clear_history">Delete all messages</string>
     <string name="nc_clear_history_warning">Do you really want to delete all messages in this conversation?</string>
     <string name="nc_clear_history_success">All messages were deleted</string>
@@ -386,6 +390,7 @@ How to translate with transifex:
     <string name="nc_camera_permission_hint">To enable video communication please grant \"Camera\" permission.</string>
     <string name="nc_microphone_permission_hint">To enable voice communication please grant \"Microphone\" permission.</string>
     <string name="nc_bluetooth_permission_hint">To enable bluetooth speakers please grant \"Nearby devices\" permission.</string>
+    <string name="nc_notification_permission_hint">To show call notifications and keep calls active in the background, please grant \"Notifications\" permission.</string>
     <string name="nc_microphone_enabled_audio_recording">Microphone is enabled and audio is recording</string>
 
     <!-- Call -->
@@ -398,6 +403,7 @@ How to translate with transifex:
     <string name="nc_nick_guest">Guest</string>
     <string name="nc_public_call_status">Public conversation</string>
     <string name="nc_call_timeout">No response in 45 seconds, tap to try again</string>
+    <string name="nc_call_join_failed">Could not join the call. Please try again.</string>
     <string name="nc_call_reconnecting">Reconnecting …</string>
     <string name="nc_offline">Currently offline, please check your connectivity</string>
     <string name="nc_leaving_call">Leaving call …</string>
@@ -407,6 +413,8 @@ How to translate with transifex:
     <string name="nc_missed_call">You missed a call from %s</string>
     <string name="nc_call_ongoing_notification_default_title">Call in progress</string>
     <string name="nc_call_ongoing_notification_content">Tap to return to your call.</string>
+    <string name="nc_call_ongoing_notification_return_action">Return to call</string>
+    <string name="nc_call_ongoing_notification_end_action">End call</string>
     <string name="nc_call_button_content_description_pip">Open picture-in-picture mode</string>
     <string name="nc_call_button_content_description_audio_output">Change audio output</string>
     <string name="nc_call_button_content_description_camera">Toggle camera</string>
@@ -431,9 +439,11 @@ How to translate with transifex:
     <!-- Notification channels -->
     <string name="nc_notification_channel">%1$s on %2$s notification channel</string>
     <string name="nc_notification_channel_calls">Calls</string>
+    <string name="nc_notification_channel_calls_ongoing">Ongoing call</string>
     <string name="nc_notification_channel_messages">Messages</string>
     <string name="nc_notification_channel_uploads">Uploads</string>
     <string name="nc_notification_channel_calls_description">Notify about incoming calls</string>
+    <string name="nc_notification_channel_calls_ongoing_description">Persistent status for a call in progress</string>
     <string name="nc_notification_channel_messages_description">Notify about incoming messages</string>
     <string name="nc_notification_channel_uploads_description">Notify about upload progress</string>
     <string name="nc_notification_settings">Notification settings</string>
@@ -460,6 +470,16 @@ How to translate with transifex:
     <!-- Moderation -->
     <string name="nc_demote">Demote from moderator</string>
     <string name="nc_promote">Promote to moderator</string>
+    <!-- Give a participant the conversation owner rank, the highest level of permissions -->
+    <string name="nc_promote_to_owner">Promote to owner</string>
+    <!-- Take the owner rank away, leaving the participant with moderator permissions -->
+    <string name="nc_demote_owner_to_moderator">Demote from owner to moderator</string>
+    <!-- Take the owner rank away, leaving the participant with no elevated permissions -->
+    <string name="nc_demote_owner_to_participant">Demote from owner to participant</string>
+    <!-- Shown when the server refuses to change a participant's rank -->
+    <string name="nc_participant_type_change_failed">Could not change the type of the participant</string>
+    <!-- Shown when demoting would leave the conversation without any moderator -->
+    <string name="nc_last_moderator_cannot_be_demoted">The last moderator of a conversation can not be demoted</string>
     <string name="nc_remove_participant">Remove participant</string>
     <string name="nc_remove_team_and_members">Remove team and members</string>
     <string name="nc_remove_group_and_members">Remove group and members</string>
@@ -626,6 +646,8 @@ How to translate with transifex:
     <string name="nc_keep">Keep</string>
     <string name="nc_delete_message_leaked_to_matterbridge">Message deleted successfully, but it might have been leaked to other services</string>
     <string name="startCallForbidden">You are not allowed to start a call</string>
+    <string name="nc_call_e2ee_not_supported_title">Call from %s unavailable</string>
+    <string name="nc_call_e2ee_not_supported">Calling is currently not supported because end-to-end encryption is enabled on the server</string>
     <string name="nc_last_moderator_leaving_room_warning">You need to promote a new moderator before you can leave the conversation</string>
     <string name="nc_room_retention">Room is retained successfully</string>
 
@@ -798,6 +820,7 @@ How to translate with transifex:
     <string name="nc_dialog_invalid_password">Invalid password</string>
     <string name="nc_dialog_reauth_or_delete">Do you want to reauthorize or delete this account?</string>
     <string name="nc_deleted_user">User %1$s was removed</string>
+    <string name="nc_deleted_user_display_name">Deleted user</string>
     <string name="nc_remote_wipe_logged_out">Credentials for this account were no longer valid</string>
 
     <string name="nc_dialog_outdated_client">App is outdated</string>
@@ -910,6 +933,28 @@ How to translate with transifex:
     <string name="voice_room">Voice room</string>
     <string name="default_room_preset">Send messages, create threads, and start voice and video calls</string>
     <string name="voice_room_preset">Directly join the call, ideal for catch-ups or spontaneous meetings</string>
+    <string name="nc_conversation_types_error">Conversation types could not be loaded</string>
+    <string name="nc_webinar_description">Restricted conversation with lobby enabled, ideal for public webinars</string>
+    <string name="nc_presentation">Presentation</string>
+    <string name="nc_presentation_description">Restricted conversation for internal presentations</string>
+    <string name="nc_classified_conversation_description">Locked down conversation for confidential topics, with public access, guests, SIP and recordings disabled</string>
+    <string name="nc_conversation_type_defaults">Default settings of this conversation type:</string>
+    <string name="nc_conversation_type_defaults_hint">These settings can be changed once the conversation is created</string>
+    <string name="nc_conversation_type_message_expiration">Messages expire after %1$s</string>
+    <string name="nc_conversation_type_message_expiration_custom">Message expiration is enabled</string>
+    <string name="nc_conversation_type_lobby">Lobby enabled, restricting the conversation to moderators</string>
+    <string name="nc_conversation_type_mentions_moderators">Only moderators are allowed to mention everyone</string>
+    <string name="nc_conversation_type_sip">Phone and SIP dial-in enabled</string>
+    <string name="nc_conversation_type_sip_no_pin">Dial-in without a PIN allowed</string>
+    <string name="nc_conversation_created_title">Conversation created</string>
+    <string name="nc_conversation_created_public">Guests can join this conversation with its link. Share it now or later from the conversation settings.</string>
+    <string name="nc_copy_password">Copy password</string>
+    <string name="nc_password_copied">Password copied</string>
+    <string name="nc_open_conversation">Open conversation</string>
+    <string name="nc_conversation_created_invalid_participants">Some participants could not be added</string>
+    <string name="nc_conversation_created_invalid_participants_named">These participants could not be added: %1$s</string>
+    <string name="nc_password_required">This server requires a password for conversations guests can join</string>
+    <string name="nc_retry">Retry</string>
 
     <!-- Invitations -->
     <string name="nc_invitations">Invitations</string>
@@ -1071,4 +1116,5 @@ How to translate with transifex:
     <string name="turn_on_background_blur">Turn on background blur</string>
     <string name="turn_off_background_blur">Turn off background blur</string>
     <string name="nc_no_account_found">Account not found</string>
+    <string name="nc_password_secure">Password is secure</string>
 </resources>

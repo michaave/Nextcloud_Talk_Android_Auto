@@ -92,7 +92,7 @@ import androidx.media3.session.SessionToken
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
-import androidx.work.OutOfQuotaPolicy
+import com.nextcloud.talk.utils.setExpeditedIfSupported
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import autodagger.AutoInjector
@@ -142,6 +142,8 @@ import com.nextcloud.talk.jobs.DownloadFileToCacheWorker
 import com.nextcloud.talk.jobs.ShareOperationWorker
 import com.nextcloud.talk.jobs.UploadAndShareFilesWorker
 import com.nextcloud.talk.location.LocationPickerActivity
+import com.nextcloud.talk.mediaviewer.activities.MediaViewerActivity
+import com.nextcloud.talk.mediaviewer.model.capSeedAroundMessage
 import com.nextcloud.talk.models.ExternalSignalingServer
 import com.nextcloud.talk.models.domain.ConversationModel
 import com.nextcloud.talk.models.json.capabilities.SpreedCapability
@@ -251,6 +253,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.ExecutionException
 import javax.inject.Inject
 import java.util.concurrent.CancellationException
@@ -388,6 +391,7 @@ class ChatActivity :
     private lateinit var path: String
 
     var myFirstMessage: CharSequence? = null
+    private var isLeavingRoom: Boolean = false
 
     private var lastHandledHighlightNonce: Long? = null
     private var pendingHighlightedMessageId: Long? = null
@@ -510,6 +514,24 @@ class ChatActivity :
     private lateinit var messageInputFragment: MessageInputFragment
 
     val typingParticipants = HashMap<String, TypingParticipant>()
+
+    private val leaveRoomObserver = androidx.lifecycle.Observer<ChatViewModel.ViewState> { state ->
+        when (state) {
+            is ChatViewModel.LeaveRoomSuccessState -> {
+                logConversationInfos("leaveRoom#onNext")
+
+                isLeavingRoom = false
+
+                if (getRoomInfoTimerHandler != null) {
+                    getRoomInfoTimerHandler?.removeCallbacksAndMessages(null)
+                }
+
+                ApplicationWideCurrentRoomHolder.getInstance().clear()
+            }
+
+            else -> {}
+        }
+    }
 
     private val localParticipantMessageListener = SignalingMessageReceiver.LocalParticipantMessageListener { token ->
         if (CallActivity.active) {
@@ -1285,11 +1307,24 @@ class ChatActivity :
     ) {
         lifecycleScope.launch {
             val chatMessage = chatViewModel.getMessageById(messageId.toLong()).first()
-            FileViewerUtils(this@ChatActivity, conversationUser).openFile(
-                chatMessage,
-                openWhenDownloadState,
-                downloadState
-            )
+            val mimetype = chatMessage.fileParameters.mimetype
+            val fileViewerUtils = FileViewerUtils(this@ChatActivity, conversationUser)
+
+            val isViewableMedia = mimetype.startsWith(Mimetype.IMAGE_PREFIX) ||
+                mimetype.startsWith(Mimetype.VIDEO_PREFIX)
+            val seedItems = if (isViewableMedia) {
+                chatViewModel.mediaViewerSeed().flatMap { it.items }.capSeedAroundMessage(messageId.toLong())
+            } else {
+                emptyList()
+            }
+
+            if (isViewableMedia && seedItems.any { it.messageId == messageId.toLong() }) {
+                startActivity(
+                    MediaViewerActivity.newIntent(this@ChatActivity, roomToken, seedItems, messageId.toLong())
+                )
+            } else {
+                fileViewerUtils.openFile(chatMessage, openWhenDownloadState, downloadState)
+            }
         }
     }
 
@@ -1666,6 +1701,8 @@ class ChatActivity :
             }
         }
 
+        chatViewModel.leaveRoomViewState.observeForever(leaveRoomObserver)
+
         messageInputViewModel.sendChatMessageViewState.observe(this) { state ->
             when (state) {
                 is MessageInputViewModel.SendChatMessageSuccessState -> {
@@ -2019,6 +2056,9 @@ class ChatActivity :
 
         pullChatMessagesPending = false
 
+        // reset in case a previously started leave failed (success already resets this in leaveRoomObserver)
+        isLeavingRoom = false
+
         webSocketInstance?.getSignalingMessageReceiver()?.addListener(localParticipantMessageListener)
         webSocketInstance?.getSignalingMessageReceiver()?.addListener(conversationMessageListener)
 
@@ -2364,7 +2404,7 @@ class ChatActivity :
         val downloadWorker: OneTimeWorkRequest = OneTimeWorkRequest.Builder(DownloadFileToCacheWorker::class.java)
             .setInputData(data)
             .addTag(fileId)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setExpeditedIfSupported()
             .build()
 
         WorkManager.getInstance().enqueue(downloadWorker)
@@ -2522,7 +2562,7 @@ class ChatActivity :
                         .build()
                     val worker = OneTimeWorkRequest.Builder(ShareOperationWorker::class.java)
                         .setInputData(data)
-                        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                        .setExpeditedIfSupported()
                         .build()
                     WorkManager.getInstance().enqueue(worker)
                 }
@@ -2560,14 +2600,7 @@ class ChatActivity :
         try {
             require(filesToUpload.isNotEmpty())
 
-            val newFragment = FileAttachmentPreviewFragment.newInstance(
-                filesToUpload.map { it.toString() }.toMutableList(),
-                currentConversation?.displayName ?: ""
-            )
-            newFragment.setListener { files, caption, compressImages ->
-                uploadFiles(files, caption, compressImages)
-            }
-            newFragment.show(supportFragmentManager, FileAttachmentPreviewFragment.TAG)
+            showFileAttachmentPreview(filesToUpload.map { it.toString() }.toMutableList())
         } catch (e: IllegalStateException) {
             context.resources?.getString(R.string.nc_upload_failed)?.let {
                 Snackbar.make(
@@ -2587,6 +2620,18 @@ class ChatActivity :
             }
             Log.e(javaClass.simpleName, "Something went wrong when trying to upload file", e)
         }
+    }
+
+    private fun showFileAttachmentPreview(files: MutableList<String>) {
+        val newFragment = FileAttachmentPreviewFragment.newInstance(
+            files,
+            currentConversation?.displayName ?: "",
+            CapabilitiesUtil.hasConversationSubfoldersForAttachments(spreedCapabilities)
+        )
+        newFragment.setListener { selectedFiles, caption, compressImages, allowUpdate ->
+            uploadFiles(selectedFiles, caption, compressImages, allowUpdate)
+        }
+        newFragment.show(supportFragmentManager, FileAttachmentPreviewFragment.TAG)
     }
 
     private fun onSelectContactResult(intent: Intent?) {
@@ -2645,14 +2690,7 @@ class ChatActivity :
             }
 
             if (permissionUtil.isFilesPermissionGranted()) {
-                val newFragment = FileAttachmentPreviewFragment.newInstance(
-                    filesToUpload,
-                    currentConversation?.displayName ?: ""
-                )
-                newFragment.setListener { files, caption, compressImages ->
-                    uploadFiles(files, caption, compressImages)
-                }
-                newFragment.show(supportFragmentManager, FileAttachmentPreviewFragment.TAG)
+                showFileAttachmentPreview(filesToUpload)
             } else {
                 UploadAndShareFilesWorker.requestStoragePermission(this)
             }
@@ -2706,9 +2744,9 @@ class ChatActivity :
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == UploadAndShareFilesWorker.REQUEST_PERMISSION) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "upload starting after permissions were granted")
+                Log.d(TAG, "showing upload preview after permissions were granted")
                 if (filesToUpload.isNotEmpty()) {
-                    uploadFiles(filesToUpload)
+                    showFileAttachmentPreview(filesToUpload)
                 }
             } else {
                 Snackbar
@@ -2759,7 +2797,13 @@ class ChatActivity :
         }
     }
 
-    private fun uploadFiles(files: MutableList<String>, caption: String = "", compressImages: Boolean = false) {
+    private fun uploadFiles(
+        files: MutableList<String>,
+        caption: String = "",
+        compressImages: Boolean = false,
+        allowUpdate: Boolean = false
+    ) {
+        val uploadId = UUID.randomUUID().toString()
         for (i in 0 until files.size) {
             uploadFile(
                 fileUri = files[i],
@@ -2768,7 +2812,10 @@ class ChatActivity :
                 roomToken = roomToken,
                 replyToMessageId = getReplyToMessageId(),
                 displayName = currentConversation?.displayName!!,
-                compressImages = compressImages
+                compressImages = compressImages,
+                uploadId = uploadId,
+                order = i + 1,
+                allowUpdate = allowUpdate
             )
         }
     }
@@ -2932,11 +2979,13 @@ class ChatActivity :
         }
 
         if (::conversationUser.isInitialized && isActivityNotChangingConfigurations() && isNotInCall()) {
-            ApplicationWideCurrentRoomHolder.getInstance().clear()
-            if (validSessionId()) {
+            if (isLeavingRoom) {
+                Log.d(TAG, "not leaving room (leave already in progress)")
+            } else if (validSessionId()) {
                 leaveRoom(null)
             } else {
                 Log.d(TAG, "not leaving room (validSessionId is false)")
+                ApplicationWideCurrentRoomHolder.getInstance().clear()
             }
         } else {
             Log.d(TAG, "not leaving room...")
@@ -2978,6 +3027,8 @@ class ChatActivity :
         super.onDestroy()
         logConversationInfos("onDestroy")
 
+        chatViewModel.leaveRoomViewState.removeObserver(leaveRoomObserver)
+
         findViewById<View>(R.id.toolbar)?.setOnClickListener(null)
 
         if (actionBar != null) {
@@ -3013,6 +3064,7 @@ class ChatActivity :
 
     fun leaveRoom(functionToCallAfterLeave: (() -> Unit)?) {
         logConversationInfos("leaveRoom")
+        isLeavingRoom = true
 
         // Send the HPB "leave room" immediately, before waiting for the backend DELETE to
         // confirm. This minimises the window in which the HPB could still consider the user
@@ -3317,7 +3369,7 @@ class ChatActivity :
         val deleteConversationWorker =
             OneTimeWorkRequest.Builder(DeleteConversationWorker::class.java)
                 .setInputData(data.build())
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setExpeditedIfSupported()
                 .build()
         WorkManager.getInstance().enqueue(deleteConversationWorker)
 
@@ -3410,6 +3462,10 @@ class ChatActivity :
     private fun startACall(isVoiceOnlyCall: Boolean, callWithoutNotification: Boolean) {
         currentConversation?.let {
             if (::conversationUser.isInitialized) {
+                if (CapabilitiesUtil.isCallEndToEndEncryptionEnabled(spreedCapabilities)) {
+                    Snackbar.make(binding.root, R.string.nc_call_e2ee_not_supported, Snackbar.LENGTH_LONG).show()
+                    return
+                }
                 val pp = ParticipantPermissions(spreedCapabilities, it)
                 if (!pp.canStartCall() && currentConversation?.hasCall == false) {
                     Snackbar.make(binding.root, R.string.startCallForbidden, Snackbar.LENGTH_LONG).show()
@@ -3920,8 +3976,12 @@ class ChatActivity :
     fun openInFilesApp(message: ChatMessage) {
         val keyID = message.fileParameters.id
         val link = message.fileParameters.link
-        val fileViewerUtils = FileViewerUtils(this, message.activeUser!!)
-        fileViewerUtils.openFileInFilesApp(link!!, keyID!!)
+        if (keyID.isEmpty() || link.isEmpty()) {
+            Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        val fileViewerUtils = FileViewerUtils(this, conversationUser)
+        fileViewerUtils.openFileInFilesApp(link, keyID)
     }
 
     private fun hasVisibleItems(message: ChatMessage): Boolean =
@@ -4155,7 +4215,10 @@ class ChatActivity :
         roomToken: String = "",
         replyToMessageId: Int? = null,
         displayName: String,
-        compressImages: Boolean = false
+        compressImages: Boolean = false,
+        uploadId: String? = null,
+        order: Int = 1,
+        allowUpdate: Boolean = false
     ) {
         chatViewModel.uploadFile(
             fileUri,
@@ -4164,21 +4227,20 @@ class ChatActivity :
             roomToken,
             replyToMessageId,
             displayName,
-            compressImages
+            compressImages,
+            uploadId,
+            order,
+            allowUpdate
         )
         cancelReply()
     }
 
     fun cancelReply() {
-        messageInputViewModel.reply(null)
-        chatViewModel.messageDraft.quotedMessageText = null
-        chatViewModel.messageDraft.quotedDisplayName = null
-        chatViewModel.messageDraft.quotedImageUrl = null
-        chatViewModel.messageDraft.quotedJsonId = null
+        messageInputViewModel.cancelReply()
     }
 
     fun cancelCreateThread() {
-        chatViewModel.clearThreadTitle()
+        messageInputViewModel.cancelCreateThread()
     }
 
     companion object {

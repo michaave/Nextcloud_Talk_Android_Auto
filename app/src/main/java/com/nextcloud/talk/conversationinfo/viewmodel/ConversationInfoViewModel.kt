@@ -37,8 +37,10 @@ import com.nextcloud.talk.models.json.participants.Participant.ActorType.USERS
 import com.nextcloud.talk.models.json.participants.ParticipantsOverall
 import com.nextcloud.talk.models.json.participants.TalkBan
 import com.nextcloud.talk.models.json.profile.Profile
+import com.nextcloud.talk.passwordpolicy.PasswordPolicyValidator
 import com.nextcloud.talk.repositories.conversations.ConversationsRepository
 import com.nextcloud.talk.repositories.conversations.ConversationsRepository.ResendInvitationsResult
+import com.nextcloud.talk.repositories.passwordpolicy.PasswordPolicyRepository
 import com.nextcloud.talk.utils.ApiUtils
 import com.nextcloud.talk.utils.ApiUtils.getUrlForRooms
 import com.nextcloud.talk.utils.CapabilitiesUtil
@@ -74,7 +76,8 @@ import javax.inject.Inject
 class ConversationInfoViewModel @Inject constructor(
     private val chatNetworkDataSource: ChatNetworkDataSource,
     private val conversationsRepository: ConversationsRepository,
-    private val ncApi: NcApi
+    private val ncApi: NcApi,
+    private val passwordPolicyRepository: PasswordPolicyRepository
 ) : ViewModel() {
     object LifeCycleObserver : DefaultLifecycleObserver {
         enum class LifeCycleFlag {
@@ -108,6 +111,7 @@ class ConversationInfoViewModel @Inject constructor(
     private var currentUser: User? = null
     private var currentToken: String = ""
     private var databaseStorageModule: DatabaseStorageModule? = null
+    val passwordValidation = PasswordPolicyValidator(passwordPolicyRepository, viewModelScope) { currentUser }
     private val _uiState = MutableStateFlow(ConversationInfoUiState())
     val uiState: StateFlow<ConversationInfoUiState> = _uiState.asStateFlow()
     private val _uiEvent = MutableSharedFlow<ConversationInfoUiEvent>(extraBufferCapacity = 1)
@@ -157,7 +161,7 @@ class ConversationInfoViewModel @Inject constructor(
             val role = ParticipantRoleUtils.roleOf(participant, conversationType)
             if (participant.calculatedActorType == USERS && participant.calculatedActorId == userId) {
                 participant.sessionId = "-1"
-                ownUiItem = ParticipantModel(participant, true, role)
+                ownUiItem = ParticipantModel(participant, true, role, isSelf = true)
             } else {
                 uiItems.add(ParticipantModel(participant, isOnline, role))
             }
@@ -168,6 +172,7 @@ class ConversationInfoViewModel @Inject constructor(
         }
         return uiItems
     }
+
     fun getRoom(user: User, token: String) {
         currentUser = user
         currentToken = token
@@ -224,6 +229,7 @@ class ConversationInfoViewModel @Inject constructor(
             }
         }
     }
+
     private fun convertAutocompleteUserToParticipant(autocompleteUsers: List<AutocompleteUser>): Participants {
         val participants = Participants()
         autocompleteUsers.forEach { autocompleteUser ->
@@ -558,16 +564,31 @@ class ConversationInfoViewModel @Inject constructor(
     }
 
     @Suppress("Detekt.TooGenericExceptionCaught")
-    fun allowGuests(user: User, token: String, allow: Boolean) {
+    fun allowGuests(user: User, token: String, allow: Boolean, password: String = "") {
         val previous = _uiState.value.guestsAllowed
-        _uiState.update { it.copy(guestsAllowed = allow) }
+        val previousHasPassword = _uiState.value.hasPassword
+        val previousShowPasswordProtection = _uiState.value.showPasswordProtection
+        val hasPassword = allow && (_uiState.value.hasPassword || password.isNotEmpty())
+        _uiState.update { it.copy(guestsAllowed = allow, hasPassword = hasPassword, showPasswordProtection = allow) }
         viewModelScope.launch {
             try {
                 val apiVersion = ApiUtils.getConversationApiVersion(user, intArrayOf(ApiUtils.API_V4, ApiUtils.API_V1))
                 val url = ApiUtils.getUrlForRoomPublic(apiVersion, user.baseUrl!!, token)
-                conversationsRepository.allowGuests(user = user, url = url, token = token, allow = allow)
+                conversationsRepository.allowGuests(
+                    user = user,
+                    url = url,
+                    token = token,
+                    allow = allow,
+                    password = password
+                )
             } catch (exception: Exception) {
-                _uiState.update { it.copy(guestsAllowed = previous) }
+                _uiState.update {
+                    it.copy(
+                        guestsAllowed = previous,
+                        hasPassword = previousHasPassword,
+                        showPasswordProtection = previousShowPasswordProtection
+                    )
+                }
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_guest_access_allow_failed))
                 Log.e(TAG, "Error allowing guests", exception)
             }
@@ -820,8 +841,16 @@ class ConversationInfoViewModel @Inject constructor(
         _uiState.update { it.copy(upcomingEventSummary = summary, upcomingEventTime = time) }
     }
 
+    fun setParticipantForOps(model: ParticipantModel?) {
+        _uiState.update { it.copy(participantForOps = model) }
+    }
+
     suspend fun emitSnackbar(@androidx.annotation.StringRes resId: Int) {
         _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(resId))
+    }
+
+    suspend fun emitSnackbar(text: String) {
+        _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbarText(text))
     }
 
     @Suppress("Detekt.TooGenericExceptionCaught")

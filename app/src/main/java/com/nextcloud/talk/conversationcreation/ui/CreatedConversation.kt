@@ -1,0 +1,149 @@
+/*
+ * Nextcloud Talk - Android Client
+ *
+ * SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+package com.nextcloud.talk.conversationcreation.ui
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Toast
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.stringResource
+import com.nextcloud.talk.R
+import com.nextcloud.talk.chat.ChatActivity
+import com.nextcloud.talk.conversationcreation.viewmodel.RoomUIState
+import com.nextcloud.talk.data.user.model.User
+import com.nextcloud.talk.models.json.conversations.ConversationEnums
+import com.nextcloud.talk.utils.CapabilitiesUtil
+import com.nextcloud.talk.utils.ShareUtils
+import com.nextcloud.talk.utils.bundle.BundleKeys
+import com.nextcloud.talk.utils.copyPasswordToClipboard
+
+/**
+ * Reacts to the outcome of creating a conversation: reports what could not be done, hands public
+ * conversations to the caller so their link can be shared, and opens every other one right away.
+ */
+@Composable
+fun CreationResultEffect(
+    creationState: RoomUIState,
+    context: Context,
+    onPublicConversation: (token: String, hasPassword: Boolean) -> Unit,
+    onHandled: () -> Unit
+) {
+    LaunchedEffect(creationState) {
+        when (val state = creationState) {
+            is RoomUIState.Error -> {
+                val reason = state.serverMessage?.takeIf { it.isNotBlank() }
+                if (reason == null) {
+                    Toast.makeText(context, R.string.nc_common_error_sorry, Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
+                }
+                onHandled()
+            }
+
+            is RoomUIState.Success -> {
+                val conversation = state.conversation
+                val roomToken = conversation?.token
+                if (roomToken == null) {
+                    onHandled()
+                } else {
+                    reportInvalidParticipants(context, conversation.invalidParticipants)
+                    if (conversation.type == ConversationEnums.ConversationType.ROOM_PUBLIC_CALL) {
+                        onPublicConversation(roomToken, conversation.hasPassword)
+                        onHandled()
+                    } else {
+                        onHandled()
+                        openConversation(context, roomToken)
+                    }
+                }
+            }
+
+            else -> Unit
+        }
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+fun ShareCreatedConversation(
+    roomToken: String?,
+    password: String?,
+    currentUser: User?,
+    context: Context,
+    onDismiss: (roomToken: String) -> Unit
+) {
+    if (roomToken == null || currentUser == null) {
+        return
+    }
+    AlertDialog(
+        onDismissRequest = { onDismiss(roomToken) },
+        title = { Text(text = stringResource(R.string.nc_conversation_created_title)) },
+        text = {
+            Column {
+                Text(text = stringResource(R.string.nc_conversation_created_public))
+                if (!password.isNullOrEmpty()) {
+                    TextButton(onClick = { copyPasswordToClipboard(context, roomToken, password) }) {
+                        Text(text = stringResource(R.string.nc_copy_password))
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    (context as? Activity)?.let {
+                        ShareUtils.shareConversationLink(
+                            it,
+                            currentUser.baseUrl,
+                            roomToken,
+                            CapabilitiesUtil.canGeneratePrettyURL(currentUser)
+                        )
+                    }
+                }
+            ) {
+                Text(text = stringResource(R.string.nc_share_link))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDismiss(roomToken) }) {
+                Text(text = stringResource(R.string.nc_open_conversation))
+            }
+        }
+    )
+}
+
+fun openConversation(context: Context, roomToken: String) {
+    val bundle = Bundle()
+    bundle.putString(BundleKeys.KEY_ROOM_TOKEN, roomToken)
+    val chatIntent = Intent(context, ChatActivity::class.java)
+    chatIntent.putExtras(bundle)
+    chatIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    context.startActivity(chatIntent)
+}
+
+private fun reportInvalidParticipants(context: Context, invalidParticipants: Map<String, List<String>>?) {
+    if (invalidParticipants.isNullOrEmpty()) {
+        return
+    }
+    val names = invalidParticipants.values.flatten().filter { it.isNotEmpty() }
+    val message = if (names.isEmpty()) {
+        context.getString(R.string.nc_conversation_created_invalid_participants)
+    } else {
+        context.getString(
+            R.string.nc_conversation_created_invalid_participants_named,
+            names.joinToString(", ")
+        )
+    }
+    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+}

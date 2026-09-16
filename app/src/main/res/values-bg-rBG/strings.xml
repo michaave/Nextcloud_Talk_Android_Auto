@@ -158,6 +158,7 @@
     <string name="nc_delete_conversation_more">Ако изтриете разговора, той ще бъде изтрит и за всички останали участници.</string>
     <string name="nc_delete_message">Изтриване на съобщението</string>
     <string name="nc_delete_message_leaked_to_matterbridge">Съобщението е изтрито успешно, но може да е изтекло към други услуги</string>
+    <string name="nc_deleted_user_display_name">Изтрит потребител</string>
     <string name="nc_demote">Понижаване от модератор</string>
     <string name="nc_description_record_voice">Запис на гласово съобщение</string>
     <string name="nc_description_send_message_button">Изпрати съобщение</string>
@@ -183,6 +184,7 @@
     <string name="nc_federation_invitation_accept">Приемам</string>
     <string name="nc_federation_invitation_reject">Отхвърляне</string>
     <string name="nc_file_browser_back">Назад</string>
+    <string name="nc_file_permission_editable">Може да се редактира</string>
     <string name="nc_file_storage_permission">Нужно е право за достъп до файл</string>
     <string name="nc_following_link">Потребител, който следва публична връзка</string>
     <string name="nc_formatted_message_you">Вие: %1$s</string>
@@ -274,6 +276,7 @@
     <string name="nc_pip_microphone_mute">Изключване на микрофона</string>
     <string name="nc_pip_microphone_unmute">Активиране на микрофона</string>
     <string name="nc_plain_old_messages">Съобщения</string>
+    <string name="nc_presentation">Презентация</string>
     <string name="nc_profile_personal_info_title">Лични данни</string>
     <string name="nc_promote">Повишаване до модератор</string>
     <string name="nc_push_disabled">Push/насочените/ известия са деактивирани</string>
@@ -287,6 +290,7 @@
     <string name="nc_rename_confirm">Преименуване</string>
     <string name="nc_reply">Отговори</string>
     <string name="nc_reply_privately">Отговаряне на лично </string>
+    <string name="nc_retry">Опитай отново</string>
     <string name="nc_save_message">Запиши</string>
     <string name="nc_save_success">Успешно запазено</string>
     <string name="nc_screen_lock_timeout_30">30 секунди</string>
@@ -389,6 +393,7 @@
     <string name="nc_start_time">Начало</string>
     <string name="nc_switch_account">Смяна на профил</string>
     <string name="nc_team">Екип</string>
+    <string name="nc_undo">Отмяна</string>
     <string name="nc_upload_choose_local_files">Избор на файлове</string>
     <string name="nc_upload_confirm_send_multiple">Да се ​​изпратят ли тези файлове до %1$s?</string>
     <string name="nc_upload_confirm_send_single">Да се ​​изпрати ли този файл до %1$s?</string>

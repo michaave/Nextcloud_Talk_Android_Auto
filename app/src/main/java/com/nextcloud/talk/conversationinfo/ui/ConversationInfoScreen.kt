@@ -44,6 +44,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -52,6 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,6 +91,7 @@ import com.nextcloud.talk.models.json.participants.Participant
 import com.nextcloud.talk.models.json.status.StatusType
 import com.nextcloud.talk.ui.StatusDrawable
 import com.nextcloud.talk.utils.ApiUtils
+import com.nextcloud.talk.utils.CapabilitiesUtil
 import com.nextcloud.talk.utils.DisplayUtils
 import com.nextcloud.talk.utils.ParticipantRole
 import com.nextcloud.talk.utils.ParticipantRoleUtils
@@ -113,6 +116,8 @@ data class ConversationInfoScreenCallbacks(
     val onShareConversationClick: () -> Unit = {},
     val onLockConversationClick: () -> Unit = {},
     val onParticipantClick: (ParticipantModel) -> Unit = {},
+    val onParticipantOpsDismiss: () -> Unit = {},
+    val onParticipantOpsAction: (ParticipantOpsAction, ParticipantModel) -> Unit = { _, _ -> },
     val onAddParticipantsClick: () -> Unit = {},
     val onStartGroupChatClick: () -> Unit = {},
     val onListBansClick: () -> Unit = {},
@@ -129,6 +134,7 @@ fun ConversationInfoScreen(
     state: ConversationInfoUiState,
     callbacks: ConversationInfoScreenCallbacks = ConversationInfoScreenCallbacks()
 ) {
+    val participantOpsSheetState = rememberModalBottomSheetState()
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
         topBar = {
@@ -245,6 +251,25 @@ fun ConversationInfoScreen(
 
                 item { DangerZoneSection(state, callbacks) }
             }
+        }
+    }
+
+    val participantForOps = state.participantForOps
+    if (participantForOps != null) {
+        ModalBottomSheet(
+            onDismissRequest = callbacks.onParticipantOpsDismiss,
+            sheetState = participantOpsSheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            ParticipantOperationsContent(
+                model = participantForOps,
+                conversation = state.conversation,
+                spreedCapabilities = state.spreedCapabilities,
+                onAction = { action ->
+                    callbacks.onParticipantOpsDismiss()
+                    callbacks.onParticipantOpsAction(action, participantForOps)
+                }
+            )
         }
     }
 }
@@ -534,10 +559,17 @@ private fun GuestAccessSection(state: ConversationInfoUiState, callbacks: Conver
         onClick = callbacks.onAllowGuestsClick
     )
     if (state.showPasswordProtection) {
+        val isPasswordEnforced = CapabilitiesUtil.isPasswordEnforced(state.spreedCapabilities)
+        val isLocked = state.hasPassword && isPasswordEnforced
         SettingsRow(
             title = stringResource(R.string.nc_guest_access_password_title),
-            subtitle = stringResource(R.string.nc_guest_access_password_summary),
+            subtitle = if (isLocked) {
+                stringResource(R.string.nc_password_required)
+            } else {
+                stringResource(R.string.nc_guest_access_password_summary)
+            },
             checked = state.hasPassword,
+            enabled = !isLocked,
             onClick = callbacks.onPasswordProtectionClick
         )
     }

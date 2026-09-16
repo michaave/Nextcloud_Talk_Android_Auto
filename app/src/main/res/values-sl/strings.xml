@@ -97,6 +97,7 @@
     <string name="nc_call_name">Naslov pogovora</string>
     <string name="nc_call_notifications">Obvestila klica</string>
     <string name="nc_call_ongoing_notification_default_title">Klic je v teku ...</string>
+    <string name="nc_call_ongoing_notification_end_action">Končaj klic</string>
     <string name="nc_call_raised_hand">Oseba %1$s je dvignila roko</string>
     <string name="nc_call_reconnecting">Poteka ponovno vzpostavljanje povezave …</string>
     <string name="nc_call_ringing">ZVONJENJE</string>
@@ -158,6 +159,7 @@
     <string name="nc_conversations_empty_details">Pozdravite prijatelje in znance.</string>
     <string name="nc_copy_message">Kopiraj</string>
     <string name="nc_copy_message_link">Kopiraj povezavo sporočila</string>
+    <string name="nc_copy_password">Kopiraj geslo</string>
     <string name="nc_create_new_conversation">Ustvari nov pogovor</string>
     <string name="nc_create_poll">Ustvari vprašalnik</string>
     <string name="nc_custom_color">Barva po meri</string>
@@ -170,6 +172,7 @@
     <string name="nc_delete_message">Izbriši sporočilo</string>
     <string name="nc_delete_message_leaked_to_matterbridge">Sporočilo je uspešno izbrisano, a je lahko že poslano na druge storitve.</string>
     <string name="nc_delete_now">Izbriši</string>
+    <string name="nc_deleted_user_display_name">Izbrisan uporabnik</string>
     <string name="nc_demote">Ponižaj iz moderatorja</string>
     <string name="nc_description_record_voice">Posnemi glasovno sporočilo</string>
     <string name="nc_description_send_message_button">Pošlji sporočilo</string>
@@ -195,6 +198,7 @@
     <string name="nc_federation_invitation_accept">Sprejmi</string>
     <string name="nc_federation_invitation_reject">Zavrni</string>
     <string name="nc_file_browser_back">Nazaj</string>
+    <string name="nc_file_permission_editable">Uredljivo</string>
     <string name="nc_file_storage_permission">Zahtevano je dovoljenje za dostop do datoteke</string>
     <string name="nc_following_link">Uporabnik, ki je sledil javni povezavi</string>
     <string name="nc_formatted_message_you">→ %1$s</string>
@@ -276,6 +280,7 @@
     <string name="nc_notify_me_never">Nikoli ne obvesti</string>
     <string name="nc_offline">Ni omrežne povezave; preverite povezave!</string>
     <string name="nc_ok">V redu</string>
+    <string name="nc_open_conversation">Odpri pogovor</string>
     <string name="nc_open_conversation_to_registered_users">Odpri pogovor vpisanim uporabnikom</string>
     <string name="nc_open_to_guest_app_users">Odpri tudi za gostujoče uporabnike</string>
     <string name="nc_owner">Lastnik</string>
@@ -288,6 +293,7 @@
     <string name="nc_pip_microphone_mute">Utišaj mikrofon</string>
     <string name="nc_pip_microphone_unmute">Omogoči mikrofon</string>
     <string name="nc_plain_old_messages">Sporočila</string>
+    <string name="nc_presentation">Predstavitev</string>
     <string name="nc_profile_personal_info_title">Osebni podatki</string>
     <string name="nc_promote">Povišaj v vlogo moderatorja</string>
     <string name="nc_public_call_status">Javni pogovor</string>
@@ -303,6 +309,7 @@
     <string name="nc_rename_confirm">Preimenuj</string>
     <string name="nc_reply">Odgovori</string>
     <string name="nc_reply_privately">Odgovori zasebno</string>
+    <string name="nc_retry">Poskusi znova     </string>
     <string name="nc_save_message">Shrani</string>
     <string name="nc_save_success">Uspešno shranjeno</string>
     <string name="nc_scheduled_time">Načrtovan time</string>
@@ -409,6 +416,7 @@
     <string name="nc_start_time">Čas začetka</string>
     <string name="nc_switch_account">Preklopi račun</string>
     <string name="nc_team">Skupina</string>
+    <string name="nc_undo">Razveljavi</string>
     <string name="nc_upload_choose_local_files">Izbor datotek</string>
     <string name="nc_upload_confirm_send_multiple">Ali želite poslati te datoteke osebi %1$s?</string>
     <string name="nc_upload_confirm_send_single">Ali želite poslati to datoteko osebi %1$s?</string>

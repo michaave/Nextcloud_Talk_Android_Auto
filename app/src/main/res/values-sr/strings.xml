@@ -136,6 +136,7 @@
     <string name="nc_call_notifications">Обавештења позива</string>
     <string name="nc_call_ongoing_notification_content">Тапните да се вратите у позив.</string>
     <string name="nc_call_ongoing_notification_default_title">Позив је у току</string>
+    <string name="nc_call_ongoing_notification_end_action">Заврши позив</string>
     <string name="nc_call_raised_hand">%1$s је подигао руку</string>
     <string name="nc_call_reconnecting">Поновно повезивање ...</string>
     <string name="nc_call_ringing">ЗВОНИ</string>
@@ -199,6 +200,7 @@
     <string name="nc_conversations_empty_details">Поздравите Ваше пријатеље и колеге!</string>
     <string name="nc_copy_message">Копија</string>
     <string name="nc_copy_message_link">Копирај линк поруке</string>
+    <string name="nc_copy_password">Копирај лозинку</string>
     <string name="nc_create_new_conversation">Креирај нови разговор</string>
     <string name="nc_create_poll">Направи гласање</string>
     <string name="nc_custom_color">Прилагођена боја</string>
@@ -212,6 +214,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Порука је успешно обрисана, али је можда процурела на друге сервисе</string>
     <string name="nc_delete_now">Обриши одмах</string>
     <string name="nc_deleted_user">Корисник %1$s је уклоњен</string>
+    <string name="nc_deleted_user_display_name">Обрисани корисник</string>
     <string name="nc_demote">Скини улогу модератора</string>
     <string name="nc_description_record_voice">Сними гласовну поруку</string>
     <string name="nc_description_send_message_button">Пошаљи поруку</string>
@@ -252,6 +255,7 @@
     <string name="nc_federation_no_invitations">Нема позивница на чекању</string>
     <string name="nc_federation_pending_invitation_hint">Имате позивнице на чекању</string>
     <string name="nc_file_browser_back">Назад</string>
+    <string name="nc_file_permission_editable">Може да се уређује</string>
     <string name="nc_file_storage_permission">Потребна је дозвола за приступ фајлу</string>
     <string name="nc_filter">Филтрирај разговоре</string>
     <string name="nc_following_link">Корисник који је пратио јавну везу</string>
@@ -348,6 +352,7 @@
     <string name="nc_offline">Тренутно ван мреже, проверите да ли имате интернет</string>
     <string name="nc_ok">У реду</string>
     <string name="nc_ongoing_meeting">Састанак је у току</string>
+    <string name="nc_open_conversation">Отвори разговор</string>
     <string name="nc_open_conversation_to_registered_users">Отвори разговор свим регистрованим корисницима</string>
     <string name="nc_open_to_guest_app_users">Такође отвори и за кориснике апликације гост</string>
     <string name="nc_owner">Власник</string>
@@ -364,6 +369,7 @@
     <string name="nc_pip_microphone_mute">Утули микрофон</string>
     <string name="nc_pip_microphone_unmute">Укључи микрофон</string>
     <string name="nc_plain_old_messages">Поруке</string>
+    <string name="nc_presentation">Презентација</string>
     <string name="nc_profile_personal_info_title">Лични подаци</string>
     <string name="nc_promote">Унапреди у модератора</string>
     <string name="nc_public_call_status">Јавни разговор</string>
@@ -382,6 +388,7 @@
     <string name="nc_rename_confirm">Преименуј</string>
     <string name="nc_reply">Одговори</string>
     <string name="nc_reply_privately">Одговори приватно</string>
+    <string name="nc_retry">Покушај поново</string>
     <string name="nc_room_retention">Соба је успешно задржана</string>
     <string name="nc_save_message">Сачувај</string>
     <string name="nc_save_success">Успешно сачувано</string>
@@ -512,6 +519,7 @@
     <string name="nc_test_results">Резултати теста</string>
     <string name="nc_today_meeting">Данас у %1$s</string>
     <string name="nc_tomorrow_meeting">Сутра у %1$s</string>
+    <string name="nc_undo">Опозови</string>
     <string name="nc_upload_choose_local_files">Изаберите фајлове</string>
     <string name="nc_upload_confirm_send_multiple">Да ли да пошаљем ове фајлове %1$s?</string>
     <string name="nc_upload_confirm_send_single">Да ли да пошаљем овај фајл %1$s?</string>

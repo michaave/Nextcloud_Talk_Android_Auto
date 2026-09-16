@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -150,6 +151,12 @@ class ConversationsListViewModel @Inject constructor(
             _getRoomsViewState.value = GetRoomsErrorState(it)
         }
 
+    init {
+        repository.syncErrorFlow
+            .onEach { throwable -> _getRoomsViewState.value = GetRoomsErrorState(throwable) }
+            .launchIn(viewModelScope)
+    }
+
     private val _isLoadingRooms = MutableStateFlow(true)
 
     /**
@@ -235,6 +242,13 @@ class ConversationsListViewModel @Inject constructor(
 
     private val hideRoomToken = MutableStateFlow<String?>(null)
 
+    /** Tokens of rooms being left; hidden optimistically while the leave-undo snackbar is showing. */
+    private val pendingLeaveTokens = MutableStateFlow<Set<String>>(emptySet())
+
+    private val excludedRoomTokens = combine(hideRoomToken, pendingLeaveTokens) { hideToken, pendingTokens ->
+        if (hideToken != null) pendingTokens + hideToken else pendingTokens
+    }
+
     private enum class SearchDisplayMode {
         OFF,
         ALL_CONVERSATIONS,
@@ -272,9 +286,9 @@ class ConversationsListViewModel @Inject constructor(
         _filterStateFlow,
         searchDisplayModeFlow,
         combine(_selectedTagFilterFlow, selectedTagIsFavoritesFlow, ::TagFilterSelection),
-        combine(searchResultEntries, hideRoomToken, ::Pair)
-    ) { rooms, filterState, searchMode, tagFilter, (searchResults, hideToken) ->
-        buildConversationListEntries(rooms, filterState, searchMode, tagFilter, searchResults, hideToken)
+        combine(searchResultEntries, excludedRoomTokens, ::Pair)
+    ) { rooms, filterState, searchMode, tagFilter, (searchResults, excludedTokens) ->
+        buildConversationListEntries(rooms, filterState, searchMode, tagFilter, searchResults, excludedTokens)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /**
@@ -288,9 +302,9 @@ class ConversationsListViewModel @Inject constructor(
         getRoomsStateFlow,
         _filterStateFlow,
         searchDisplayModeFlow,
-        hideRoomToken
-    ) { rooms, filterState, searchMode, hideToken ->
-        baseFilterRooms(rooms, filterState, searchMode, hideToken)
+        excludedRoomTokens
+    ) { rooms, filterState, searchMode, excludedTokens ->
+        baseFilterRooms(rooms, filterState, searchMode, excludedTokens)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Clears the tag filter when the filtered-by tag no longer exists (e.g. it was deleted). */
@@ -371,6 +385,16 @@ class ConversationsListViewModel @Inject constructor(
     /** Exclude the forward-source room token from the list. */
     fun setHideRoomToken(token: String?) {
         hideRoomToken.value = token
+    }
+
+    /** Optimistically hide a room while its leave-undo snackbar is showing. */
+    fun markConversationPendingLeave(token: String) {
+        pendingLeaveTokens.value = pendingLeaveTokens.value + token
+    }
+
+    /** Un-hide a room, either because the leave was undone or because it finished/failed. */
+    fun clearConversationPendingLeave(token: String) {
+        pendingLeaveTokens.value = pendingLeaveTokens.value - token
     }
 
     fun getFederationInvitations() {
@@ -654,11 +678,11 @@ class ConversationsListViewModel @Inject constructor(
         searchMode: SearchDisplayMode,
         tagFilter: TagFilterSelection,
         searchResults: List<ConversationListEntry>,
-        hideToken: String?
+        excludedTokens: Set<String>
     ): List<ConversationListEntry> {
         if (searchMode == SearchDisplayMode.RESULTS) return searchResults
 
-        var filtered = baseFilterRooms(rooms, filterState, searchMode, hideToken)
+        var filtered = baseFilterRooms(rooms, filterState, searchMode, excludedTokens)
 
         if (searchMode != SearchDisplayMode.ALL_CONVERSATIONS) {
             filtered = when {
@@ -684,14 +708,14 @@ class ConversationsListViewModel @Inject constructor(
         rooms: List<ConversationModel>,
         filterState: Map<String, Boolean>,
         searchMode: SearchDisplayMode,
-        hideToken: String?
+        excludedTokens: Set<String>
     ): List<ConversationModel> {
         val hasFilterEnabled = filterState[MENTION] == true ||
             filterState[UNREAD] == true ||
             filterState[ARCHIVE] == true
 
         var filtered = rooms
-            .filter { it.token != hideToken }
+            .filter { it.token !in excludedTokens }
             .filter { conversation ->
                 !(
                     conversation.objectType == ConversationEnums.ObjectType.ROOM &&

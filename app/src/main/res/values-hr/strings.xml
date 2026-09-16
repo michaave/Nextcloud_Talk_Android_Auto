@@ -84,6 +84,7 @@
     <string name="nc_call_incoming">DOLAZNI</string>
     <string name="nc_call_name">Naziv razgovora</string>
     <string name="nc_call_ongoing_notification_default_title">Poziv u tijeku</string>
+    <string name="nc_call_ongoing_notification_end_action">Završi poziv</string>
     <string name="nc_call_reconnecting">Ponovno povezivanje …</string>
     <string name="nc_call_ringing">ZVONI</string>
     <string name="nc_call_state_in_call">%1$s u pozivu</string>
@@ -143,6 +144,7 @@
     <string name="nc_conversations_empty_details">Pozdravi svoje prijatelje i kolege!</string>
     <string name="nc_copy_message">Kopiraj</string>
     <string name="nc_copy_message_link">Kopiraj poveznicu poruke</string>
+    <string name="nc_copy_password">Kopiraj lozinku</string>
     <string name="nc_create_new_conversation">Stvori novi razgovor</string>
     <string name="nc_create_poll">Stvori anketu</string>
     <string name="nc_custom_color">Prilagođena boja</string>
@@ -155,6 +157,7 @@
     <string name="nc_delete_message">Izbriši poruku</string>
     <string name="nc_delete_message_leaked_to_matterbridge">Poruka je uspješno izbrisana, ali je možda prenesena u druge usluge</string>
     <string name="nc_delete_now">Izbriši odmah</string>
+    <string name="nc_deleted_user_display_name">Izbrisan korisnik</string>
     <string name="nc_demote">Ukloni moderatora</string>
     <string name="nc_description_record_voice">Snimi glasovnu poruku</string>
     <string name="nc_description_send_message_button">Pošalji poruku</string>
@@ -246,6 +249,7 @@
     <string name="nc_notify_me_never">Nikad ne šalji obavijesti</string>
     <string name="nc_offline">Trenutno izvan mreže, provjerite vezu</string>
     <string name="nc_ok">U redu</string>
+    <string name="nc_open_conversation">Otvori razgovor</string>
     <string name="nc_open_conversation_to_registered_users">Otvori razgovor registriranim korisnicima</string>
     <string name="nc_open_to_guest_app_users">Otvori i gostujućim korisnicima aplikacije</string>
     <string name="nc_owner">Vlasnik</string>
@@ -257,6 +261,7 @@
     <string name="nc_phone_book_integration_chat_via">Razmjenjujte poruke putem %s</string>
     <string name="nc_pip_microphone_unmute">Omogućite mikrofon</string>
     <string name="nc_plain_old_messages">Poruke</string>
+    <string name="nc_presentation">Prezentacija</string>
     <string name="nc_profile_personal_info_title">Osobne informacije</string>
     <string name="nc_promote">Unaprijedi u moderatora</string>
     <string name="nc_public_call_status">Javni razgovor</string>
@@ -271,6 +276,7 @@
     <string name="nc_rename_confirm">Preimenuj</string>
     <string name="nc_reply">Odgovori</string>
     <string name="nc_reply_privately">Odgovori privatno</string>
+    <string name="nc_retry">Pokušaj ponovno</string>
     <string name="nc_save_message">Spremi</string>
     <string name="nc_save_success">Uspješno spremljeno</string>
     <string name="nc_schedule_message">Zakaži poruku</string>
@@ -398,6 +404,7 @@
     <string name="nc_zoom_out">Umanji</string>
     <string name="next_week">Sljedeći tjedan</string>
     <string name="no_phone_book_integration_due_to_permissions">Integracija broja telefona nije moguća jer nedostaje dopuštenje</string>
+    <string name="notification_mention_only">Samo @spominjanja</string>
     <string name="notification_off">Isključeno</string>
     <string name="notifications_default">Zadani</string>
     <string name="notifications_default_description">Slijedi postavke razgovora</string>

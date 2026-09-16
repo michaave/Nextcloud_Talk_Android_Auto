@@ -23,7 +23,9 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -32,7 +34,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
-import androidx.work.OutOfQuotaPolicy
+import com.nextcloud.talk.utils.setExpeditedIfSupported
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import autodagger.AutoInjector
@@ -116,6 +118,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx2.await
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import retrofit2.HttpException
@@ -421,7 +424,9 @@ class ConversationsListActivity : BaseActivity() {
                 appPreferences.setConversationListPositionAndOffset(0, 0)
             }
 
-            hasMultipleAccountsState.value = userManager.users.blockingGet().size > 1
+            lifecycleScope.launch {
+                hasMultipleAccountsState.value = userManager.users.await().size > 1
+            }
             conversationsListViewModel.setHideRoomToken(intent.getStringExtra(KEY_FORWARD_HIDE_SOURCE_ROOM))
             fetchRooms()
             fetchPendingInvitations()
@@ -1098,6 +1103,10 @@ class ConversationsListActivity : BaseActivity() {
             chatIntent.putExtras(bundle)
 
             if (currentUser != null) {
+                if (CapabilitiesUtil.isCallEndToEndEncryptionEnabled(currentUser?.capabilities?.spreedCapability)) {
+                    showSnackbar(context.getString(R.string.nc_call_e2ee_not_supported))
+                    return@let
+                }
                 val pp = ParticipantPermissions(currentUser?.capabilities?.spreedCapability, it)
                 if (!pp.canStartCall() && selectedConversation?.hasCall == false) {
                     Log.e(TAG, "Error starting call from conversations list: call is forbidden")
@@ -1167,7 +1176,7 @@ class ConversationsListActivity : BaseActivity() {
             is ConversationOpsAction.Rename -> renameConversation(conversation)
             is ConversationOpsAction.ToggleArchive -> handleArchiving(conversation)
             is ConversationOpsAction.AddToHomeScreen -> addConversationToHomeScreen(conversation)
-            is ConversationOpsAction.Leave -> leaveConversation(conversation)
+            is ConversationOpsAction.Leave -> showLeaveConversationSnackbar(conversation)
             is ConversationOpsAction.Delete -> showDeleteConversationDialog(conversation)
             is ConversationOpsAction.ManageTags -> conversationTagsViewModel.setConversationForTagAssignment(
                 conversation
@@ -1223,15 +1232,38 @@ class ConversationsListActivity : BaseActivity() {
         }
     }
 
+    /**
+     * Rather than blocking with a confirmation dialog, hide the conversation immediately and offer
+     * an "Undo" snackbar. The actual leave-conversation network call is deferred until the snackbar
+     * goes away without being undone, so a room only needs to be rejoined if the user missed the
+     * undo window.
+     */
     @SuppressLint("StringFormatInvalid")
+    private fun showLeaveConversationSnackbar(conversation: ConversationModel) {
+        val token = conversation.token ?: return
+        conversationsListViewModel.markConversationPendingLeave(token)
+        lifecycleScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = String.format(resources.getString(R.string.left_conversation), conversation.displayName),
+                actionLabel = getString(R.string.nc_undo),
+                duration = SnackbarDuration.Long
+            )
+            when (result) {
+                SnackbarResult.ActionPerformed -> conversationsListViewModel.clearConversationPendingLeave(token)
+                SnackbarResult.Dismissed -> leaveConversation(conversation)
+            }
+        }
+    }
+
     private fun leaveConversation(conversation: ConversationModel) {
+        val token = conversation.token ?: return
         val data = Data.Builder()
-            .putString(KEY_ROOM_TOKEN, conversation.token)
+            .putString(KEY_ROOM_TOKEN, token)
             .putLong(KEY_INTERNAL_USER_ID, currentUser?.id!!)
             .build()
         val worker = OneTimeWorkRequest.Builder(LeaveConversationWorker::class.java)
             .setInputData(data)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setExpeditedIfSupported()
             .build()
         WorkManager.getInstance().enqueue(worker)
         WorkManager.getInstance(this).getWorkInfoByIdLiveData(worker.id).observeForever { workInfo ->
@@ -1240,17 +1272,18 @@ class ConversationsListActivity : BaseActivity() {
                     currentUser?.id?.let { userId ->
                         ShortcutManagerHelper.disableConversationShortcut(
                             this,
-                            conversation.token,
+                            token,
                             userId,
                             resources.getString(R.string.nc_shortcut_conversation_deleted)
                         )
                     }
-                    showSnackbar(
-                        String.format(resources.getString(R.string.left_conversation), conversation.displayName)
-                    )
-                    startActivity(Intent(this, MainActivity::class.java))
+                    conversationsListViewModel.clearConversationPendingLeave(token)
+                    fetchRooms()
                 }
-                WorkInfo.State.FAILED -> showSnackbar(resources.getString(R.string.nc_common_error_sorry))
+                WorkInfo.State.FAILED -> {
+                    conversationsListViewModel.clearConversationPendingLeave(token)
+                    showSnackbar(resources.getString(R.string.nc_common_error_sorry))
+                }
                 else -> {}
             }
         }
@@ -1336,7 +1369,7 @@ class ConversationsListActivity : BaseActivity() {
     private fun deleteUserAndRestartApp() {
         userManager.scheduleUserForDeletionWithId(currentUser!!.id!!).blockingGet()
         val accountRemovalWork = OneTimeWorkRequest.Builder(AccountRemovalWorker::class.java)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setExpeditedIfSupported()
             .build()
         WorkManager.getInstance(applicationContext).enqueue(accountRemovalWork)
 
@@ -1476,7 +1509,7 @@ class ConversationsListActivity : BaseActivity() {
         val deleteConversationWorker =
             OneTimeWorkRequest.Builder(DeleteConversationWorker::class.java)
                 .setInputData(data.build())
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setExpeditedIfSupported()
                 .build()
         WorkManager.getInstance().enqueue(deleteConversationWorker)
 

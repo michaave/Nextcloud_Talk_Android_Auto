@@ -137,6 +137,7 @@
     <string name="nc_call_notifications">Notificacións de chamadas</string>
     <string name="nc_call_ongoing_notification_content">Toquea para volver á chamada.</string>
     <string name="nc_call_ongoing_notification_default_title">Chamada en proceso</string>
+    <string name="nc_call_ongoing_notification_end_action">Finalizar a chamada</string>
     <string name="nc_call_raised_hand">%1$s ergueu a man</string>
     <string name="nc_call_reconnecting">Volvendo conectar…</string>
     <string name="nc_call_ringing">CHAMANDO</string>
@@ -201,6 +202,7 @@
     <string name="nc_conversations_empty_details">Saúde aos seus amigos e compañeiros!</string>
     <string name="nc_copy_message">Copiar</string>
     <string name="nc_copy_message_link">Copiar a ligazón da mensaxe</string>
+    <string name="nc_copy_password">Copiar o contrasinal</string>
     <string name="nc_create_new_conversation">Crear unha nova conversa</string>
     <string name="nc_create_poll">Crear enquisa</string>
     <string name="nc_custom_color">Cor personalizada</string>
@@ -214,6 +216,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">A mensaxe foi eliminada correctamente, pero é posíbel que se filtrase a outros servizos</string>
     <string name="nc_delete_now">Eliminar agora</string>
     <string name="nc_deleted_user">O usuario %1$s foi retirado</string>
+    <string name="nc_deleted_user_display_name">Usuario eliminado</string>
     <string name="nc_demote">Relegar de moderador</string>
     <string name="nc_description_record_voice">Gravar mensaxe de voz</string>
     <string name="nc_description_send_message_button">Enviar a mensaxe</string>
@@ -254,6 +257,7 @@
     <string name="nc_federation_no_invitations">Non hai convites pendentes</string>
     <string name="nc_federation_pending_invitation_hint">Vde. ten convites pendentes</string>
     <string name="nc_file_browser_back">Atrás</string>
+    <string name="nc_file_permission_editable">Editábel</string>
     <string name="nc_file_storage_permission">Precísase de permiso para acceder ao ficheiro</string>
     <string name="nc_filter">Filtrar conversas</string>
     <string name="nc_following_link">Usuario seguindo unha ligazón pública</string>
@@ -357,12 +361,14 @@
     <string name="nc_offline">Non ten conexión, verifique a súa conectividade</string>
     <string name="nc_ok">Aceptar</string>
     <string name="nc_ongoing_meeting">Xuntanza en proceso</string>
+    <string name="nc_open_conversation">Conversa aberta</string>
     <string name="nc_open_conversation_to_registered_users">Abrir a conversa a usuarios rexistrados</string>
     <string name="nc_open_to_guest_app_users">Aberta tamén aos usuarios da aplicación convidados</string>
     <string name="nc_owner">Propietario</string>
     <string name="nc_participants">Participantes</string>
     <string name="nc_participants_add">Engadir participantes</string>
     <string name="nc_password">Contrasinal</string>
+    <string name="nc_password_copied">Contrasinal copiado</string>
     <string name="nc_permissions_ask">Estabelecer os permisos</string>
     <string name="nc_permissions_denied">Algúns permisos foron denegados.</string>
     <string name="nc_permissions_rationale_dialog_title">Autorice os permisos</string>
@@ -373,6 +379,7 @@
     <string name="nc_pip_microphone_mute">Silenciar o micrófono</string>
     <string name="nc_pip_microphone_unmute">Activar o micrófono</string>
     <string name="nc_plain_old_messages">Mensaxes</string>
+    <string name="nc_presentation">Presentación</string>
     <string name="nc_profile_personal_info_title">Información persoal</string>
     <string name="nc_promote">Promover a moderador</string>
     <string name="nc_public_call_status">Conversa pública</string>
@@ -393,6 +400,7 @@
     <string name="nc_reply_privately">Responder en privado</string>
     <string name="nc_reschedule_message_with_notification">Reprogramar con notificación</string>
     <string name="nc_reschedule_message_without_notification">Reprogramar sen notificación</string>
+    <string name="nc_retry">Volver tentar</string>
     <string name="nc_room_retention">A sala foi reservada satisfactoriamente</string>
     <string name="nc_save_message">Gardar</string>
     <string name="nc_save_success">Gardadao satisfactoriamente</string>
@@ -530,6 +538,7 @@
     <string name="nc_test_results">Resultados da proba</string>
     <string name="nc_today_meeting">Hoxe ás %1$s</string>
     <string name="nc_tomorrow_meeting">Mañá ás %1$s</string>
+    <string name="nc_undo">Desfacer</string>
     <string name="nc_upcoming_event_dismissed">As próximas chamadas poderanse ver na información da conversa</string>
     <string name="nc_upload_choose_local_files">Escoller os ficheiros</string>
     <string name="nc_upload_confirm_send_multiple">Quere enviar estes ficheiros a %1$s?</string>

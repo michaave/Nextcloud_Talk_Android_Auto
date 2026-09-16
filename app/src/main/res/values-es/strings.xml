@@ -138,6 +138,7 @@
     <string name="nc_call_notifications">Notificaciones de llamadas</string>
     <string name="nc_call_ongoing_notification_content">Toque para regresar a su llamada.</string>
     <string name="nc_call_ongoing_notification_default_title">Llamada en curso</string>
+    <string name="nc_call_ongoing_notification_end_action">Finalizar llamada</string>
     <string name="nc_call_raised_hand">%1$s levantó la mano</string>
     <string name="nc_call_reconnecting">Reconectándose …</string>
     <string name="nc_call_ringing">LLAMANDO</string>
@@ -202,6 +203,7 @@
     <string name="nc_conversations_empty_details">¡Saluda a tus amigos y colegas!</string>
     <string name="nc_copy_message">Copiar</string>
     <string name="nc_copy_message_link">Copiar link del mensaje</string>
+    <string name="nc_copy_password">Copiar contraseña</string>
     <string name="nc_create_new_conversation">Crear una conversación nueva</string>
     <string name="nc_create_poll">Crear votación</string>
     <string name="nc_custom_color">Colores personalizados</string>
@@ -215,6 +217,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Mensaje borrado con éxito, pero puede haber sido filtrado a otros servicios</string>
     <string name="nc_delete_now">Eliminar ahora</string>
     <string name="nc_deleted_user">El Usuario %1$s fue eliminado</string>
+    <string name="nc_deleted_user_display_name">Usuario eliminado</string>
     <string name="nc_demote">Degradar de moderador</string>
     <string name="nc_description_record_voice">Grabar mensaje de voz</string>
     <string name="nc_description_send_message_button">Enviar mensaje</string>
@@ -255,6 +258,7 @@
     <string name="nc_federation_no_invitations">Sin invitaciones pendientes</string>
     <string name="nc_federation_pending_invitation_hint">Tiene invitaciones pendientes</string>
     <string name="nc_file_browser_back">Volver</string>
+    <string name="nc_file_permission_editable">Editable</string>
     <string name="nc_file_storage_permission">Se requieren permisos para acceso a archivos</string>
     <string name="nc_filter">Filtrar conversaciones</string>
     <string name="nc_following_link">Usuario que sigue un enlace público</string>
@@ -356,6 +360,7 @@
     <string name="nc_offline">Actualmente fuera de línea, por favor, compruebe los detalles de su conexión</string>
     <string name="nc_ok">OK</string>
     <string name="nc_ongoing_meeting">Reunión en curso</string>
+    <string name="nc_open_conversation">Abrir conversación</string>
     <string name="nc_open_conversation_to_registered_users">Abrir conversación a usuarios registrados</string>
     <string name="nc_open_to_guest_app_users">Abrir también para usuarios invitados de la aplicación</string>
     <string name="nc_owner">Propietario</string>
@@ -372,6 +377,7 @@
     <string name="nc_pip_microphone_mute">Silenciar micrófono</string>
     <string name="nc_pip_microphone_unmute">Activar micrófono</string>
     <string name="nc_plain_old_messages">Mensajes</string>
+    <string name="nc_presentation">Presentación</string>
     <string name="nc_profile_personal_info_title">Información Personal</string>
     <string name="nc_promote">Elevar a moderador</string>
     <string name="nc_public_call_status">Conversación pública</string>
@@ -392,6 +398,7 @@
     <string name="nc_reply_privately">Responder en privado</string>
     <string name="nc_reschedule_message_with_notification">Reprogramar con notificación</string>
     <string name="nc_reschedule_message_without_notification">Reschedule sin notification</string>
+    <string name="nc_retry">Reintentar</string>
     <string name="nc_room_retention">Se retuvo la sala de manera exitosa</string>
     <string name="nc_save_message">Guardar</string>
     <string name="nc_save_success">Guardado correctamente</string>
@@ -530,6 +537,7 @@
     <string name="nc_test_results">Resultados de la prueba</string>
     <string name="nc_today_meeting">Hoy a las %1$s</string>
     <string name="nc_tomorrow_meeting">Mañana a las %1$s</string>
+    <string name="nc_undo">Deshacer</string>
     <string name="nc_upcoming_event_dismissed">La próxima llamada se puede ver en la información de la conversación.</string>
     <string name="nc_upload_choose_local_files">Seleccionar archivos</string>
     <string name="nc_upload_confirm_send_multiple">¿Enviar estos archivos a %1$s?</string>

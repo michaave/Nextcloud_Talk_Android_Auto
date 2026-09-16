@@ -59,6 +59,7 @@ enum class SpreedFeatures(val value: String) {
     EDIT_MESSAGES_NOTE_TO_SELF("edit-messages-note-to-self"),
     ARCHIVE_CONVERSATIONS("archived-conversations-v2"),
     CONVERSATION_CREATION_ALL("conversation-creation-all"),
+    CONVERSATION_CREATION_PASSWORD("conversation-creation-password"),
     UNBIND_CONVERSATION("unbind-conversation"),
     SENSITIVE_CONVERSATIONS("sensitive-conversations"),
     IMPORTANT_CONVERSATIONS("important-conversations"),
@@ -69,7 +70,8 @@ enum class SpreedFeatures(val value: String) {
     CONVERSATION_PRESETS("conversation-presets"),
     CLASSIFIED_CONVERSATIONS("classified-conversations"),
     ANNOUNCEMENT_PRESET("announcement-preset"),
-    CONVERSATION_TAGS("conversation-tags")
+    CONVERSATION_TAGS("conversation-tags"),
+    PROMOTE_DEMOTE_OWNER("promote-demote-owner")
 }
 
 @Suppress("TooManyFunctions")
@@ -105,6 +107,22 @@ object CapabilitiesUtil {
 
     // endregion
 
+    //region PasswordPolicyCapabilities
+
+    /**
+     * The endpoint that validates a password against the server's policy, or null when the server
+     * does not advertise the password_policy capability.
+     */
+    fun getPasswordValidationUrl(user: User?): String? = user?.capabilities?.passwordPolicy?.api?.validatePasswordApi
+
+    /**
+     * The endpoint that generates a password satisfying the server's policy, or null when the
+     * server does not advertise the password_policy capability.
+     */
+    fun getPasswordGenerationUrl(user: User?): String? = user?.capabilities?.passwordPolicy?.api?.generatePasswordApi
+
+    // endregion
+
     //region SpreedCapabilities
 
     @JvmStatic
@@ -122,6 +140,16 @@ object CapabilitiesUtil {
             val map = spreedCapabilities.config!!["attachments"]
             if (map?.containsKey("conversation-subfolders") == true) {
                 return map["conversation-subfolders"].toString().toBoolean()
+            }
+        }
+        return false
+    }
+
+    fun isPasswordEnforced(spreedCapabilities: SpreedCapability?): Boolean {
+        if (spreedCapabilities?.config?.containsKey("conversations") == true) {
+            val map = spreedCapabilities.config!!["conversations"]
+            if (map?.containsKey("force-passwords") == true) {
+                return map["force-passwords"].toString().toBoolean()
             }
         }
         return false
@@ -299,12 +327,13 @@ object CapabilitiesUtil {
     fun isBanningAvailable(spreedCapabilities: SpreedCapability): Boolean =
         hasSpreedFeatureCapability(spreedCapabilities, SpreedFeatures.BAN_V1)
 
-    fun isAdmin(spreedCapabilities: SpreedCapability?): Boolean {
-        if (spreedCapabilities?.config?.containsKey("conversations") == true) {
-            val map = spreedCapabilities.config!!["conversations"]
-            if (map?.containsKey("is-admin") == true) {
-                return map["is-admin"].toString().toBoolean()
-            }
+    fun isCallEndToEndEncryptionEnabled(spreedCapabilities: SpreedCapability?): Boolean {
+        if (
+            spreedCapabilities?.config?.containsKey("call") == true &&
+            spreedCapabilities.config!!["call"] != null &&
+            spreedCapabilities.config!!["call"]!!.containsKey("end-to-end-encryption")
+        ) {
+            return spreedCapabilities.config!!["call"]!!["end-to-end-encryption"].toString().toBoolean()
         }
         return false
     }

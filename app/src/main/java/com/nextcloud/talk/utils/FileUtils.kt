@@ -49,6 +49,21 @@ object FileUtils {
     }
 
     /**
+     * Resolves a shared attachment file inside a per-[fileId] subdirectory of the dedicated cache
+     * directory. [untrustedFileName] alone is sender-controlled and not unique - two different
+     * attachments (e.g. two pasted screenshots both named "image.png") can share it, which would
+     * otherwise let concurrent downloads (see MediaViewerViewModel's prefetch) resolve to, and
+     * overwrite, the very same cache file. Nesting under the server-assigned [fileId] keeps every
+     * attachment's cache slot unique regardless of what its sender named it.
+     */
+    fun resolveSharedAttachmentFile(cacheDir: File, fileId: String, untrustedFileName: String?): File? {
+        val sharedDirectory = getSharedAttachmentsDirectory(cacheDir) ?: return null
+        val fileIdDirectory = resolveFileInDirectory(sharedDirectory, fileId) ?: return null
+        if (!fileIdDirectory.exists() && !fileIdDirectory.mkdirs()) return null
+        return resolveFileInDirectory(fileIdDirectory, untrustedFileName)
+    }
+
+    /**
      * Resolves an untrusted file name inside [baseDirectory] and rejects traversal attempts.
      */
     fun resolveFileInDirectory(baseDirectory: File, untrustedFileName: String?): File? {
@@ -177,6 +192,11 @@ object FileUtils {
                 outputStream.flush()
             } catch (e: FileNotFoundException) {
                 Log.w(TAG, "failed to copy file to cache", e)
+            } catch (e: SecurityException) {
+                // Most notably the system Photo Picker's ephemeral uris, whose read grant can be
+                // revoked at any point after it was first handed to us, well before we're done
+                // using it - this must never crash the caller, just leave the file uncopied.
+                Log.w(TAG, "no longer permitted to read $sourceFileUri", e)
             }
         }
         return cachedFile
@@ -185,16 +205,9 @@ object FileUtils {
     fun getFileName(uri: Uri, context: Context?): String {
         var filename: String? = null
         if (uri.scheme == "content" && context != null) {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val displayNameColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (displayNameColumnIndex != -1) {
-                        filename = cursor.getString(displayNameColumnIndex)
-                    }
-                }
-            }
+            filename = queryDisplayName(context, uri)
         }
-        // if it was no content uri, read filename from path
+        // if it was no content uri (or the query above couldn't read one), read filename from path
         if (filename == null) {
             filename = uri.path
         }
@@ -207,16 +220,42 @@ object FileUtils {
         return filename
     }
 
+    // The content provider behind a uri (most notably the system Photo Picker's ephemeral uris)
+    // can revoke read access at any point after it was first granted, turning a plain metadata
+    // query into a SecurityException well after the uri was handed to us - this must never crash
+    // the caller, just fall back to deriving the filename from the uri's own path instead.
+    @Suppress("TooGenericExceptionCaught")
+    private fun queryDisplayName(context: Context, uri: Uri): String? =
+        try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val displayNameColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (cursor.moveToFirst() && displayNameColumnIndex != -1) {
+                    cursor.getString(displayNameColumnIndex)
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "failed to query display name for $uri", e)
+            null
+        }
+
     /**
      * Resolves the MIME type of [uri]. [ContentResolver.getType] only resolves `content://` URIs, so for
      * `file://` URIs (e.g. the in-app camera writes plain files) this falls back to guessing from the
-     * file extension.
+     * file extension. Also falls back there if the provider's read grant for [uri] was revoked in the
+     * meantime (most notably the system Photo Picker's ephemeral uris) - never lets that crash the caller.
      */
+    @Suppress("TooGenericExceptionCaught")
     fun resolveMimeType(context: Context, uri: Uri): String? =
-        context.contentResolver.getType(uri)
-            ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                MimeTypeMap.getFileExtensionFromUrl(uri.toString()).lowercase()
-            )
+        try {
+            context.contentResolver.getType(uri)
+        } catch (e: Exception) {
+            Log.w(TAG, "failed to resolve mime type for $uri", e)
+            null
+        } ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+            MimeTypeMap.getFileExtensionFromUrl(uri.toString()).lowercase()
+        )
 
     @JvmStatic
     fun md5Sum(file: File): String {

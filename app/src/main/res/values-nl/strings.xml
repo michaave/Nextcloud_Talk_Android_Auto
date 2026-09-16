@@ -137,6 +137,7 @@
     <string name="nc_call_notifications">Oproepmeldingen</string>
     <string name="nc_call_ongoing_notification_content">Tik om terug te keren naar het gesprek.</string>
     <string name="nc_call_ongoing_notification_default_title">Oproep is bezig</string>
+    <string name="nc_call_ongoing_notification_end_action">Beëindig gesprek</string>
     <string name="nc_call_raised_hand">%1$s stak een hand op</string>
     <string name="nc_call_reconnecting">Opnieuw verbinden …</string>
     <string name="nc_call_ringing">BELLEN</string>
@@ -200,6 +201,7 @@
     <string name="nc_conversations_empty_details">Zeg hallo tegen je vrienden en collega\'s!</string>
     <string name="nc_copy_message">Kopie</string>
     <string name="nc_copy_message_link">Kopiëren berichtlink</string>
+    <string name="nc_copy_password">Kopieer wachtwoord</string>
     <string name="nc_create_new_conversation">Maak een nieuw gesprek</string>
     <string name="nc_create_poll">Peiling aanmaken</string>
     <string name="nc_custom_color">Kleur op maat</string>
@@ -213,6 +215,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Het bericht is verwijderd, maar het is mogelijk gelekt naar andere services</string>
     <string name="nc_delete_now">Verwijder nu</string>
     <string name="nc_deleted_user">Gebruiker %1$s is verwijderd</string>
+    <string name="nc_deleted_user_display_name">Verwijderde gebruiker</string>
     <string name="nc_demote">Degradeer van moderator</string>
     <string name="nc_description_record_voice">Opnemen gesproken bericht</string>
     <string name="nc_description_send_message_button">Verstuur bericht</string>
@@ -352,6 +355,7 @@ Kies er eentje van een provider.</string>
     <string name="nc_offline">Op dit moment offline, controleer je verbinding</string>
     <string name="nc_ok">OK</string>
     <string name="nc_ongoing_meeting">Lopende vergadering</string>
+    <string name="nc_open_conversation">Open gesprek</string>
     <string name="nc_open_conversation_to_registered_users">Open gesprek voor geregistreerde gebruikers</string>
     <string name="nc_open_to_guest_app_users">Ook open voor gastgebruikers van de app</string>
     <string name="nc_owner">Eigenaar</string>
@@ -368,6 +372,7 @@ Kies er eentje van een provider.</string>
     <string name="nc_pip_microphone_mute">Microfoon dempen</string>
     <string name="nc_pip_microphone_unmute">Microfoon inschakelen</string>
     <string name="nc_plain_old_messages">Berichten</string>
+    <string name="nc_presentation">Presentatie</string>
     <string name="nc_profile_personal_info_title">Persoonlijke info</string>
     <string name="nc_promote">Promoveer tot moderator</string>
     <string name="nc_public_call_status">Openbaar gesprek</string>
@@ -386,6 +391,7 @@ Kies er eentje van een provider.</string>
     <string name="nc_rename_confirm">Hernoemen</string>
     <string name="nc_reply">Antwoord</string>
     <string name="nc_reply_privately">Antwoord privé</string>
+    <string name="nc_retry">Opnieuw</string>
     <string name="nc_room_retention">De ruimte is met succes gereserveerd</string>
     <string name="nc_save_message">Opslaan</string>
     <string name="nc_save_success">Succesvol opgeslagen</string>

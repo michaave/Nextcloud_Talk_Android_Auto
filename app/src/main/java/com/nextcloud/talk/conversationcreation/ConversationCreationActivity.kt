@@ -21,7 +21,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,15 +37,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.Chat
-import androidx.compose.material.icons.outlined.Podcasts
-import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -59,16 +54,16 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -89,25 +84,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import autodagger.AutoInjector
 import coil.compose.AsyncImage
 import com.nextcloud.talk.R
 import com.nextcloud.talk.activities.BaseActivity
 import com.nextcloud.talk.application.NextcloudTalkApplication
-import com.nextcloud.talk.chat.ChatActivity
 import com.nextcloud.talk.components.AvatarEditPanel
 import com.nextcloud.talk.components.AvatarEditPanelCallbacks
 import com.nextcloud.talk.components.AvatarEditPanelState
 import com.nextcloud.talk.components.ColoredStatusBar
 import com.nextcloud.talk.contacts.ContactsActivity
 import com.nextcloud.talk.contacts.loadImage
+import com.nextcloud.talk.conversationcreation.ui.ConversationPresets
+import com.nextcloud.talk.conversationcreation.ui.CreationResultEffect
+import com.nextcloud.talk.conversationcreation.ui.ShareCreatedConversation
+import com.nextcloud.talk.conversationcreation.ui.openConversation
 import com.nextcloud.talk.conversationcreation.viewmodel.ConversationCreationViewModel
 import com.nextcloud.talk.extensions.getParcelableArrayListExtraProvider
+import com.nextcloud.talk.data.user.model.User
 import com.nextcloud.talk.models.json.autocomplete.AutocompleteUser
-import com.nextcloud.talk.utils.CapabilitiesUtil
+import com.nextcloud.talk.passwordpolicy.PasswordPolicyField
+import com.nextcloud.talk.passwordpolicy.isPasswordAccepted
+import com.nextcloud.talk.utils.ApiUtils
+import com.nextcloud.talk.utils.copyPasswordToClipboard
 import com.nextcloud.talk.utils.DisplayUtils
 import com.nextcloud.talk.utils.PickImage
-import com.nextcloud.talk.utils.SpreedFeatures
 import com.nextcloud.talk.utils.bundle.BundleKeys
 import com.nextcloud.talk.utils.preview.ComposePreviewUtils
 import javax.inject.Inject
@@ -116,7 +118,7 @@ import javax.inject.Inject
 class ConversationCreationActivity : BaseActivity() {
     @Inject
     lateinit var viewModelFactory: ViewModelProvider.Factory
-    private lateinit var pickImage: PickImage
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -125,18 +127,29 @@ class ConversationCreationActivity : BaseActivity() {
             this,
             viewModelFactory
         )[ConversationCreationViewModel::class.java]
-        val conversationUser = conversationCreationViewModel.currentUser
-        pickImage = PickImage(this, conversationUser)
-
         setContent {
             val colorScheme = viewThemeUtils.getColorScheme(this)
             val context = LocalContext.current
+            val currentUser by conversationCreationViewModel.currentUser.collectAsState()
             MaterialTheme(
                 colorScheme = colorScheme
             ) {
-                ConversationCreationScreen(conversationCreationViewModel, context, pickImage)
+                val user = currentUser
+                if (user == null) {
+                    LoadingScreen()
+                } else {
+                    val pickImage = remember(user) { PickImage(this@ConversationCreationActivity, user) }
+                    ConversationCreationScreen(conversationCreationViewModel, context, pickImage)
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
 
@@ -235,19 +248,14 @@ fun ConversationCreationScreen(
                         },
                         onDeleteAvatar = {
                             conversationCreationViewModel.updateSelectedImageUri(null)
-                            conversationCreationViewModel.updateSelectedEmoji(null)
+                            conversationCreationViewModel.updateSelectedEmojiAvatar(null)
                         }
                     )
                 }
 
                 ConversationNameAndDescription(conversationCreationViewModel)
 
-                if (
-                    CapabilitiesUtil.hasSpreedFeatureCapability(
-                        conversationCreationViewModel.currentUser.capabilities?.spreedCapability,
-                        SpreedFeatures.CONVERSATION_PRESETS
-                    )
-                ) {
+                if (conversationCreationViewModel.showPresetSelection) {
                     ConversationPresets(conversationCreationViewModel)
                 }
                 AddParticipants(launcher, context, conversationCreationViewModel)
@@ -360,18 +368,9 @@ fun ConversationNameAndDescription(conversationCreationViewModel: ConversationCr
     OutlinedTextField(
         value = conversationDescription.value,
         onValueChange = {
-            if (it.length > CapabilitiesUtil.conversationDescriptionLength(
-                    conversationCreationViewModel.currentUser
-                        .capabilities?.spreedCapability
-                )
-            ) {
+            if (it.length > conversationCreationViewModel.conversationDescriptionLength) {
                 conversationCreationViewModel.updateConversationDescription(
-                    it.take(
-                        CapabilitiesUtil.conversationDescriptionLength(
-                            conversationCreationViewModel.currentUser
-                                .capabilities?.spreedCapability
-                        )
-                    )
+                    it.take(conversationCreationViewModel.conversationDescriptionLength)
                 )
             } else {
                 conversationCreationViewModel.updateConversationDescription(it)
@@ -382,142 +381,6 @@ fun ConversationNameAndDescription(conversationCreationViewModel: ConversationCr
             .padding(top = 8.dp, start = 16.dp, end = 16.dp)
             .fillMaxWidth()
     )
-}
-
-@Suppress("LongMethod")
-@SuppressLint("SuspiciousIndentation")
-@Composable
-fun ConversationPresets(conversationCreationViewModel: ConversationCreationViewModel) {
-    val preset by conversationCreationViewModel.conversationPreset
-    val hasAnnouncementPresetCapability = CapabilitiesUtil.hasSpreedFeatureCapability(
-        conversationCreationViewModel.currentUser.capabilities?.spreedCapability,
-        SpreedFeatures.ANNOUNCEMENT_PRESET
-    )
-    val showAnnouncementPreset = hasAnnouncementPresetCapability &&
-        CapabilitiesUtil.isAdmin(conversationCreationViewModel.currentUser.capabilities?.spreedCapability)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SelectableCard(
-                modifier = Modifier.weight(1f),
-                title = stringResource(R.string.default_room),
-                subtitle = stringResource(R.string.default_room_preset),
-                icon = Icons.Outlined.Chat,
-                isSelected = preset == "default",
-                onClick = { conversationCreationViewModel.updateConversationPreset("default") }
-            )
-
-            SelectableCard(
-                modifier = Modifier.weight(1f),
-                title = stringResource(R.string.voice_room),
-                subtitle = stringResource(R.string.voice_room_preset),
-                icon = Icons.Outlined.VolumeUp,
-                isSelected = preset == "voiceroom",
-                onClick = { conversationCreationViewModel.updateConversationPreset("voiceroom") }
-            )
-        }
-
-        if (hasAnnouncementPresetCapability) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                SelectableCard(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.nc_channel),
-                    subtitle = stringResource(R.string.nc_channel_description),
-                    icon = Icons.Outlined.Podcasts,
-                    isSelected = preset == "channel",
-                    onClick = { conversationCreationViewModel.updateConversationPreset("channel") }
-                )
-
-                if (showAnnouncementPreset) {
-                    SelectableCard(
-                        modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.nc_announcement),
-                        subtitle = stringResource(R.string.nc_announcement_description),
-                        icon = Icons.Outlined.Campaign,
-                        isSelected = preset == "announcement",
-                        onClick = { conversationCreationViewModel.updateConversationPreset("announcement") }
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Suppress("LongParameterList")
-@Composable
-fun SelectableCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    badgeText: String? = null
-) {
-    val borderColor = if (isSelected) Color.LightGray else Color.Transparent
-    val borderWidth = 1.dp
-
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { onClick() }
-            .border(
-                width = borderWidth,
-                color = borderColor,
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(16.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-        }
-
-        if (badgeText != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(4.dp)
-            ) {
-                Text(
-                    text = badgeText,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = subtitle,
-            fontSize = 13.sp,
-            lineHeight = 18.sp
-        )
-    }
 }
 
 @Suppress("LongMethod")
@@ -557,6 +420,10 @@ fun AddParticipants(
                             )
                             intent.putExtra(BundleKeys.KEY_ADD_PARTICIPANTS, true)
                             intent.putExtra("isAddParticipantsEdit", true)
+                            intent.putExtra(
+                                BundleKeys.KEY_ONLY_LOCAL_PARTICIPANTS,
+                                conversationCreationViewModel.isLockedDown
+                            )
                             launcher.launch(intent)
                         },
                     textAlign = TextAlign.Right
@@ -565,8 +432,11 @@ fun AddParticipants(
         }
         participants.toSet().forEach { participant ->
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                val imageUri = participant.id?.let {
-                    conversationCreationViewModel.getImageUri(it, true, DisplayUtils.isDarkModeOn(LocalContext.current))
+                val avatarUser = conversationCreationViewModel.currentUser.value
+                val imageUri = if (avatarUser == null) {
+                    null
+                } else {
+                    participant.id?.let { avatarUri(avatarUser, it, DisplayUtils.isDarkModeOn(context)) }
                 }
                 val errorPlaceholderImage: Int = R.drawable.account_circle_96dp
                 val loadedImage = loadImage(imageUri, context, errorPlaceholderImage)
@@ -592,6 +462,10 @@ fun AddParticipants(
                 .clickable {
                     val intent = Intent(context, ContactsActivity::class.java)
                     intent.putExtra(BundleKeys.KEY_ADD_PARTICIPANTS, true)
+                    intent.putExtra(
+                        BundleKeys.KEY_ONLY_LOCAL_PARTICIPANTS,
+                        conversationCreationViewModel.isLockedDown
+                    )
                     launcher.launch(intent)
                 },
             verticalAlignment = Alignment.CenterVertically
@@ -614,12 +488,18 @@ fun AddParticipants(
 @Suppress("LongMethod")
 @Composable
 fun RoomCreationOptions(conversationCreationViewModel: ConversationCreationViewModel) {
-    val isGuestsAllowed = conversationCreationViewModel.isGuestsAllowed.value
+    val context = LocalContext.current
+    val isGuestsAllowed = conversationCreationViewModel.isGuestsAllowed
     val isConversationAvailableForRegisteredUsers = conversationCreationViewModel
-        .isConversationAvailableForRegisteredUsers.value
-    val isOpenForGuestAppUsers = conversationCreationViewModel.openForGuestAppUsers.value
+        .isConversationAvailableForRegisteredUsers
+    val isOpenForGuestAppUsers = conversationCreationViewModel.isOpenForGuestAppUsers
 
-    val isPasswordSet = conversationCreationViewModel.isPasswordEnabled.value
+    val isPasswordSet = conversationCreationViewModel.password.collectAsState().value.isNotEmpty()
+    var showPasswordDialog by rememberSaveable { mutableStateOf(false) }
+    var showPasswordChangeDialog by rememberSaveable { mutableStateOf(false) }
+    val isLockedDown = conversationCreationViewModel.isLockedDown
+    val isListableFixed = isLockedDown ||
+        ConversationParameter.LISTABLE in conversationCreationViewModel.pinnedParameters
 
     Text(
         text = stringResource(id = R.string.nc_new_conversation_visibility),
@@ -633,27 +513,47 @@ fun RoomCreationOptions(conversationCreationViewModel: ConversationCreationViewM
         switch = {
             Switch(
                 checked = isGuestsAllowed,
-                onCheckedChange = {
-                    conversationCreationViewModel.isGuestsAllowed.value = it
-                }
+                enabled = !isLockedDown,
+                onCheckedChange = { conversationCreationViewModel.allowGuests(it) }
             )
-        },
-        conversationCreationViewModel = conversationCreationViewModel
+        }
     )
 
     if (isGuestsAllowed && !isPasswordSet) {
         ConversationOption(
             icon = R.drawable.baseline_lock_open_24,
             text = R.string.nc_set_password,
-            conversationCreationViewModel = conversationCreationViewModel
+            onClick = { showPasswordDialog = true }
         )
+        if (conversationCreationViewModel.isPasswordEnforced) {
+            Text(
+                text = stringResource(id = R.string.nc_password_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+            )
+        }
     }
 
     if (isGuestsAllowed && isPasswordSet) {
         ConversationOption(
             icon = R.drawable.ic_lock_grey600_24px,
             text = R.string.nc_change_password,
-            conversationCreationViewModel = conversationCreationViewModel
+            onClick = { showPasswordChangeDialog = true }
+        )
+    }
+
+    if (isGuestsAllowed && isPasswordSet) {
+        ConversationOption(
+            icon = R.drawable.ic_content_copy,
+            text = R.string.nc_copy_password,
+            onClick = {
+                copyPasswordToClipboard(
+                    context = context,
+                    label = context.resources.getString(R.string.nc_app_product_name),
+                    password = conversationCreationViewModel.password.value
+                )
+            }
         )
     }
 
@@ -663,12 +563,10 @@ fun RoomCreationOptions(conversationCreationViewModel: ConversationCreationViewM
         switch = {
             Switch(
                 checked = isConversationAvailableForRegisteredUsers,
-                onCheckedChange = {
-                    conversationCreationViewModel.isConversationAvailableForRegisteredUsers.value = it
-                }
+                enabled = !isListableFixed,
+                onCheckedChange = { conversationCreationViewModel.openConversationToRegisteredUsers(it) }
             )
-        },
-        conversationCreationViewModel = conversationCreationViewModel
+        }
     )
 
     if (isConversationAvailableForRegisteredUsers) {
@@ -677,13 +575,37 @@ fun RoomCreationOptions(conversationCreationViewModel: ConversationCreationViewM
             switch = {
                 Switch(
                     checked = isOpenForGuestAppUsers,
-                    onCheckedChange = {
-                        conversationCreationViewModel.openForGuestAppUsers.value = it
-                    }
+                    enabled = !isListableFixed,
+                    onCheckedChange = { conversationCreationViewModel.openConversationToGuestAppUsers(it) }
                 )
-            },
+            }
+        )
+    }
+
+    if (showPasswordDialog) {
+        ShowPasswordDialog(
+            onDismiss = { showPasswordDialog = false },
             conversationCreationViewModel = conversationCreationViewModel
         )
+    }
+    if (showPasswordChangeDialog) {
+        ShowChangePassword(
+            onDismiss = { showPasswordChangeDialog = false },
+            conversationCreationViewModel = conversationCreationViewModel
+        )
+    }
+}
+
+/**
+ * Puts a password the screen already holds through validation, so a dialog that opens on one is as
+ * ready to be saved as a typed password would be.
+ */
+@Composable
+private fun ValidateOnOpen(password: String, conversationCreationViewModel: ConversationCreationViewModel) {
+    LaunchedEffect(Unit) {
+        if (password.isNotEmpty()) {
+            conversationCreationViewModel.passwordValidation.validate(password)
+        }
     }
 }
 
@@ -692,27 +614,13 @@ fun ConversationOption(
     icon: Int? = null,
     text: Int,
     switch: @Composable (() -> Unit)? = null,
-    conversationCreationViewModel: ConversationCreationViewModel
+    onClick: (() -> Unit)? = null
 ) {
-    var showPasswordDialog by rememberSaveable { mutableStateOf(false) }
-    var showPasswordChangeDialog by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-            .then(
-                if (!conversationCreationViewModel.isPasswordEnabled.value) {
-                    Modifier.clickable {
-                        showPasswordDialog = true
-                    }
-                } else if (conversationCreationViewModel.isPasswordEnabled.value) {
-                    Modifier.clickable {
-                        showPasswordChangeDialog = true
-                    }
-                } else {
-                    Modifier
-                }
-            ),
+            .then(onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -733,37 +641,27 @@ fun ConversationOption(
         if (switch != null) {
             switch()
         }
-        if (showPasswordDialog) {
-            ShowPasswordDialog(
-                onDismiss = { showPasswordDialog = false },
-                conversationCreationViewModel = conversationCreationViewModel
-            )
-        }
-        if (showPasswordChangeDialog) {
-            ShowChangePassword(
-                onDismiss = {
-                    showPasswordChangeDialog = false
-                },
-                conversationCreationViewModel = conversationCreationViewModel
-            )
-        }
     }
 }
 
 @Suppress("LongMethod")
 @Composable
 fun ShowChangePassword(onDismiss: () -> Unit, conversationCreationViewModel: ConversationCreationViewModel) {
-    var changedPassword by rememberSaveable { mutableStateOf("") }
+    var changedPassword by remember { mutableStateOf(conversationCreationViewModel.password.value) }
+    ValidateOnOpen(changedPassword, conversationCreationViewModel)
+    val passwordValidationState by conversationCreationViewModel.passwordValidation.state
+        .collectAsStateWithLifecycle()
     Dialog(onDismissRequest = {
         onDismiss()
     }) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(375.dp)
+                .wrapContentHeight()
                 .padding(32.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(color = colorResource(id = R.color.appbar))
+                .verticalScroll(rememberScrollState())
         ) {
             Column(
                 modifier = Modifier
@@ -774,15 +672,15 @@ fun ShowChangePassword(onDismiss: () -> Unit, conversationCreationViewModel: Con
             ) {
                 Text(text = stringResource(id = R.string.nc_set_new_password), fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = changedPassword,
-                    onValueChange = {
+                PasswordPolicyField(
+                    password = changedPassword,
+                    onPasswordChange = {
                         changedPassword = it
+                        conversationCreationViewModel.passwordValidation.validate(it)
                     },
-                    label = { Text(text = stringResource(id = R.string.nc_password)) },
-                    singleLine = true
+                    validationState = passwordValidationState,
+                    label = stringResource(id = R.string.nc_password)
                 )
-                Spacer(modifier = Modifier.height(16.dp))
 
                 Column(
                     modifier = Modifier
@@ -794,30 +692,36 @@ fun ShowChangePassword(onDismiss: () -> Unit, conversationCreationViewModel: Con
                     TextButton(
                         onClick = {
                             conversationCreationViewModel.updatePassword(changedPassword)
-                            conversationCreationViewModel.isPasswordEnabled.value = true
+                            conversationCreationViewModel.passwordValidation.reset()
                             onDismiss()
                         },
-                        enabled = changedPassword.isNotEmpty() && changedPassword.isNotBlank(),
+                        enabled = changedPassword.isNotBlank() && passwordValidationState.isPasswordAccepted,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(text = stringResource(id = R.string.nc_change_password))
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    TextButton(
-                        onClick = {
-                            conversationCreationViewModel.isPasswordEnabled.value = false
-                            onDismiss()
-                        },
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.nc_remove_password),
-                            color = colorResource(id = R.color.nc_darkRed)
-                        )
+                    if (!conversationCreationViewModel.isPasswordEnforced) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = {
+                                conversationCreationViewModel.updatePassword("")
+                                conversationCreationViewModel.passwordValidation.reset()
+                                onDismiss()
+                            },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.nc_remove_password),
+                                color = colorResource(id = R.color.nc_darkRed)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     TextButton(
-                        onClick = { onDismiss() },
+                        onClick = {
+                            conversationCreationViewModel.passwordValidation.reset()
+                            onDismiss()
+                        },
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(text = stringResource(id = R.string.nc_cancel))
@@ -830,35 +734,42 @@ fun ShowChangePassword(onDismiss: () -> Unit, conversationCreationViewModel: Con
 
 @Composable
 fun ShowPasswordDialog(onDismiss: () -> Unit, conversationCreationViewModel: ConversationCreationViewModel) {
-    var password by rememberSaveable { mutableStateOf("") }
+    var password by remember { mutableStateOf(conversationCreationViewModel.password.value) }
+    ValidateOnOpen(password, conversationCreationViewModel)
+    val passwordValidationState by conversationCreationViewModel.passwordValidation.state
+        .collectAsStateWithLifecycle()
     AlertDialog(
         containerColor = colorResource(id = R.color.dialog_background),
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(id = R.string.nc_set_password)) },
         text = {
-            TextField(
-                value = password,
-                onValueChange = {
+            PasswordPolicyField(
+                password = password,
+                onPasswordChange = {
                     password = it
+                    conversationCreationViewModel.passwordValidation.validate(it)
                 },
-                label = { Text(text = stringResource(id = R.string.nc_guest_access_password_dialog_hint)) }
+                validationState = passwordValidationState,
+                label = stringResource(id = R.string.nc_guest_access_password_dialog_hint)
             )
         },
         confirmButton = {
             TextButton(
+                enabled = password.isNotBlank() && passwordValidationState.isPasswordAccepted,
                 onClick = {
-                    if (password.isNotEmpty() && password.isNotBlank()) {
-                        conversationCreationViewModel.updatePassword(password)
-                        conversationCreationViewModel.isPasswordEnabled(true)
-                        onDismiss()
-                    }
+                    conversationCreationViewModel.updatePassword(password)
+                    conversationCreationViewModel.passwordValidation.reset()
+                    onDismiss()
                 }
             ) {
                 Text(text = stringResource(id = R.string.save))
             }
         },
         dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
+            TextButton(onClick = {
+                conversationCreationViewModel.passwordValidation.reset()
+                onDismiss()
+            }) {
                 Text(text = stringResource(id = R.string.nc_cancel))
             }
         }
@@ -867,8 +778,38 @@ fun ShowPasswordDialog(onDismiss: () -> Unit, conversationCreationViewModel: Con
 
 @Composable
 fun CreateConversation(conversationCreationViewModel: ConversationCreationViewModel, context: Context) {
-    val selectedParticipants by conversationCreationViewModel.selectedParticipants.collectAsState()
     val isCreatingRoom by conversationCreationViewModel.isCreatingRoom.collectAsState()
+    val creationState by conversationCreationViewModel.creationState.collectAsState()
+    val password by conversationCreationViewModel.password.collectAsState()
+    var createdPublicConversation by rememberSaveable { mutableStateOf<String?>(null) }
+    var createdWithPassword by rememberSaveable { mutableStateOf(false) }
+    val isPasswordMissing = conversationCreationViewModel.isPasswordEnforced &&
+        conversationCreationViewModel.isGuestsAllowed &&
+        password.isEmpty()
+
+    CreationResultEffect(
+        creationState = creationState,
+        context = context,
+        onPublicConversation = { roomToken, hasPassword ->
+            createdPublicConversation = roomToken
+            createdWithPassword = hasPassword
+        },
+        onHandled = { conversationCreationViewModel.clearCreationState() }
+    )
+
+    val currentUser by conversationCreationViewModel.currentUser.collectAsState()
+    ShareCreatedConversation(
+        roomToken = createdPublicConversation,
+        password = password.takeIf { createdWithPassword },
+        currentUser = currentUser,
+        context = context,
+        onDismiss = { roomToken ->
+            createdPublicConversation = null
+            conversationCreationViewModel.clearCreationState()
+            openConversation(context, roomToken)
+        }
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -876,21 +817,11 @@ fun CreateConversation(conversationCreationViewModel: ConversationCreationViewMo
         contentAlignment = Alignment.Center
     ) {
         Button(
-            enabled = !isCreatingRoom,
+            enabled = !isCreatingRoom &&
+                !conversationCreationViewModel.isLoadingPresets &&
+                !isPasswordMissing,
             onClick = {
-                conversationCreationViewModel.createRoomAndAddParticipants(
-                    roomType = CompanionClass.ROOM_TYPE_GROUP,
-                    conversationName = conversationCreationViewModel.roomName.value,
-                    participants = selectedParticipants.toSet(),
-                    preset = conversationCreationViewModel.conversationPreset.value
-                ) { roomToken ->
-                    val bundle = Bundle()
-                    bundle.putString(BundleKeys.KEY_ROOM_TOKEN, roomToken)
-                    val chatIntent = Intent(context, ChatActivity::class.java)
-                    chatIntent.putExtras(bundle)
-                    chatIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    context.startActivity(chatIntent)
-                }
+                conversationCreationViewModel.createRoomAndAddParticipants()
             }
         ) {
             if (isCreatingRoom) {
@@ -903,13 +834,6 @@ fun CreateConversation(conversationCreationViewModel: ConversationCreationViewMo
             }
             Text(text = stringResource(id = R.string.create_conversation))
         }
-    }
-}
-
-class CompanionClass {
-    companion object {
-        internal val TAG = ConversationCreationActivity::class.simpleName
-        internal const val ROOM_TYPE_GROUP = "2"
     }
 }
 
@@ -928,3 +852,6 @@ fun ConversationCreationScreenPreview() {
         )
     }
 }
+
+private fun avatarUri(user: User, avatarId: String, isDarkMode: Boolean): String =
+    ApiUtils.getUrlForAvatar(user.baseUrl, avatarId, true, darkMode = isDarkMode)

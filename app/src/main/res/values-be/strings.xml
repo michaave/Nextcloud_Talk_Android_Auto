@@ -142,6 +142,7 @@
     <string name="nc_call_notifications">Апавяшчэнні аб выкліках</string>
     <string name="nc_call_ongoing_notification_content">Націсніце, каб вярнуцца да выкліку.</string>
     <string name="nc_call_ongoing_notification_default_title">Выконваецца выклік</string>
+    <string name="nc_call_ongoing_notification_end_action">Завяршыць выклік</string>
     <string name="nc_call_raised_hand">%1$s падняў(-ла) руку</string>
     <string name="nc_call_reconnecting">Перазлучэнне ...</string>
     <string name="nc_call_ringing">ВЫКЛІК</string>
@@ -205,6 +206,7 @@
     <string name="nc_conversations_empty_details">Павітайцеся з сябрамі і калегамі!</string>
     <string name="nc_copy_message">Капіяваць</string>
     <string name="nc_copy_message_link">Скапіяваць спасылку на паведамленне</string>
+    <string name="nc_copy_password">Скапіяваць пароль</string>
     <string name="nc_create_new_conversation">Стварыць новую размову</string>
     <string name="nc_create_poll">Стварыць апытанне</string>
     <string name="nc_date_header_today">Сёння</string>
@@ -217,6 +219,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Паведамленне паспяхова выдалена, але яно магло трапіць у іншыя сэрвісы</string>
     <string name="nc_delete_now">Выдаліць зараз</string>
     <string name="nc_deleted_user">Карыстальнік %1$s быў выдалены</string>
+    <string name="nc_deleted_user_display_name">Выдалены карыстальнік</string>
     <string name="nc_demote">Пазбавіць правоў мадэратара</string>
     <string name="nc_description_record_voice">Запісаць галасавое паведамленне</string>
     <string name="nc_description_send_message_button">Адправіць паведамленне</string>
@@ -358,6 +361,7 @@
     <string name="nc_offline">Вы па-за сеткай, праверце падключэнне</string>
     <string name="nc_ok">OK</string>
     <string name="nc_ongoing_meeting">Бягучая сустрэча</string>
+    <string name="nc_open_conversation">Адкрыць размову</string>
     <string name="nc_open_conversation_to_registered_users">Адкрыць размову для зарэгістраваных карыстальнікаў</string>
     <string name="nc_open_to_guest_app_users">Таксама адкрыта для гасцей</string>
     <string name="nc_owner">Уладальнік</string>
@@ -391,6 +395,7 @@
     <string name="nc_rename_confirm">Перайменаваць</string>
     <string name="nc_reply">Адказаць</string>
     <string name="nc_reply_privately">Адказаць прыватна</string>
+    <string name="nc_retry">Паўтарыць спробу</string>
     <string name="nc_room_retention">Пакой паспяхова захаваны</string>
     <string name="nc_save_message">Захаваць</string>
     <string name="nc_save_success">Паспяхова захавана</string>
@@ -525,6 +530,7 @@
     <string name="nc_test_results">Вынікі тэста</string>
     <string name="nc_today_meeting">Сёння ў %1$s</string>
     <string name="nc_tomorrow_meeting">Заўтра ў %1$s</string>
+    <string name="nc_undo">Адрабіць</string>
     <string name="nc_upload_choose_local_files">Выберыце файлы</string>
     <string name="nc_upload_confirm_send_multiple">Адправіць гэтыя файлы карыстальніку %1$s?</string>
     <string name="nc_upload_confirm_send_single">Адправіць гэты файл карыстальніку %1$s?</string>

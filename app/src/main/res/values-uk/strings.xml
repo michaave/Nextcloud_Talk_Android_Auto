@@ -135,6 +135,7 @@
     <string name="nc_call_name">Назва розмови</string>
     <string name="nc_call_notifications">Сповіщення про дзвінки</string>
     <string name="nc_call_ongoing_notification_default_title">Триває виклик</string>
+    <string name="nc_call_ongoing_notification_end_action">Кінець зв\'язку.</string>
     <string name="nc_call_raised_hand">%1$s підняв руку</string>
     <string name="nc_call_reconnecting">Відновлення зєднання...</string>
     <string name="nc_call_ringing">ВИКЛИК</string>
@@ -197,6 +198,7 @@
     <string name="nc_conversations_empty_details">Привітайтеся з вашими друзями та колегами!</string>
     <string name="nc_copy_message">Копіювати</string>
     <string name="nc_copy_message_link">Копіювати посилання на повідомлення</string>
+    <string name="nc_copy_password">Копіювати пароль</string>
     <string name="nc_create_new_conversation">Створити нову розмову</string>
     <string name="nc_create_poll">Створити опитування</string>
     <string name="nc_custom_color">Власний колір</string>
@@ -210,6 +212,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Повідомлення вилучено, але воно могло потрапити до інших сервісів</string>
     <string name="nc_delete_now">Видалити зараз</string>
     <string name="nc_deleted_user">Користувача %1$s було видалено</string>
+    <string name="nc_deleted_user_display_name">Вилучений користувач</string>
     <string name="nc_demote">Розжалування з модератора</string>
     <string name="nc_description_record_voice">Записати голосове повідомлення</string>
     <string name="nc_description_send_message_button">Надіслати повідомлення</string>
@@ -250,6 +253,7 @@
     <string name="nc_federation_no_invitations">Немає очікуваних запрошень</string>
     <string name="nc_federation_pending_invitation_hint">У вас є очікувані запрошення</string>
     <string name="nc_file_browser_back">Назад</string>
+    <string name="nc_file_permission_editable">Редагувати</string>
     <string name="nc_file_storage_permission">Потрібен дозвіл на доступ до файлів</string>
     <string name="nc_filter">Фільтрувати розмови</string>
     <string name="nc_following_link">Користувач, який увійшов за посиланням</string>
@@ -346,12 +350,14 @@
     <string name="nc_offline">Зараз оффлайн, перевірте з\'єднання</string>
     <string name="nc_ok">OK</string>
     <string name="nc_ongoing_meeting">Зустріч, що триває</string>
+    <string name="nc_open_conversation">Відкрита розмова</string>
     <string name="nc_open_conversation_to_registered_users">Відкрита бесіда для зареєстрованих користувачів</string>
     <string name="nc_open_to_guest_app_users">Також відкрито для користувачів гостьових додатків</string>
     <string name="nc_owner">Власник</string>
     <string name="nc_participants">Учасники</string>
     <string name="nc_participants_add">Додати учасників</string>
     <string name="nc_password">Пароль</string>
+    <string name="nc_password_copied">Пароль скопійовано</string>
     <string name="nc_permissions_ask">Встановіть дозволи</string>
     <string name="nc_permissions_denied">У деяких дозволах було відмовлено.</string>
     <string name="nc_permissions_rationale_dialog_title">Будь ласка, надайте дозволи</string>
@@ -362,6 +368,7 @@
     <string name="nc_pip_microphone_mute">Вимкнути мікрофон</string>
     <string name="nc_pip_microphone_unmute">Увімкнути мікрофон</string>
     <string name="nc_plain_old_messages">Повідомлення</string>
+    <string name="nc_presentation">Презентація</string>
     <string name="nc_profile_personal_info_title">Персональна інформація</string>
     <string name="nc_promote">Призначити модератором</string>
     <string name="nc_public_call_status">Публічна розмова</string>
@@ -380,6 +387,7 @@
     <string name="nc_rename_confirm">Перейменувати</string>
     <string name="nc_reply">Відповісти</string>
     <string name="nc_reply_privately">Відповісти у приватній розмові</string>
+    <string name="nc_retry">Спробувати ще раз</string>
     <string name="nc_room_retention">Приміщення успішно утримується</string>
     <string name="nc_save_message">Зберегти</string>
     <string name="nc_save_success">Збережено успішно</string>
@@ -510,6 +518,7 @@
     <string name="nc_test_results">Результати тестування</string>
     <string name="nc_today_meeting">Сьогодні на %1$s</string>
     <string name="nc_tomorrow_meeting">Завтра в %1$s</string>
+    <string name="nc_undo">Скасувати</string>
     <string name="nc_upload_choose_local_files">Виберіть файли</string>
     <string name="nc_upload_confirm_send_multiple">Надіслати ці файли на %1$s?</string>
     <string name="nc_upload_confirm_send_single">Надіслати цей файл на %1$s?</string>

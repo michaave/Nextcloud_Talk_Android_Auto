@@ -9,6 +9,7 @@
 package com.nextcloud.talk.conversationlist.data.network
 
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
 import android.net.ConnectivityManager
 import android.os.PowerManager
 import android.util.Log
@@ -25,6 +26,7 @@ import com.nextcloud.talk.models.domain.ConversationModel
 import com.nextcloud.talk.utils.ApiUtils
 import com.nextcloud.talk.utils.CapabilitiesUtil.isUserStatusAvailable
 import com.nextcloud.talk.utils.SpreedFeatures
+import com.nextcloud.talk.utils.withRetry
 import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
@@ -81,6 +83,10 @@ class OfflineFirstConversationsRepository @Inject constructor(
     override val conversationFlow: Flow<ConversationModel>
         get() = _conversationFlow
     private val _conversationFlow: MutableSharedFlow<ConversationModel> = MutableSharedFlow()
+
+    override val syncErrorFlow: Flow<Throwable>
+        get() = _syncErrorFlow
+    private val _syncErrorFlow: MutableSharedFlow<Throwable> = MutableSharedFlow()
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -148,7 +154,11 @@ class OfflineFirstConversationsRepository @Inject constructor(
                                 previous,
                                 listOf(model.asEntity())
                             )
-                            dao.upsertConversations(user.id!!, entityList)
+                            try {
+                                dao.upsertConversations(user.id!!, entityList)
+                            } catch (e: SQLiteConstraintException) {
+                                Log.w(TAG, "Skipping conversation upsert for removed account ${user.id}", e)
+                            }
                         }
                     }
                 })
@@ -176,10 +186,16 @@ class OfflineFirstConversationsRepository @Inject constructor(
         val includeStatus = isUserStatusAvailable(user)
 
         try {
-            val conversationsList = network.getRooms(user, user.baseUrl!!, includeStatus)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .blockingSingle()
+            val conversationsList = withRetry(
+                retries = NETWORK_FETCH_RETRIES,
+                initialDelayMillis = NETWORK_FETCH_RETRY_INITIAL_DELAY_MS,
+                maxDelayMillis = NETWORK_FETCH_RETRY_MAX_DELAY_MS
+            ) {
+                network.getRooms(user, user.baseUrl!!, includeStatus)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .blockingSingle()
+            }
 
             conversationsFromSync = conversationsList.map {
                 it.asEntity(user.id!!)
@@ -201,6 +217,10 @@ class OfflineFirstConversationsRepository @Inject constructor(
             scope.launch { catchUpRoomsWithNewMessages(user, roomsWithNewMessages) }
         } catch (e: Exception) {
             Log.e(TAG, "Something went wrong when fetching conversations", e)
+            val hasCachedConversations = dao.getConversationsForUser(user.id!!).first().isNotEmpty()
+            if (!hasCachedConversations) {
+                _syncErrorFlow.emit(e)
+            }
         }
         return conversationsFromSync
     }
@@ -335,5 +355,8 @@ class OfflineFirstConversationsRepository @Inject constructor(
         private const val CHAT_API_VERSION = 1
         private const val MAX_ROOMS_TO_CATCH_UP = 20
         private const val MAX_CONCURRENT_CATCH_UPS = 3
+        private const val NETWORK_FETCH_RETRIES = 3
+        private const val NETWORK_FETCH_RETRY_INITIAL_DELAY_MS = 1000L
+        private const val NETWORK_FETCH_RETRY_MAX_DELAY_MS = 8000L
     }
 }

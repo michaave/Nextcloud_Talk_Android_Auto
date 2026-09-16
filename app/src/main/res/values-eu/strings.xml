@@ -112,6 +112,7 @@
     <string name="nc_call_name">Elkarrizketaren izena</string>
     <string name="nc_call_notifications">Dei jakinarazpenak</string>
     <string name="nc_call_ongoing_notification_default_title">Deia abian da</string>
+    <string name="nc_call_ongoing_notification_end_action">Amaitu deia</string>
     <string name="nc_call_raised_hand">%1$s-k eskua altxatu du</string>
     <string name="nc_call_reconnecting">Berriro konektatzen …</string>
     <string name="nc_call_ringing">DEITZEN</string>
@@ -175,6 +176,7 @@
     <string name="nc_conversations_empty_details">Esan kaixo zure lagun eta lankideei!</string>
     <string name="nc_copy_message">Kopiatu</string>
     <string name="nc_copy_message_link">Kopiatu mezuaren esteka</string>
+    <string name="nc_copy_password">Kopiatu pasahitza</string>
     <string name="nc_create_new_conversation">Sortu elkarrizketa berri bat</string>
     <string name="nc_create_poll">Sortu galdeketa</string>
     <string name="nc_custom_color">Kolore pertsonalizatua</string>
@@ -187,6 +189,7 @@
     <string name="nc_delete_message">Mezua ezabatzen</string>
     <string name="nc_delete_message_leaked_to_matterbridge">Mezua ondo ezabatu da, baina baliteke beste zerbitzu batzuetara filtratu izana</string>
     <string name="nc_deleted_user"> %1$s erabiltzailea kendu da</string>
+    <string name="nc_deleted_user_display_name">Ezabatutako erabiltzaileak</string>
     <string name="nc_demote">Moderatzailetik degradatua</string>
     <string name="nc_description_record_voice">Grabatu ahots mezua</string>
     <string name="nc_description_send_message_button">Bidali mezua</string>
@@ -220,6 +223,7 @@
     <string name="nc_federation_invitation_reject">Ukatu</string>
     <string name="nc_federation_no_invitations">Ez duzu gonbidapenik zain</string>
     <string name="nc_file_browser_back">Itzuli</string>
+    <string name="nc_file_permission_editable">Editagarria</string>
     <string name="nc_file_storage_permission">Fitxategietan sartzeko baimena behar da</string>
     <string name="nc_following_link">Erabiltzailea esteka publiko bat jarraitzen ari da</string>
     <string name="nc_formatted_message_you">Zu: %1$s</string>
@@ -303,6 +307,7 @@
     <string name="nc_notify_me_never">Ez jakinarazi inoiz</string>
     <string name="nc_offline">Lineaz kanpo zaude momentu honetan, mesedez egiaztatu zure konexioa</string>
     <string name="nc_ok">Ados</string>
+    <string name="nc_open_conversation">Ireki elkarrizketa</string>
     <string name="nc_open_conversation_to_registered_users">Ireki elkarrizketa erregistratutako erabiltzaileei</string>
     <string name="nc_open_to_guest_app_users">Ireki baita ere aplikazio gonbidatuentzat</string>
     <string name="nc_owner">Jabea</string>
@@ -319,6 +324,7 @@
     <string name="nc_pip_microphone_mute">Mututu mikrofonoa</string>
     <string name="nc_pip_microphone_unmute">Gaitu mikrofonoa</string>
     <string name="nc_plain_old_messages">Mezuak</string>
+    <string name="nc_presentation">Aurkezpena</string>
     <string name="nc_profile_personal_info_title">Informazio pertsonala</string>
     <string name="nc_promote">Moderatzaile bihurtu zara</string>
     <string name="nc_public_call_status">Elkarrizketa publikoa</string>
@@ -334,6 +340,7 @@
     <string name="nc_rename_confirm">Berrizendatu</string>
     <string name="nc_reply">Erantzun</string>
     <string name="nc_reply_privately">Erantzun pribatuki</string>
+    <string name="nc_retry">saiatu berriro</string>
     <string name="nc_save_message">Gorde</string>
     <string name="nc_save_success">Ondo gorde da</string>
     <string name="nc_screen_lock_timeout_30">30 segundo</string>
@@ -443,6 +450,7 @@
     <string name="nc_start_time">Hasiera-ordua</string>
     <string name="nc_switch_account">Aldatu kontua</string>
     <string name="nc_team">Lantaldea</string>
+    <string name="nc_undo">Desegin</string>
     <string name="nc_upload_choose_local_files">Hautatu fitxategiak</string>
     <string name="nc_upload_confirm_send_multiple">Fitxategi hauek bidali %1$s(r)i?</string>
     <string name="nc_upload_confirm_send_single">Fitxategi hau bidali %1$s(r)i?</string>

@@ -209,11 +209,14 @@ data class ChatMessage(
             ""
         }
 
-    fun getNullsafeActorDisplayName() =
-        if (!TextUtils.isEmpty(actorDisplayName)) {
-            actorDisplayName
-        } else {
-            sharedApplication!!.getString(R.string.nc_guest)
+    val isDeletedUser: Boolean
+        get() = actorType == ACTOR_TYPE_DELETED_USERS
+
+    fun getNullsafeActorDisplayName(): String =
+        when {
+            isDeletedUser -> sharedApplication!!.getString(R.string.nc_deleted_user_display_name)
+            !TextUtils.isEmpty(actorDisplayName) -> actorDisplayName!!
+            else -> sharedApplication!!.getString(R.string.nc_guest)
         }
 
     val createdAt: Date = Date(timestamp * MILLIES)
@@ -260,7 +263,9 @@ data class ChatMessage(
      * see https://nextcloud-talk.readthedocs.io/en/latest/chat/#system-messages
      */
     enum class SystemMessageType {
+        // No system message at all, as opposed to UNKNOWN which is a system message of an unknown type
         DUMMY,
+        UNKNOWN,
         CONVERSATION_CREATED,
         CONVERSATION_RENAMED,
         DESCRIPTION_REMOVED,
@@ -277,6 +282,8 @@ data class ChatMessage(
         LISTABLE_NONE,
         LISTABLE_USERS,
         LISTABLE_ALL,
+        PRESERVE_CONVERSATION,
+        PRESERVE_CONVERSATION_OFF,
         LOBBY_NONE,
         LOBBY_NON_MODERATORS,
         LOBBY_OPEN_TO_EVERYONE,
@@ -290,6 +297,8 @@ data class ChatMessage(
         GROUP_REMOVED,
         CIRCLE_ADDED,
         CIRCLE_REMOVED,
+        OWNER_PROMOTED,
+        OWNER_DEMOTED,
         MODERATOR_PROMOTED,
         MODERATOR_DEMOTED,
         GUEST_MODERATOR_PROMOTED,
@@ -323,6 +332,7 @@ data class ChatMessage(
         FEDERATED_USER_ADDED,
         FEDERATED_USER_REMOVED,
         PHONE_ADDED,
+        PHONE_REMOVED,
         THREAD_CREATED,
         THREAD_RENAMED,
         MESSAGE_PINNED,
@@ -332,6 +342,7 @@ data class ChatMessage(
     companion object {
         private const val TAG = "ChatMessage"
         private const val MILLIES: Long = 1000L
+        private const val ACTOR_TYPE_DELETED_USERS = "deleted_users"
         private val regexOptions = setOf(RegexOption.MULTILINE, RegexOption.IGNORE_CASE)
         private val MARKDOWN_LINK_REGEX = """\[[^\]]+\]\((https?://[^\s)]+)\)""".toRegex(regexOptions)
 

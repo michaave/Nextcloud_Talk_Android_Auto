@@ -158,6 +158,7 @@
     <string name="nc_delete_conversation_more">Si borras la conversación, también se borrará para todos los demás participantes.</string>
     <string name="nc_delete_message">Eliminar mensaje</string>
     <string name="nc_delete_message_leaked_to_matterbridge">El mensaje se borró correctamente, pero podría haber sido filtrado a otros servicios</string>
+    <string name="nc_deleted_user_display_name">Usuario eliminado</string>
     <string name="nc_demote">Degradar de moderador</string>
     <string name="nc_description_record_voice">Grabar mensaje de voz</string>
     <string name="nc_description_send_message_button">Enviar mensaje</string>
@@ -184,6 +185,7 @@
     <string name="nc_federation_invitation_accept">Aceptar</string>
     <string name="nc_federation_invitation_reject">Rechazar</string>
     <string name="nc_file_browser_back">Atrás</string>
+    <string name="nc_file_permission_editable">Editable</string>
     <string name="nc_file_storage_permission">Se requiere permiso para acceder a archivos</string>
     <string name="nc_following_link">Usuario que sigue un enlace público</string>
     <string name="nc_formatted_message_you">Tú: %1$s</string>
@@ -274,6 +276,7 @@
     <string name="nc_pip_microphone_mute">Silenciar micrófono</string>
     <string name="nc_pip_microphone_unmute">Habilitar micrófono</string>
     <string name="nc_plain_old_messages">Mensajes</string>
+    <string name="nc_presentation">Presentación</string>
     <string name="nc_profile_personal_info_title">Información personal</string>
     <string name="nc_promote">Promover a moderador</string>
     <string name="nc_push_disabled">Notificaciones push deshabilitadas</string>
@@ -287,6 +290,7 @@
     <string name="nc_rename_confirm">Renombrar</string>
     <string name="nc_reply">Responder</string>
     <string name="nc_reply_privately">Responder de forma privada</string>
+    <string name="nc_retry">Reintentar</string>
     <string name="nc_save_message">Guardar</string>
     <string name="nc_screen_lock_timeout_30">30 segundos</string>
     <string name="nc_screen_lock_timeout_300">5 minutos</string>
@@ -389,6 +393,7 @@
     <string name="nc_sort_by">Ordenar por</string>
     <string name="nc_start_time">Hora de inicio</string>
     <string name="nc_switch_account">Cambiar cuenta</string>
+    <string name="nc_undo">Deshacer</string>
     <string name="nc_upload_choose_local_files">Elegir archivos</string>
     <string name="nc_upload_confirm_send_multiple">¿Enviar estos archivos a %1$s?</string>
     <string name="nc_upload_confirm_send_single">¿Enviar este archivo a %1$s?</string>

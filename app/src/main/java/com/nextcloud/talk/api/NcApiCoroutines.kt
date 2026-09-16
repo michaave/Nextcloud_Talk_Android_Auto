@@ -17,6 +17,7 @@ import com.nextcloud.talk.models.json.chatpostattachment.ChatPostAttachmentOvera
 import com.nextcloud.talk.models.json.chatpostattachment.PostConversationAttachmentRequest
 import com.nextcloud.talk.models.json.chatprobeattachmentfolder.ChatProbeAttachmentFolderOverall
 import com.nextcloud.talk.models.json.chatprobeattachmentfolder.ProbeConversationAttachmentRequest
+import com.nextcloud.talk.models.json.conversations.ConversationPresetsOverall
 import com.nextcloud.talk.models.json.conversations.RoomOverall
 import com.nextcloud.talk.models.json.conversations.RoomsOverall
 import com.nextcloud.talk.models.json.generic.GenericOverall
@@ -25,6 +26,7 @@ import com.nextcloud.talk.models.json.invitation.InvitationOverall
 import com.nextcloud.talk.models.json.participants.AddParticipantOverall
 import com.nextcloud.talk.models.json.participants.TalkBan
 import com.nextcloud.talk.models.json.participants.TalkBanOverall
+import com.nextcloud.talk.models.json.passwordResult.PasswordResultOverall
 import com.nextcloud.talk.models.json.profile.ProfileOverall
 import com.nextcloud.talk.models.json.reactions.ReactionsOverall
 import com.nextcloud.talk.models.json.status.StatusOverall
@@ -92,6 +94,12 @@ interface NcApiCoroutines {
         @FieldMap options: Map<String, String>?
     ): RoomOverall
 
+    @GET
+    suspend fun getConversationPresets(
+        @Header("Authorization") authorization: String?,
+        @Url url: String
+    ): ConversationPresetsOverall
+
     @POST
     suspend fun createRoomWithBody(
         @Header("Authorization") authorization: String?,
@@ -138,6 +146,14 @@ interface NcApiCoroutines {
 
     @POST
     suspend fun makeRoomPublic(@Header("Authorization") authorization: String, @Url url: String): GenericOverall
+
+    @FormUrlEncoded
+    @POST
+    suspend fun makeRoomPublicWithPassword(
+        @Header("Authorization") authorization: String,
+        @Url url: String,
+        @Field("password") password: String
+    ): GenericOverall
 
     @DELETE
     suspend fun makeRoomPrivate(@Header("Authorization") authorization: String, @Url url: String): GenericOverall
@@ -577,4 +593,18 @@ interface NcApiCoroutines {
     @FormUrlEncoded
     @POST
     suspend fun reportRemoteWipeSuccess(@Url url: String, @Field("token") token: String): Response<Unit>
+
+    @FormUrlEncoded
+    @POST
+    suspend fun validatePassword(
+        @Header("Authorization") authorization: String,
+        @Url url: String,
+        @Field("password") password: String
+    ): PasswordResultOverall
+
+    @GET
+    suspend fun generatePassword(
+        @Header("Authorization") authorization: String,
+        @Url url: String
+    ): PasswordResultOverall
 }

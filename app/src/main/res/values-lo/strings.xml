@@ -136,6 +136,7 @@
     <string name="nc_call_notifications">Call notifications</string>
     <string name="nc_call_ongoing_notification_content">Tap to return to your call.</string>
     <string name="nc_call_ongoing_notification_default_title">Call in progress</string>
+    <string name="nc_call_ongoing_notification_end_action">End call</string>
     <string name="nc_call_raised_hand">%1$s raised the hand</string>
     <string name="nc_call_reconnecting">Reconnecting …</string>
     <string name="nc_call_ringing">RINGING</string>
@@ -198,6 +199,7 @@
     <string name="nc_conversations_empty_details">Say hi to your friends and colleagues!</string>
     <string name="nc_copy_message">ສຳເນົາ</string>
     <string name="nc_copy_message_link">Copy message link</string>
+    <string name="nc_copy_password">Copy password</string>
     <string name="nc_create_new_conversation">Create a new conversation</string>
     <string name="nc_create_poll">Create poll</string>
     <string name="nc_custom_color">Custom color</string>
@@ -211,6 +213,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Message deleted successfully, but it might have been leaked to other services</string>
     <string name="nc_delete_now">Delete now</string>
     <string name="nc_deleted_user">User %1$s was removed</string>
+    <string name="nc_deleted_user_display_name">Deleted user</string>
     <string name="nc_demote">Demote from moderator</string>
     <string name="nc_description_record_voice">Record voice message</string>
     <string name="nc_description_send_message_button">Send message</string>
@@ -251,6 +254,7 @@
     <string name="nc_federation_no_invitations">No pending invitations</string>
     <string name="nc_federation_pending_invitation_hint">You have pending invitations</string>
     <string name="nc_file_browser_back">ຫຼັງ</string>
+    <string name="nc_file_permission_editable">ແກ້ໄຂໄດ້</string>
     <string name="nc_file_storage_permission">Permission for file access is required</string>
     <string name="nc_filter">Filter conversations</string>
     <string name="nc_following_link">User following a public link</string>
@@ -347,6 +351,7 @@
     <string name="nc_offline">Currently offline, please check your connectivity</string>
     <string name="nc_ok">ຕົກລົງ</string>
     <string name="nc_ongoing_meeting">Ongoing meeting</string>
+    <string name="nc_open_conversation">Open conversation</string>
     <string name="nc_open_conversation_to_registered_users">Open conversation to registered users</string>
     <string name="nc_open_to_guest_app_users">Also open to guest app users</string>
     <string name="nc_owner">ເຈົ້າຂອງ</string>
@@ -363,6 +368,7 @@
     <string name="nc_pip_microphone_mute">Mute microphone</string>
     <string name="nc_pip_microphone_unmute">Enable microphone</string>
     <string name="nc_plain_old_messages">Messages</string>
+    <string name="nc_presentation">ການນຳສະເໜີ</string>
     <string name="nc_profile_personal_info_title">Personal Info</string>
     <string name="nc_promote">Promote to moderator</string>
     <string name="nc_public_call_status">Public conversation</string>
@@ -381,6 +387,7 @@
     <string name="nc_rename_confirm">Rename</string>
     <string name="nc_reply">Reply</string>
     <string name="nc_reply_privately">Reply privately</string>
+    <string name="nc_retry">ລອງໃໝ່</string>
     <string name="nc_room_retention">Room is retained successfully</string>
     <string name="nc_save_message">ບັນທຶກ</string>
     <string name="nc_save_success">Saved successfully</string>
@@ -511,6 +518,7 @@
     <string name="nc_test_results">Test results</string>
     <string name="nc_today_meeting">Today at %1$s</string>
     <string name="nc_tomorrow_meeting">Tomorrow at %1$s</string>
+    <string name="nc_undo">ກັບຄືນ</string>
     <string name="nc_upload_choose_local_files">Choose files</string>
     <string name="nc_upload_confirm_send_multiple">Send these files to %1$s?</string>
     <string name="nc_upload_confirm_send_single">Send this file to %1$s?</string>

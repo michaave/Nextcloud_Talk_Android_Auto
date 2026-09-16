@@ -20,6 +20,7 @@ import android.text.TextUtils
 import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import coil.executeBlocking
 import coil.imageLoader
@@ -30,6 +31,7 @@ import com.nextcloud.talk.BuildConfig
 import com.nextcloud.talk.R
 import com.nextcloud.talk.data.user.model.User
 import com.nextcloud.talk.models.RingtoneSettings
+import com.nextcloud.talk.ui.toDrawable
 import com.nextcloud.talk.utils.bundle.BundleKeys
 import com.nextcloud.talk.utils.preferences.AppPreferences
 import java.io.File
@@ -44,6 +46,7 @@ object NotificationUtils {
     enum class NotificationChannels {
         NOTIFICATION_CHANNEL_MESSAGES_V4,
         NOTIFICATION_CHANNEL_CALLS_V4,
+        NOTIFICATION_CHANNEL_CALLS_ONGOING_V1,
         NOTIFICATION_CHANNEL_UPLOADS
     }
 
@@ -115,6 +118,25 @@ object NotificationUtils {
         )
     }
 
+    /**
+     * Separate from [NotificationChannels.NOTIFICATION_CHANNEL_CALLS_V4] (the incoming-ring channel,
+     * which must stay IMPORTANCE_HIGH) so the persistent "call in progress" foreground-service
+     * notification never heads-ups/peeks - it should only be visible by pulling down the status bar.
+     */
+    private fun createOngoingCallNotificationChannel(context: Context) {
+        createNotificationChannel(
+            context,
+            Channel(
+                NotificationChannels.NOTIFICATION_CHANNEL_CALLS_ONGOING_V1.name,
+                context.resources.getString(R.string.nc_notification_channel_calls_ongoing),
+                context.resources.getString(R.string.nc_notification_channel_calls_ongoing_description),
+                false
+            ),
+            null,
+            null
+        )
+    }
+
     private fun createMessagesNotificationChannel(context: Context, appPreferences: AppPreferences) {
         val audioAttributes =
             AudioAttributes.Builder()
@@ -152,6 +174,7 @@ object NotificationUtils {
 
     fun registerNotificationChannels(context: Context, appPreferences: AppPreferences) {
         createCallsNotificationChannel(context, appPreferences)
+        createOngoingCallNotificationChannel(context)
         createMessagesNotificationChannel(context, appPreferences)
         createUploadsNotificationChannel(context)
     }
@@ -321,18 +344,23 @@ object NotificationUtils {
             NotificationChannels.NOTIFICATION_CHANNEL_MESSAGES_V4.name
         )
 
-    fun loadAvatarSync(avatarUrl: String, context: Context): IconCompat? {
-        val bitmap = loadAvatarBitmapSync(avatarUrl, context)
+    fun loadAvatarSync(avatarUrl: String, context: Context, credentials: String? = null): IconCompat? {
+        val bitmap = loadAvatarBitmapSync(avatarUrl, context, credentials)
         return bitmap?.let { IconCompat.createWithBitmap(it) }
     }
 
-    fun loadAvatarBitmapSync(avatarUrl: String, context: Context): Bitmap? {
+    fun loadAvatarBitmapSync(avatarUrl: String, context: Context, credentials: String? = null): Bitmap? {
         var avatarBitmap: Bitmap? = null
 
-        val request = ImageRequest.Builder(context)
+        val requestBuilder = ImageRequest.Builder(context)
             .data(avatarUrl)
             .transformations(CircleCropTransformation())
             .placeholder(R.drawable.account_circle_96dp)
+            .listener(
+                onError = { _, result ->
+                    Log.w(TAG, "Can't load avatar for URL: $avatarUrl", result.throwable)
+                }
+            )
             .target(
                 onSuccess = { result ->
                     avatarBitmap = (result as BitmapDrawable).bitmap
@@ -341,18 +369,31 @@ object NotificationUtils {
                     error?.let {
                         avatarBitmap = (error as BitmapDrawable).bitmap
                     }
-                    Log.w(TAG, "Can't load avatar for URL: $avatarUrl")
                 }
             )
-            .build()
 
-        context.imageLoader.executeBlocking(request)
+        if (credentials != null) {
+            requestBuilder.addHeader("Authorization", credentials)
+        }
+
+        context.imageLoader.executeBlocking(requestBuilder.build())
 
         return avatarBitmap
     }
 
+    fun loadConversationAvatarBitmapSync(
+        baseUrl: String?,
+        roomToken: String,
+        credentials: String?,
+        context: Context
+    ): Bitmap? {
+        val avatarUrl = ApiUtils.getUrlForConversationAvatar(ApiUtils.API_V1, baseUrl, roomToken)
+        return loadAvatarBitmapSync(avatarUrl, context, credentials)
+    }
+
     fun saveBitmapToCache(context: Context, bitmap: Bitmap, fileName: String): Uri? {
-        val cacheFile = File(context.cacheDir, fileName)
+        val sharedAttachmentsDir = FileUtils.getSharedAttachmentsDirectory(context.cacheDir) ?: return null
+        val cacheFile = File(sharedAttachmentsDir, fileName)
         return try {
             FileOutputStream(cacheFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, BITMAP_COMPRESSION_QUALITY, out)
@@ -363,6 +404,19 @@ object NotificationUtils {
             null
         }
     }
+
+    /**
+     * Notification avatar for actors without an avatar on the server, drawn by the client as
+     * resolved by [CharacterAvatarUtils] instead of being requested.
+     */
+    fun characterAvatarBitmap(context: Context, avatar: ActorAvatar.Character): Bitmap =
+        avatar.toDrawable(context).toBitmap(CHARACTER_AVATAR_ICON_SIZE, CHARACTER_AVATAR_ICON_SIZE)
+
+    /**
+     * Pixel size the character avatar is rasterized to for notifications, which cannot scale a
+     * drawable themselves.
+     */
+    private const val CHARACTER_AVATAR_ICON_SIZE = 128
 
     private data class Channel(val id: String, val name: String, val description: String, val isImportant: Boolean)
 }

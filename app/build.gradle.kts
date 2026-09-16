@@ -64,8 +64,8 @@ android {
 
         // mayor.minor.hotfix.increment (for increment: 01-50=Alpha / 51-89=RC / 90-99=stable)
         // xx   .xxx  .xx    .xx
-        versionCode = 250010003
-        versionName = "25.1.0 Alpha 03"
+        versionCode = 250010008
+        versionName = "25.1.0 Alpha 08"
 
         vectorDrawables.useSupportLibrary = true
 
@@ -193,7 +193,7 @@ configurations.configureEach {
     //
     // To analyse the dependencies:
     // `./gradlew :app:dependencyInsight --configuration genericDebugRuntimeClasspath --dependency com.google.protobuf:protobuf-java`
-    val protobufJava = "com.google.protobuf:protobuf-java:4.36.0"
+    val protobufJava = "com.google.protobuf:protobuf-java:4.36.1"
     resolutionStrategy {
         force(protobufJava)
         dependencySubstitution {
@@ -243,7 +243,7 @@ dependencies {
     implementation("com.github.bitfireAT:dav4jvm:2.1.3") {
         exclude(group = "org.ogce", module = "xpp3") // Android comes with its own XmlPullParser
     }
-    implementation("org.conscrypt:conscrypt-android:2.6.3")
+    implementation("org.conscrypt:conscrypt-android:2.7.0")
     implementation("com.github.nextcloud-deps:qrcodescanner:0.1.2.4") // "com.github.blikoon:QRCodeScanner:0.1.2"
 
     implementation("androidx.exifinterface:exifinterface:1.4.2")
@@ -403,6 +403,7 @@ dependencies {
     testImplementation("com.google.crypto.tink:tink:1.23.0")
     testImplementation("androidx.room:room-testing:$roomVersion")
     testImplementation("com.squareup.okhttp3:mockwebserver:$okhttpVersion")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:$okhttpVersion")
     testImplementation("com.google.dagger:hilt-android-testing:2.60.1")
     testImplementation("org.robolectric:robolectric:4.16.1")
     // conscrypt-android provides Android JNI libs only; the openjdk-uber variant bundles

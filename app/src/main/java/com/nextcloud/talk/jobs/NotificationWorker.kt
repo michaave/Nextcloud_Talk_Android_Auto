@@ -75,7 +75,10 @@ import com.nextcloud.talk.receivers.DismissRecordingAvailableReceiver
 import com.nextcloud.talk.receivers.MarkAsReadReceiver
 import com.nextcloud.talk.receivers.ShareRecordingToChatReceiver
 import com.nextcloud.talk.users.UserManager
+import com.nextcloud.talk.utils.ActorAvatar
 import com.nextcloud.talk.utils.ApiUtils
+import com.nextcloud.talk.utils.CapabilitiesUtil
+import com.nextcloud.talk.utils.CharacterAvatarUtils
 import com.nextcloud.talk.utils.ConversationUtils
 import com.nextcloud.talk.utils.DisplayUtils
 import com.nextcloud.talk.utils.NotificationUtils
@@ -163,7 +166,10 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
 
         logger.d(TAG, "NotificationWorker::doWork")
 
-        initDecryptedData(inputData)
+        if (!initDecryptedData(inputData)) {
+            logger.e(TAG, "Aborting NotificationWorker::doWork because user/pushMessage could not be initialized")
+            return Result.failure()
+        }
         initNcApiAndCredentials()
 
         notificationManager = NotificationManagerCompat.from(context!!)
@@ -408,7 +414,14 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
 
                 override fun onNext(conversation: ConversationModel) {
                     if (userManager.setUserAsActive(userBeingCalled!!).blockingGet()) {
-                        prepareCallNotificationScreen(conversation)
+                        if (CapabilitiesUtil.isCallEndToEndEncryptionEnabled(
+                                userBeingCalled?.capabilities?.spreedCapability
+                            )
+                        ) {
+                            showEndToEndEncryptionUnsupportedNotification(conversation)
+                        } else {
+                            prepareCallNotificationScreen(conversation)
+                        }
                     }
                 }
 
@@ -435,47 +448,62 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
         )
     }
 
-    @Suppress("TooGenericExceptionCaught", "NestedBlockDepth", "ComplexMethod", "LongMethod")
-    private fun initDecryptedData(inputData: Data) {
+    @Suppress("TooGenericExceptionCaught")
+    private fun initDecryptedData(inputData: Data): Boolean =
         try {
             if (inputData.hasKeyWithValueOfType(BundleKeys.KEY_NOTIFICATION_CLEARTEXT_SUBJECT, String::class.java)) {
-                val subject = inputData.getString(BundleKeys.KEY_NOTIFICATION_CLEARTEXT_SUBJECT)
-                val id = inputData.getLong(BundleKeys.KEY_NOTIFICATION_USER_ID, -1)
-                user = userManager.getUserWithId(id).blockingGet()
-                pushMessage = LoganSquare.parse(subject, DecryptedPushMessage::class.java)
-                return
-            }
-
-            val subject = inputData.getString(BundleKeys.KEY_NOTIFICATION_SUBJECT)
-            val signature = inputData.getString(BundleKeys.KEY_NOTIFICATION_SIGNATURE)
-
-            val base64DecodedSubject = Base64.decode(subject, Base64.DEFAULT)
-            val base64DecodedSignature = Base64.decode(signature, Base64.DEFAULT)
-            val pushUtils = PushUtils()
-            val privateKey = pushUtils.readKeyFromFile(false) as PrivateKey
-            try {
-                val signatureVerification = pushUtils.verifySignature(
-                    base64DecodedSignature,
-                    base64DecodedSubject
-                )
-                if (signatureVerification.signatureValid) {
-                    val decryptedSubject = decryptSubject(privateKey, base64DecodedSubject)
-
-                    pushMessage = LoganSquare.parse(
-                        String(decryptedSubject),
-                        DecryptedPushMessage::class.java
-                    )
-                    user = signatureVerification.user!!
-                }
-            } catch (e: NoSuchAlgorithmException) {
-                Log.e(TAG, "No proper algorithm to decrypt the message ", e)
-            } catch (e: NoSuchPaddingException) {
-                Log.e(TAG, "No proper padding to decrypt the message ", e)
-            } catch (e: InvalidKeyException) {
-                Log.e(TAG, "Invalid private key ", e)
+                initFromCleartextSubject(inputData)
+            } else {
+                initFromEncryptedSubject(inputData)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error occurred while initializing decoded data ", e)
+            logger.e(TAG, "Error occurred while initializing decoded data ", e)
+            false
+        }
+
+    private fun initFromCleartextSubject(inputData: Data): Boolean {
+        val subject = inputData.getString(BundleKeys.KEY_NOTIFICATION_CLEARTEXT_SUBJECT)
+        val id = inputData.getLong(BundleKeys.KEY_NOTIFICATION_USER_ID, -1)
+        user = userManager.getUserWithId(id).blockingGet()
+        pushMessage = LoganSquare.parse(subject, DecryptedPushMessage::class.java)
+        return true
+    }
+
+    private fun initFromEncryptedSubject(inputData: Data): Boolean {
+        val subject = inputData.getString(BundleKeys.KEY_NOTIFICATION_SUBJECT)
+        val signature = inputData.getString(BundleKeys.KEY_NOTIFICATION_SIGNATURE)
+
+        val base64DecodedSubject = Base64.decode(subject, Base64.DEFAULT)
+        val base64DecodedSignature = Base64.decode(signature, Base64.DEFAULT)
+        val pushUtils = PushUtils()
+        val privateKey = pushUtils.readKeyFromFile(false) as PrivateKey
+        return try {
+            val signatureVerification = pushUtils.verifySignature(
+                base64DecodedSignature,
+                base64DecodedSubject
+            )
+            if (signatureVerification.signatureValid) {
+                val decryptedSubject = decryptSubject(privateKey, base64DecodedSubject)
+
+                pushMessage = LoganSquare.parse(
+                    String(decryptedSubject),
+                    DecryptedPushMessage::class.java
+                )
+                user = signatureVerification.user!!
+                true
+            } else {
+                logger.e(TAG, "Signature verification failed, discarding push message")
+                false
+            }
+        } catch (e: NoSuchAlgorithmException) {
+            logger.e(TAG, "No proper algorithm to decrypt the message ", e)
+            false
+        } catch (e: NoSuchPaddingException) {
+            logger.e(TAG, "No proper padding to decrypt the message ", e)
+            false
+        } catch (e: InvalidKeyException) {
+            logger.e(TAG, "Invalid private key ", e)
+            false
         }
     }
 
@@ -718,6 +746,11 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
         ) {
             notificationBuilder.setOnlyAlertOnce(false)
             val senderAvatar = loadSenderAvatar(pushMessage.notificationUser)
+            val conversationAvatar = if ("one2one" == conversationType) {
+                senderAvatar
+            } else {
+                pushMessage.id?.let { loadConversationAvatar(it) } ?: senderAvatar
+            }
             val imageUri = imagePreviewUrl?.let { loadImageBitmapSync(it) }?.let {
                 NotificationUtils.saveBitmapToCache(
                     context!!,
@@ -730,11 +763,12 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
                 notificationBuilder,
                 activeStatusBarNotification,
                 senderAvatar,
+                conversationAvatar,
                 imageUri
             )
             addReplyAction(notificationBuilder, systemNotificationId)
             addMarkAsReadAction(notificationBuilder, systemNotificationId)
-            pushConversationShortcut(notificationBuilder, senderAvatar)
+            pushConversationShortcut(notificationBuilder, conversationAvatar)
         }
 
         if (TYPE_RECORDING == pushMessage.type && ncNotification != null) {
@@ -839,6 +873,7 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
         notificationBuilder: NotificationCompat.Builder,
         activeStatusBarNotification: StatusBarNotification?,
         senderAvatar: Bitmap?,
+        conversationAvatar: Bitmap?,
         imageUri: Uri?
     ) {
         val notificationUser = pushMessage.notificationUser ?: return
@@ -857,7 +892,9 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
 
         if (senderAvatar != null) {
             personBuilder.setIcon(IconCompat.createWithBitmap(senderAvatar))
-            notificationBuilder.setLargeIcon(senderAvatar)
+        }
+        if (conversationAvatar != null) {
+            notificationBuilder.setLargeIcon(conversationAvatar)
         }
 
         val deviceUser = Person.Builder()
@@ -879,35 +916,50 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
             )
         }
 
+        if (imageUri != null) {
+            val imageMessage = NotificationCompat.MessagingStyle.Message(
+                "",
+                pushMessage.timestamp,
+                sender
+            )
+            imageMessage.setData(imageMimeType ?: "image/*", imageUri)
+            newStyle.addMessage(imageMessage)
+        }
+
         val message = NotificationCompat.MessagingStyle.Message(
             pushMessage.text,
             pushMessage.timestamp,
             sender
         )
-        if (imageUri != null) {
-            message.setData(imageMimeType ?: "image/*", imageUri)
-        }
         newStyle.addMessage(message)
         notificationBuilder.setStyle(newStyle)
     }
 
     private fun loadSenderAvatar(notificationUser: NotificationUser?): Bitmap? {
-        val userType = notificationUser?.type
-        if (userType != "user" && userType != "guest") return null
+        val userType = notificationUser?.type ?: return null
 
-        val baseUrl = user.baseUrl
-        val avatarUrl = if ("user" == userType) {
-            ApiUtils.getUrlForAvatar(
-                baseUrl!!,
+        return if ("user" == userType) {
+            val avatarUrl = ApiUtils.getUrlForAvatar(
+                user.baseUrl!!,
                 notificationUser.id,
                 false,
                 darkMode = DisplayUtils.isDarkModeOn(context!!)
             )
+            NotificationUtils.loadAvatarBitmapSync(avatarUrl, context!!)
         } else {
-            ApiUtils.getUrlForGuestAvatar(baseUrl!!, notificationUser.name, false)
+            // Guests and bots have no avatar on the server, so theirs is drawn from their name here
+            val avatar = CharacterAvatarUtils.avatarFor(
+                actorType = userType,
+                actorId = notificationUser.id,
+                displayName = notificationUser.name,
+                guestLabel = context!!.getString(R.string.nc_guest)
+            )
+            (avatar as? ActorAvatar.Character)?.let { NotificationUtils.characterAvatarBitmap(context!!, it) }
         }
-        return NotificationUtils.loadAvatarBitmapSync(avatarUrl, context!!)
     }
+
+    private fun loadConversationAvatar(roomToken: String): Bitmap? =
+        NotificationUtils.loadConversationAvatarBitmapSync(user.baseUrl, roomToken, credentials, context!!)
 
     private fun loadImageBitmapSync(imageUrl: String): Bitmap? {
         var bitmap: Bitmap? = null
@@ -1262,6 +1314,34 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
             notificationManager.notify(notificationId, notification)
             Log.d(TAG, "'you missed a call' notification was created")
         }
+    }
+
+    private fun showEndToEndEncryptionUnsupportedNotification(conversation: ConversationModel) {
+        val notificationBuilder = NotificationCompat.Builder(
+            context!!,
+            NotificationUtils.NotificationChannels
+                .NOTIFICATION_CHANNEL_MESSAGES_V4.name
+        )
+
+        val intent = createMainActivityIntent()
+
+        val notification: Notification = notificationBuilder
+            .setContentTitle(
+                String.format(
+                    context!!.resources.getString(R.string.nc_call_e2ee_not_supported_title),
+                    conversation.displayName
+                )
+            )
+            .setContentText(context!!.resources.getString(R.string.nc_call_e2ee_not_supported))
+            .setSmallIcon(R.drawable.ic_call_black_24dp)
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(createUniquePendingIntent(intent))
+            .build()
+
+        sendNotification(pushMessage.timestamp.toInt(), notification)
+        Log.d(TAG, "'end-to-end-encryption not supported' notification was created for ${conversation.token}")
     }
 
     private fun createMainActivityIntent(): Intent {

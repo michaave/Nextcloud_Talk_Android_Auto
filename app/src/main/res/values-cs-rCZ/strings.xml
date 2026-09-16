@@ -61,6 +61,7 @@
     <string name="ecosystem_apps_notes">Poznámky</string>
     <string name="edit">Upravit</string>
     <string name="edit_error_24_hours_old_message">Zprávy starší než 24 hodin není možné upravovat</string>
+    <string name="emoji_more">Další emotikony</string>
     <string name="encrypted">Šifrované</string>
     <string name="end_call">Ukončit hovor</string>
     <string name="end_call_for_everyone">Ukončit hovor pro všechny</string>
@@ -140,6 +141,7 @@
     <string name="nc_call_notifications">Upozornění na hovor</string>
     <string name="nc_call_ongoing_notification_content">Klepnutím se vrátíte k hovoru.</string>
     <string name="nc_call_ongoing_notification_default_title">Probíhá hovor</string>
+    <string name="nc_call_ongoing_notification_end_action">Ukončit hovor</string>
     <string name="nc_call_raised_hand">%1$s se hlásí</string>
     <string name="nc_call_reconnecting">Znovunavazování spojení …</string>
     <string name="nc_call_ringing">ZVONĚNÍ</string>
@@ -178,6 +180,7 @@
     <string name="nc_common_set">Nastavit</string>
     <string name="nc_common_skip">Přeskočit</string>
     <string name="nc_common_unknown">Neznámé</string>
+    <string name="nc_compress_in_progress">Komprimování</string>
     <string name="nc_configure_cert_auth">Vyberte certifikát pro ověřování se</string>
     <string name="nc_confirm">Potvrdit</string>
     <string name="nc_connecting_call">Připojování …</string>
@@ -204,6 +207,7 @@
     <string name="nc_conversations_empty_details">Pozdravte své přátele a kolegy!</string>
     <string name="nc_copy_message">Zkopírovat</string>
     <string name="nc_copy_message_link">Zkopírovat odkaz zprávy</string>
+    <string name="nc_copy_password">Zkopírovat heslo</string>
     <string name="nc_create_new_conversation">Vytvořit novou konverzaci</string>
     <string name="nc_create_poll">Vytvořit anketu</string>
     <string name="nc_custom_color">Uživatelsky určená barva</string>
@@ -217,6 +221,7 @@
     <string name="nc_delete_message_leaked_to_matterbridge">Zpráva úspěšně smazána, ale možná unikla do jiných služeb</string>
     <string name="nc_delete_now">Smazat nyní</string>
     <string name="nc_deleted_user">Uživatel %1$s byl odebrán</string>
+    <string name="nc_deleted_user_display_name">Smazaný uživatel</string>
     <string name="nc_demote">Odebrat oprávnění moderátora</string>
     <string name="nc_description_record_voice">Nahrát hlasovou zprávu</string>
     <string name="nc_description_send_message_button">Poslat zprávu</string>
@@ -258,6 +263,8 @@
     <string name="nc_federation_no_invitations">Žádné nevyřízené pozvánky</string>
     <string name="nc_federation_pending_invitation_hint">Máte nevyřízené pozvánky</string>
     <string name="nc_file_browser_back">Zpět</string>
+    <string name="nc_file_permission_editable">Upravitelné</string>
+    <string name="nc_file_permission_view_only">Pouze prohlížet</string>
     <string name="nc_file_storage_permission">Je zapotřebí oprávnění pro přístup k souborům</string>
     <string name="nc_filter">Filtrovat konverzace</string>
     <string name="nc_following_link">Uživatel následující veřejný odkaz</string>
@@ -283,6 +290,7 @@
     <string name="nc_guest_access_resend_invitations_successful">Pozvánky byly znovu odeslány.</string>
     <string name="nc_guest_access_share_link">Sdílet odkaz na konverzaci</string>
     <string name="nc_hint_enter_a_message">Zadejte zprávu …</string>
+    <string name="nc_hq_toggle">HQ</string>
     <string name="nc_ignore_battery_optimization_dialog_text">Úspora energie z akumulátoru není ignorována. Pokud chcete, aby upozorňování na pozadí fungovalo správně, mělo by toto být změněno! Klikněte na OK a vyberte „Všechny aplikace“ -> %1$s a pak „Neoptimalizovat“ nebo „Umožnit používání na pozadí“ -> Neomezené</string>
     <string name="nc_ignore_battery_optimization_dialog_title">Ignorovat úsporu energie z akumulátoru</string>
     <string name="nc_important_conversation">Důležitá konverzace</string>
@@ -308,10 +316,16 @@
     <string name="nc_location_unknown">Pozice neznámá</string>
     <string name="nc_locked">Uzamčeno</string>
     <string name="nc_locked_tap_to_unlock">Odemkněte klepnutím</string>
+    <string name="nc_logs_advanced_logging">Pokročilé zaznamenávání událostí</string>
     <string name="nc_logs_delete_all">Smazat všechny záznamy událostí</string>
     <string name="nc_logs_disable_delete">Smazat záznamy událostí</string>
+    <string name="nc_logs_disable_dialog_title">Vypnout zaznamenávání událostí</string>
+    <string name="nc_logs_disable_keep">Ponechávat záznamy</string>
     <string name="nc_logs_download_zip">Stáhnout jako ZIP</string>
+    <string name="nc_logs_logging_enabled">Zaznamenávání zapnuto</string>
     <string name="nc_logs_share_diagnosis">Diagnostické hlášení</string>
+    <string name="nc_logs_share_latest_crash">Nejnovější pád</string>
+    <string name="nc_logs_share_subject">%1$s záznamů událostí</string>
     <string name="nc_logs_title">Záznamy událostí</string>
     <string name="nc_manual">Nenastaveno</string>
     <string name="nc_mark_as_read">Označit jako přečtené</string>
@@ -363,12 +377,14 @@
     <string name="nc_offline">Jste bez připojení – zkontrolujte svou konektivitu</string>
     <string name="nc_ok">OK</string>
     <string name="nc_ongoing_meeting">Probíhající schůzka</string>
+    <string name="nc_open_conversation">Otevřít konverzaci</string>
     <string name="nc_open_conversation_to_registered_users">Otevřít konverzaci registrovaným uživatelům</string>
     <string name="nc_open_to_guest_app_users">Otevřít také pro neregistrované hosty</string>
     <string name="nc_owner">Vlastník</string>
     <string name="nc_participants">Účastníci</string>
     <string name="nc_participants_add">Přidat účastníky</string>
     <string name="nc_password">Heslo</string>
+    <string name="nc_password_copied">Heslo zkopírováno</string>
     <string name="nc_permissions_ask">Nastavit oprávnění</string>
     <string name="nc_permissions_denied">Některá oprávnění byla odepřena.</string>
     <string name="nc_permissions_rationale_dialog_title">Udělte oprávnění</string>
@@ -379,6 +395,7 @@
     <string name="nc_pip_microphone_mute">Ztlumit mikrofon</string>
     <string name="nc_pip_microphone_unmute">Zapnout mikrofon</string>
     <string name="nc_plain_old_messages">Zprávy</string>
+    <string name="nc_presentation">Prezentace</string>
     <string name="nc_profile_personal_info_title">Osobní údaje</string>
     <string name="nc_promote">Povýšit na moderátora</string>
     <string name="nc_public_call_status">Veřejná konverzace</string>
@@ -399,6 +416,7 @@
     <string name="nc_reply_privately">Odpovědět soukromě</string>
     <string name="nc_reschedule_message_with_notification">Přeplánovat s odesláním notifikace</string>
     <string name="nc_reschedule_message_without_notification">Přeplánovat bez odeslání notifikace</string>
+    <string name="nc_retry">Zkusit znovu</string>
     <string name="nc_room_retention">Místnost je úspěšně ponechána</string>
     <string name="nc_save_message">Uložit</string>
     <string name="nc_save_success">Úspěšně uloženo</string>
@@ -407,6 +425,7 @@
     <string name="nc_schedule_message_without_notification">Odeslat později bez notifikace</string>
     <string name="nc_scheduled_messages">Naplánované zprávy</string>
     <string name="nc_scheduled_messages_empty">Žádné naplánvané zprávy</string>
+    <string name="nc_scheduled_thread">Naplánované vlákno</string>
     <string name="nc_scheduled_time">Naplánovaný čas</string>
     <string name="nc_screen_lock_timeout_30">30 sekund</string>
     <string name="nc_screen_lock_timeout_300">5 minut</string>
@@ -489,11 +508,13 @@
     <string name="nc_settings_remove">Odebrat</string>
     <string name="nc_settings_remove_account">Odebrat účet</string>
     <string name="nc_settings_remove_confirmation">Potvrďte, že chcete stávající účet odebrat.</string>
+    <string name="nc_settings_screen_enable_unifiedpush_title">Zapnout UnifiedPush</string>
     <string name="nc_settings_screen_lock_desc">Uzamknout %1$s pomocí zámku obrazovky Android nebo podporované biometrické metody</string>
     <string name="nc_settings_screen_lock_timeout_title">Časový limit nečinnosti pro zámek obrazovky</string>
     <string name="nc_settings_screen_lock_title">Zámek obrazovky</string>
     <string name="nc_settings_screen_security_desc">Brání pořizování snímků obrazovky v seznamu nedávných a uvnitř aplikace</string>
     <string name="nc_settings_screen_security_title">Zabezpečení obrazovky</string>
+    <string name="nc_settings_screen_unifiedpush_service_title">Služba UnifiedPush</string>
     <string name="nc_settings_server_almost_eol">Verze serveru je příliš stará a v příštím vydání této aplikace už nebude podporována!</string>
     <string name="nc_settings_server_eol">Verze serveru je příliš stará a nepodporovaná touto verzí aplikace pro Android</string>
     <string name="nc_settings_server_eol_title">Nepodporovaný server</string>
@@ -523,6 +544,7 @@
     <string name="nc_shared_items_empty">Žádné sdílené položky</string>
     <string name="nc_shared_items_location">Poloha</string>
     <string name="nc_shared_location">Sdílené umístění</string>
+    <string name="nc_shortcut_created">Zkratka vytvořena</string>
     <string name="nc_show_ecosystem_description">Doporučování Nextcloud aplikací v dialogu volby účtu</string>
     <string name="nc_show_ecosystem_title">Zobrazit přepínač aplikací</string>
     <string name="nc_show_notification_warning_description">Pokud notifikace nejsou správně nastavené, zobrazit pravidelné varování</string>
@@ -536,6 +558,7 @@
     <string name="nc_test_results">Výsledky testu</string>
     <string name="nc_today_meeting">Dnes v%1$s</string>
     <string name="nc_tomorrow_meeting">Zítra v %1$s</string>
+    <string name="nc_undo">Zpět</string>
     <string name="nc_upcoming_event_dismissed">Nadcházející hovory je možné si zobrazovat v informacích o konverzaci</string>
     <string name="nc_upload_choose_local_files">Vyberte soubory</string>
     <string name="nc_upload_confirm_send_multiple">Odeslat tyto soubory k %1$s?</string>
@@ -666,6 +689,7 @@
     <string name="shared_items_voice">Hlas</string>
     <string name="show_ban_reason">Zobrazit důvod vyloučení</string>
     <string name="show_banned_participants">Zobrazit vyloučené účasníky</string>
+    <string name="silent_message_hint">Zpráva bez notifikace</string>
     <string name="starred">Oblíbené</string>
     <string name="startCallForbidden">Nemáte oprávnění pro zahájení hovoru</string>
     <string name="start_thread">Vytvořit vlákno</string>

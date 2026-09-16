@@ -105,6 +105,7 @@
     <string name="nc_call_name">对话名称</string>
     <string name="nc_call_notifications">呼叫通知</string>
     <string name="nc_call_ongoing_notification_default_title">通话中...</string>
+    <string name="nc_call_ongoing_notification_end_action">结束通话</string>
     <string name="nc_call_raised_hand">%1$s 举手了</string>
     <string name="nc_call_reconnecting">正在重新连接 ...</string>
     <string name="nc_call_ringing">响铃</string>
@@ -168,6 +169,7 @@
     <string name="nc_conversations_empty_details">跟你的朋友和同事打个招呼！</string>
     <string name="nc_copy_message">复制</string>
     <string name="nc_copy_message_link">复制消息链接</string>
+    <string name="nc_copy_password">复制密码</string>
     <string name="nc_create_new_conversation">创建一个新对话</string>
     <string name="nc_create_poll">创建投票</string>
     <string name="nc_custom_color">自定义颜色</string>
@@ -180,6 +182,7 @@
     <string name="nc_delete_message">删除邮件</string>
     <string name="nc_delete_message_leaked_to_matterbridge">消息已成功删除，但可能已泄漏给其他服务</string>
     <string name="nc_delete_now">立即删除</string>
+    <string name="nc_deleted_user_display_name">删除用户</string>
     <string name="nc_demote">取消主持人资格</string>
     <string name="nc_description_record_voice">录制语音消息 </string>
     <string name="nc_description_send_message_button">发送消息</string>
@@ -212,6 +215,7 @@
     <string name="nc_federation_invitation_reject">拒绝</string>
     <string name="nc_federation_no_invitations">没有待处理的邀请</string>
     <string name="nc_file_browser_back">返回</string>
+    <string name="nc_file_permission_editable">可编辑</string>
     <string name="nc_file_storage_permission">需要文件访问权限</string>
     <string name="nc_following_link">使用公共链接的用户</string>
     <string name="nc_formatted_message_you">您：%1$s</string>
@@ -297,6 +301,7 @@
     <string name="nc_notify_me_never">从不提醒</string>
     <string name="nc_offline">当前离线，请检查您的连接</string>
     <string name="nc_ok">确定</string>
+    <string name="nc_open_conversation">开放对话</string>
     <string name="nc_open_conversation_to_registered_users">向注册用户开放对话 </string>
     <string name="nc_open_to_guest_app_users">同样对访客用户开放</string>
     <string name="nc_owner">所有者</string>
@@ -313,6 +318,7 @@
     <string name="nc_pip_microphone_mute">将麦克风静音</string>
     <string name="nc_pip_microphone_unmute">启用麦克风</string>
     <string name="nc_plain_old_messages">消息</string>
+    <string name="nc_presentation">演示文稿</string>
     <string name="nc_profile_personal_info_title">个人信息</string>
     <string name="nc_promote">设置为主持人</string>
     <string name="nc_public_call_status">公开对话</string>
@@ -327,6 +333,7 @@
     <string name="nc_rename_confirm">重命名</string>
     <string name="nc_reply">回复</string>
     <string name="nc_reply_privately">私下回复</string>
+    <string name="nc_retry">重试</string>
     <string name="nc_save_message">保存</string>
     <string name="nc_save_success">已成功保存</string>
     <string name="nc_schedule_message">安排消息</string>
@@ -442,6 +449,7 @@
     <string name="nc_start_time">开始时间</string>
     <string name="nc_switch_account">切换账号</string>
     <string name="nc_team">团队</string>
+    <string name="nc_undo">撤消</string>
     <string name="nc_upload_choose_local_files">选择文件</string>
     <string name="nc_upload_confirm_send_multiple">将这些文件发送到 %1$s？</string>
     <string name="nc_upload_confirm_send_single">将此文件发送到 %1$s？</string>

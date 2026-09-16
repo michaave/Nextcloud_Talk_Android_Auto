@@ -82,6 +82,7 @@
     <string name="nc_call_name">Keskustelun nimi</string>
     <string name="nc_call_notifications">Puheluilmoitukset</string>
     <string name="nc_call_ongoing_notification_default_title">Puhelu meneillään</string>
+    <string name="nc_call_ongoing_notification_end_action">Lopeta puhelu</string>
     <string name="nc_call_reconnecting">Yhdistetään uudelleen …</string>
     <string name="nc_call_ringing">SOITETAAN</string>
     <string name="nc_call_timeout">Ei vastausta 45 sekunnissa, napauta yrittääksesi uudelleen</string>
@@ -143,6 +144,7 @@
     <string name="nc_delete_call">Poista keskustelu</string>
     <string name="nc_delete_conversation_more">Jos poistat keskustelun, keskustelu poistetaan myös muilta osapuolilta.</string>
     <string name="nc_delete_message">Poista viesti</string>
+    <string name="nc_deleted_user_display_name">Poistettu käyttäjä</string>
     <string name="nc_demote">Alenna moderaattorista</string>
     <string name="nc_description_record_voice">Äänitä ääniviesti</string>
     <string name="nc_description_send_message_button">Lähetä viesti</string>
@@ -165,6 +167,7 @@
     <string name="nc_federation_invitation_reject">Hylkää</string>
     <string name="nc_federation_no_invitations">Ei odottavia kutsuja</string>
     <string name="nc_file_browser_back">Takaisin</string>
+    <string name="nc_file_permission_editable">Muokattavissa</string>
     <string name="nc_formatted_message_you">Sinä: %1$s</string>
     <string name="nc_forward_message">Välitä</string>
     <string name="nc_forward_to_three_dots">Välitä viesti …</string>
@@ -231,16 +234,19 @@
     <string name="nc_notify_me_never">Älä ilmoita koskaan</string>
     <string name="nc_offline">Ei yhteyttä tällä hetkellä, tarkista verkkoyhteydet</string>
     <string name="nc_ok">OK</string>
+    <string name="nc_open_conversation">Avaa keskustelu</string>
     <string name="nc_open_conversation_to_registered_users">Avaa keskustelu rekisteröityneille käyttäjille</string>
     <string name="nc_owner">Omistaja</string>
     <string name="nc_participants">Osallistujat</string>
     <string name="nc_participants_add">Lisää osallistujat</string>
     <string name="nc_password">Salasana</string>
+    <string name="nc_password_copied">Salasana kopioitu</string>
     <string name="nc_permissions_settings">Avaa asetukset</string>
     <string name="nc_phone_book_integration_account_not_found">Tiliä ei löydy</string>
     <string name="nc_pip_microphone_mute">Mykistä mikrofoni</string>
     <string name="nc_pip_microphone_unmute">Käytä mikrofonia</string>
     <string name="nc_plain_old_messages">Viestit</string>
+    <string name="nc_presentation">Esitys</string>
     <string name="nc_profile_personal_info_title">Henkilökohtaiset tiedot</string>
     <string name="nc_promote">Ylennä moderaattoriksi</string>
     <string name="nc_public_call_status">Julkinen keskustelu</string>
@@ -256,6 +262,7 @@
     <string name="nc_rename_confirm">Nimeä uudelleen</string>
     <string name="nc_reply">Vastaa</string>
     <string name="nc_reply_privately">Vastaa yksityisesti</string>
+    <string name="nc_retry">Yritä uudelleen</string>
     <string name="nc_save_message">Tallenna</string>
     <string name="nc_save_success">Tallennettu onnistuneesti</string>
     <string name="nc_screen_lock_timeout_30">30 sekuntia</string>
@@ -350,6 +357,7 @@
     <string name="nc_start_time">Aloitusaika</string>
     <string name="nc_switch_account">Vaihda tiliä</string>
     <string name="nc_team">Tiimi</string>
+    <string name="nc_undo">Kumoa</string>
     <string name="nc_upload_choose_local_files">Valitse tiedostot</string>
     <string name="nc_upload_failed">Lähetys epäonnistui</string>
     <string name="nc_upload_from_device">Lähetä laitteelta</string>
@@ -442,6 +450,7 @@
     <string name="user_info_organisation">Organisaatio</string>
     <string name="user_info_phone">Puhelinnumero</string>
     <string name="user_info_profile_enable">Ota profiili käyttöön</string>
+    <string name="user_info_pronouns">Pronominit</string>
     <string name="user_info_role">Rooli</string>
     <string name="user_info_twitter">Twitter</string>
     <string name="user_info_website">Verkkosivu</string>

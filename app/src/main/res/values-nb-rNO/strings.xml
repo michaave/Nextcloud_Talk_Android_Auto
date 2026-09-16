@@ -117,6 +117,7 @@
     <string name="nc_call_name">Samtalenavn</string>
     <string name="nc_call_notifications">Varsler om anrop</string>
     <string name="nc_call_ongoing_notification_default_title">Samtale pågår</string>
+    <string name="nc_call_ongoing_notification_end_action">Avslutt samtale</string>
     <string name="nc_call_raised_hand">%1$s rekte opp hånden</string>
     <string name="nc_call_reconnecting">Kobler til igjen...</string>
     <string name="nc_call_ringing">RINGER</string>
@@ -192,6 +193,7 @@
     <string name="nc_delete_message">Slett melding</string>
     <string name="nc_delete_message_leaked_to_matterbridge">Meldingen ble slettet, men den kan ha blitt lekket til andre tjenester</string>
     <string name="nc_deleted_user">Bruker %1$s ble fjernet</string>
+    <string name="nc_deleted_user_display_name">Slettet bruker</string>
     <string name="nc_demote">Fjern moderatorstatus</string>
     <string name="nc_description_record_voice">Ta opp talemelding</string>
     <string name="nc_description_send_message_button">Send melding</string>
@@ -231,6 +233,7 @@
     <string name="nc_federation_no_invitations">Ingen ventende invitasjoner</string>
     <string name="nc_federation_pending_invitation_hint">Du har ventende invitasjoner</string>
     <string name="nc_file_browser_back">Tilbake</string>
+    <string name="nc_file_permission_editable">Kan redigeres</string>
     <string name="nc_file_storage_permission">Tillatelse til filtilgang kreves</string>
     <string name="nc_following_link">Bruker følger en offentlig lenke</string>
     <string name="nc_formatted_message_you">Du: %1$s</string>
@@ -318,6 +321,7 @@
     <string name="nc_notify_me_never">Aldri varsle</string>
     <string name="nc_offline">Offline, vennligst sjekk din nett forbindelse</string>
     <string name="nc_ok">OK</string>
+    <string name="nc_open_conversation">Åpen samtale</string>
     <string name="nc_open_to_guest_app_users">Også åpen for brukere av guest-appen</string>
     <string name="nc_owner">Eier</string>
     <string name="nc_participants">Deltakere</string>
@@ -333,6 +337,7 @@
     <string name="nc_pip_microphone_mute">Demp mikrofon</string>
     <string name="nc_pip_microphone_unmute">Aktiver mikrofon</string>
     <string name="nc_plain_old_messages">Meldinger</string>
+    <string name="nc_presentation">Presentasjon</string>
     <string name="nc_profile_personal_info_title">Personlig informasjon</string>
     <string name="nc_promote">Gi moderatorstatus</string>
     <string name="nc_public_call_status">Offentlig samtale</string>
@@ -348,6 +353,7 @@
     <string name="nc_rename_confirm">Endre navn</string>
     <string name="nc_reply">Svar</string>
     <string name="nc_reply_privately">Svar privat</string>
+    <string name="nc_retry">Prøv igjen</string>
     <string name="nc_save_message">Lagre</string>
     <string name="nc_save_success">Lagret</string>
     <string name="nc_screen_lock_timeout_30">30 sekunder</string>
@@ -459,6 +465,7 @@
     <string name="nc_start_time">Start tidspunkt</string>
     <string name="nc_switch_account">Bytt konto</string>
     <string name="nc_team">Lag</string>
+    <string name="nc_undo">Angre</string>
     <string name="nc_upload_choose_local_files">Velg filer</string>
     <string name="nc_upload_confirm_send_multiple">Sende disse filene til %1$s?</string>
     <string name="nc_upload_confirm_send_single">Sende denne filen til %1$s?</string>

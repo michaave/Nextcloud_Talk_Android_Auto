@@ -19,6 +19,10 @@ import com.nextcloud.talk.models.json.push.PushConfigurationState
 import io.reactivex.Maybe
 import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.Subject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 @Suppress("TooManyFunctions")
 class UserManager internal constructor(private val userRepository: UsersRepository) {
@@ -34,10 +38,41 @@ class UserManager internal constructor(private val userRepository: UsersReposito
                 .switchIfEmpty(Maybe.defer { getAnyUserAndSetAsActive() })
         }
 
+    /**
+     * Backed by [activeUserSubject] rather than [UsersRepository.getActiveUserObservable] directly, so that
+     * [setUserAsActive] can push the newly-active user out synchronously the moment it succeeds, instead of
+     * consumers having to wait for Room's invalidation-tracker round trip to notice the DB write and re-query.
+     * That round trip is asynchronous and was racing against code (e.g. AccountVerificationActivity.
+     * proceedWithLogin()) that both changes the active user and immediately acts as if every observer already
+     * knows about it - e.g. launching a screen for the new user before its avatar/data had actually updated.
+     * Room's own observable is still relied on underneath to seed this and to catch any change to the `current`
+     * flag that doesn't go through [setUserAsActive].
+     *
+     * RxJava-based for CurrentUserProviderOld, the still-used but deprecated consumer. Coroutine-based code
+     * should prefer [currentUserFlow] instead, which is updated at the exact same point and needs no RxJava
+     * bridging on the consuming side.
+     */
     val currentUserObservable: Observable<User>
-        get() {
-            return userRepository.getActiveUserObservable()
-        }
+        get() = activeUserSubject
+
+    /**
+     * Coroutine-native counterpart to [currentUserObservable] - see its doc for why this exists. Both are
+     * updated synchronously, at the same point in [setUserAsActive], from Room's same underlying query.
+     */
+    val currentUserFlow: StateFlow<User?>
+        get() = activeUserStateFlow
+
+    private val activeUserSubject: Subject<User> by lazy {
+        val subject = BehaviorSubject.create<User>().toSerialized()
+        userRepository.getActiveUserObservable().subscribe(subject::onNext) { }
+        subject
+    }
+
+    private val activeUserStateFlow: MutableStateFlow<User?> by lazy {
+        val flow = MutableStateFlow<User?>(null)
+        userRepository.getActiveUserObservable().subscribe({ flow.value = it }) { }
+        flow
+    }
 
     fun deleteUser(internalId: Long): Int =
         userRepository.deleteUser(userRepository.getUserWithId(internalId).blockingGet())
@@ -73,6 +108,48 @@ class UserManager internal constructor(private val userRepository: UsersReposito
             .flatMap { getAnyUserAndSetAsActive() }
             .map { true }
             .switchIfEmpty(Single.just(false))
+
+    /**
+     * If there is more than one local User row for the same username+baseUrl (e.g. reusing the
+     * same token): keep whichever row [UsersRepository.getActiveUser] actually resolves to if
+     * it's one of the duplicates, otherwise a duplicate marked current, otherwise the oldest
+     * (lowest id) row, and schedules the rest for deletion so AccountRemovalWorker cleans them up
+     * like any other removed account.
+     *
+     * The active user is resolved first, rather than trusting each row's own `current` flag,
+     * because a past(?) bug could leave more than one row marked current=true for the same account.
+     * Picking a duplicate to keep by its `current` flag alone could then disagree with whichever
+     * row a live session/background sync is still bound to, and deleting that row here would trip
+     * a foreign key constraint on any in-flight write still referencing it.
+     *
+     * @return the number of duplicate rows scheduled for deletion
+     */
+    fun scheduleDuplicateAccountsForDeletion(): Single<Int> =
+        Single.zip(
+            users,
+            userRepository.getActiveUser().map { it.id }.toSingle(NO_ACTIVE_USER_ID)
+        ) { allUsers, activeUserId ->
+            val duplicateGroups = allUsers
+                .filter { !it.username.isNullOrEmpty() && !it.baseUrl.isNullOrEmpty() }
+                .groupBy { it.username to it.baseUrl }
+                .values
+                .filter { it.size > 1 }
+
+            var scheduledCount = 0
+            duplicateGroups.forEach { duplicates ->
+                val userToKeep = duplicates.firstOrNull { it.id == activeUserId }
+                    ?: duplicates.firstOrNull { it.current }
+                    ?: duplicates.minByOrNull { it.id ?: Long.MAX_VALUE }
+                duplicates
+                    .filter { it.id != userToKeep?.id }
+                    .forEach { duplicate ->
+                        duplicate.scheduledForDeletion = true
+                        userRepository.updateUser(duplicate)
+                        scheduledCount++
+                    }
+            }
+            scheduledCount
+        }
 
     private fun getAnyUserAndSetAsActive(): Maybe<User> {
         val results = userRepository.getUsersNotScheduledForDeletion()
@@ -114,6 +191,12 @@ class UserManager internal constructor(private val userRepository: UsersReposito
     fun setUserAsActive(user: User): Single<Boolean> {
         Log.d(TAG, "setUserAsActive:" + user.id!!)
         return userRepository.setUserAsActiveWithId(user.id!!)
+            .doOnSuccess { success ->
+                if (success) {
+                    activeUserSubject.onNext(user)
+                    activeUserStateFlow.value = user
+                }
+            }
     }
 
     fun storeProfile(username: String?, userAttributes: UserAttributes): Maybe<User> =
@@ -218,6 +301,7 @@ class UserManager internal constructor(private val userRepository: UsersReposito
 
     companion object {
         const val TAG = "UserManager"
+        private const val NO_ACTIVE_USER_ID = -1L
     }
 
     data class UserAttributes(
