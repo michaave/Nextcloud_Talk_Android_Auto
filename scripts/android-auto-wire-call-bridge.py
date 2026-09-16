@@ -140,31 +140,40 @@ def patch_call_activity() -> None:
     if "private fun registerTelecomControlReceiver()" not in text:
         text = replace_once(text, helper_marker, helper_replacement, "CallActivity Telecom receiver helper")
 
-    destroy_marker = (
-        "        CallForegroundService.stop(applicationContext)\n"
-        "        powerManagerUtils!!.updatePhoneState(PowerManagerUtils.PhoneState.IDLE)\n"
-        "        super.onDestroy()\n"
-    )
-    destroy_replacement = (
-        "        CallForegroundService.stop(applicationContext)\n"
-        "        powerManagerUtils!!.updatePhoneState(PowerManagerUtils.PhoneState.IDLE)\n"
-        "        if (telecomControlReceiverRegistered) {\n"
-        "            unregisterReceiver(telecomControlReceiver)\n"
-        "            telecomControlReceiverRegistered = false\n"
-        "        }\n"
-        "        super.onDestroy()\n"
-    )
     if "unregisterReceiver(telecomControlReceiver)" not in text:
-        text = replace_once(text, destroy_marker, destroy_replacement, "CallActivity receiver cleanup")
+        cleanup = (
+            "        if (telecomControlReceiverRegistered) {\n"
+            "            unregisterReceiver(telecomControlReceiver)\n"
+            "            telecomControlReceiverRegistered = false\n"
+            "        }\n\n"
+        )
+        # Current Talk keeps additional teardown and a pending-call restart before super.onDestroy().
+        current_marker = "        pendingCallIntent?.let {\n"
+        if current_marker in text:
+            text = replace_once(
+                text,
+                current_marker,
+                cleanup + current_marker,
+                "CallActivity receiver cleanup (current upstream)",
+            )
+        else:
+            # Older Talk stopped the foreground service immediately before super.onDestroy().
+            old_marker = (
+                "        CallForegroundService.stop(applicationContext)\n"
+                "        powerManagerUtils!!.updatePhoneState(PowerManagerUtils.PhoneState.IDLE)\n"
+                "        super.onDestroy()\n"
+            )
+            old_replacement = (
+                "        CallForegroundService.stop(applicationContext)\n"
+                "        powerManagerUtils!!.updatePhoneState(PowerManagerUtils.PhoneState.IDLE)\n"
+                + cleanup +
+                "        super.onDestroy()\n"
+            )
+            text = replace_once(text, old_marker, old_replacement, "CallActivity receiver cleanup (legacy)")
 
-    hangup_marker = (
-        "    private fun hangup(shutDownView: Boolean, endCallForAll: Boolean) {\n"
-        "        Log.d(TAG, \"hangup! shutDownView=$shutDownView\")\n"
-        "        joinRoomInitiated = false\n"
-    )
+    hangup_marker = "    private fun hangup(shutDownView: Boolean, endCallForAll: Boolean) {\n"
     hangup_replacement = (
-        "    private fun hangup(shutDownView: Boolean, endCallForAll: Boolean) {\n"
-        "        Log.d(TAG, \"hangup! shutDownView=$shutDownView\")\n"
+        hangup_marker +
         "        if (shutDownView && ::conversationUser.isInitialized) {\n"
         "            val accountId = conversationUser.id\n"
         "            val token = roomToken\n"
@@ -172,7 +181,6 @@ def patch_call_activity() -> None:
         "                TalkCallInterop.notifyCallEnded(this, accountId, token)\n"
         "            }\n"
         "        }\n"
-        "        joinRoomInitiated = false\n"
     )
     if "TalkCallInterop.notifyCallEnded(this, accountId, token)" not in text:
         text = replace_once(text, hangup_marker, hangup_replacement, "CallActivity call-end hook")
