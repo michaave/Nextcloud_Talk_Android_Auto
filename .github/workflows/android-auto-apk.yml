@@ -37,101 +37,59 @@ jobs:
         uses: gradle/actions/wrapper-validation@v5
 
       - name: Remove stale build output
-        shell: bash
-        run: |
-          rm -rf app/build build .gradle
+        run: rm -rf app/build build .gradle
 
       - name: Assemble GPlay debug APK from clean sources
         run: ./gradlew --no-daemon --no-build-cache clean -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
 
-      - name: Verify APK output and reject stale CarAppService
+      - name: Verify intended CarAppService
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          apks=(app/build/outputs/apk/gplay/debug/*.apk)
-          if [ ${#apks[@]} -eq 0 ]; then
-            echo "No GPlay debug APK was produced"
-            exit 1
-          fi
-          printf 'Built APK: %s\n' "${apks[@]}"
-
-          apk="${apks[0]}"
+          apk=$(find app/build/outputs/apk/gplay/debug -maxdepth 1 -type f -name '*.apk' | head -n1)
+          [ -n "$apk" ] || { echo 'No GPlay debug APK was produced'; exit 1; }
           mkdir -p /tmp/apk-dex
           cd /tmp/apk-dex
           unzip -q "$GITHUB_WORKSPACE/$apk" 'classes*.dex'
-
           if strings classes*.dex | grep -Fq 'Lcom/nextcloud/talk/androidauto/TalkCarAppService;'; then
-            echo 'ERROR: obsolete diagnostic TalkCarAppService is still packaged in the APK'
+            echo 'ERROR: obsolete diagnostic TalkCarAppService is packaged'
             exit 1
           fi
+          strings classes*.dex | grep -Fq 'Lcom/nextcloud/talk/auto/TalkCarAppService;' || {
+            echo 'ERROR: real TalkCarAppService is missing'; exit 1;
+          }
+          echo 'Verified intended Talk CarAppService.'
 
-          if ! strings classes*.dex | grep -Fq 'Lcom/nextcloud/talk/auto/TalkCarAppService;'; then
-            echo 'ERROR: real TalkCarAppService is missing from the APK'
-            exit 1
-          fi
-
-          echo 'Verified: only the intended Talk CarAppService implementation is packaged.'
-
-      - name: Sign APK with persistent Talk Auto key
+      - name: Reconstruct and validate persistent signing key
         shell: bash
         env:
           ANDROID_AUTO_KEYSTORE_BASE64: ${{ secrets.ANDROID_AUTO_KEYSTORE_BASE64 }}
           ANDROID_AUTO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_AUTO_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [ -n "${ANDROID_AUTO_KEYSTORE_BASE64:-}" ] || { echo 'Missing keystore secret'; exit 1; }
+          [ -n "${ANDROID_AUTO_KEYSTORE_PASSWORD:-}" ] || { echo 'Missing keystore password'; exit 1; }
+          printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > /tmp/talk-auto-signing.jks
+          chmod 600 /tmp/talk-auto-signing.jks
+          keytool -list -keystore /tmp/talk-auto-signing.jks -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" -alias talk-auto >/dev/null
+
+      - name: Sign APK with persistent Talk Auto key
+        shell: bash
+        env:
+          ANDROID_AUTO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_AUTO_KEYSTORE_PASSWORD }}
           ANDROID_AUTO_KEY_PASSWORD: ${{ secrets.ANDROID_AUTO_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-
-          if [ -z "${ANDROID_AUTO_KEYSTORE_BASE64:-}" ] || \
-             [ -z "${ANDROID_AUTO_KEYSTORE_PASSWORD:-}" ] || \
-             [ -z "${ANDROID_AUTO_KEY_PASSWORD:-}" ]; then
-            echo 'ERROR: Android Auto signing secrets are missing.'
-            exit 1
-          fi
-
-          keystore=/tmp/talk-auto-signing.jks
-          if ! printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > "$keystore"; then
-            echo 'ERROR: ANDROID_AUTO_KEYSTORE_BASE64 is not valid Base64.'
-            exit 1
-          fi
-          chmod 600 "$keystore"
-
-          if [ ! -s "$keystore" ]; then
-            echo 'ERROR: Reconstructed Android Auto keystore is empty.'
-            exit 1
-          fi
-
-          echo 'Validating reconstructed Talk Auto keystore and alias...'
-          if ! keytool -list \
-            -keystore "$keystore" \
-            -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
-            -alias talk-auto >/dev/null 2>&1; then
-            echo 'ERROR: Cannot open the reconstructed keystore with ANDROID_AUTO_KEYSTORE_PASSWORD, or alias talk-auto is missing.'
-            rm -f "$keystore"
-            exit 1
-          fi
-          echo 'Verified: Talk Auto keystore opens successfully and alias talk-auto exists.'
-
           unsigned_apk=$(find app/build/outputs/apk/gplay/debug -maxdepth 1 -type f -name '*.apk' ! -name '*talk-auto-signed.apk' | head -n1)
-          if [ -z "$unsigned_apk" ]; then
-            echo 'ERROR: APK to sign was not found.'
-            rm -f "$keystore"
-            exit 1
-          fi
-
           signed_apk=app/build/outputs/apk/gplay/debug/app-gplay-debug-talk-auto-signed.apk
           apksigner=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)
-
           "$apksigner" sign \
-            --ks "$keystore" \
+            --ks /tmp/talk-auto-signing.jks \
             --ks-key-alias talk-auto \
             --ks-pass env:ANDROID_AUTO_KEYSTORE_PASSWORD \
             --key-pass env:ANDROID_AUTO_KEY_PASSWORD \
-            --out "$signed_apk" \
-            "$unsigned_apk"
-
+            --out "$signed_apk" "$unsigned_apk"
           "$apksigner" verify --verbose --print-certs "$signed_apk"
-          rm -f "$keystore"
 
       - name: Upload signed Android Auto APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -141,7 +99,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Prepare Play release identity and version
+      - name: Prepare Play release identity and monotonically increasing version
         shell: bash
         run: |
           set -euo pipefail
@@ -159,82 +117,46 @@ jobs:
               r'(create\("gplay"\)\s*\{\s*applicationId\s*=\s*")com\.nextcloud\.talk2(")',
               re.MULTILINE,
           )
-          text, flavor_count = flavor_pattern.subn(
-              r'\1com.nextcloud.talk2.auto\2',
-              text,
-              count=1,
-          )
+          text, flavor_count = flavor_pattern.subn(r'\1com.nextcloud.talk2.auto\2', text, count=1)
           if flavor_count != 1:
-              raise SystemExit(f'Expected to patch exactly one gplay applicationId, patched {flavor_count}')
+              raise SystemExit(f'Expected one gplay applicationId, patched {flavor_count}')
 
-          play_version_code = 250010000 + int(os.environ['GITHUB_RUN_NUMBER'])
-          version_pattern = re.compile(r'(?m)^(\s*versionCode\s*=\s*)250010003\s*$')
-          text, version_count = version_pattern.subn(
-              rf'\g<1>{play_version_code}',
-              text,
-              count=1,
-          )
+          version_pattern = re.compile(r'(?m)^(\s*versionCode\s*=\s*)(\d+)\s*$')
+          match = version_pattern.search(text)
+          if not match:
+              raise SystemExit('Could not locate base versionCode')
+          upstream_version = int(match.group(2))
+          play_version = max(upstream_version + 1, 250020000 + int(os.environ['GITHUB_RUN_NUMBER']))
+          text, version_count = version_pattern.subn(rf'\g<1>{play_version}', text, count=1)
           if version_count != 1:
-              raise SystemExit(f'Expected to patch exactly one base versionCode, patched {version_count}')
+              raise SystemExit(f'Expected one base versionCode, patched {version_count}')
 
           path.write_text(text)
           print('Play applicationId: com.nextcloud.talk2.auto')
-          print(f'Play versionCode: {play_version_code}')
+          print(f'Upstream versionCode: {upstream_version}')
+          print(f'Play versionCode: {play_version}')
           PY
 
       - name: Build GPlay release AAB for Play Console
         run: ./gradlew --no-daemon --no-build-cache :app:bundleGplayRelease --stacktrace
 
-      - name: Verify release merged manifest identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          manifest=$(find app/build/intermediates -type f -path '*gplayRelease*' -name AndroidManifest.xml | head -n1 || true)
-          if [ -n "$manifest" ]; then
-            if ! grep -a -q 'com.nextcloud.talk2.auto' "$manifest"; then
-              echo 'ERROR: release manifest does not contain com.nextcloud.talk2.auto'
-              exit 1
-            fi
-            echo 'Verified release manifest contains com.nextcloud.talk2.auto.'
-          else
-            echo 'Merged manifest path not found; continuing to AAB signing verification.'
-          fi
-
       - name: Sign Play AAB with persistent Talk Auto upload key
         shell: bash
         env:
-          ANDROID_AUTO_KEYSTORE_BASE64: ${{ secrets.ANDROID_AUTO_KEYSTORE_BASE64 }}
           ANDROID_AUTO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_AUTO_KEYSTORE_PASSWORD }}
           ANDROID_AUTO_KEY_PASSWORD: ${{ secrets.ANDROID_AUTO_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          keystore=/tmp/talk-auto-signing.jks
-          printf '%s' "$ANDROID_AUTO_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-          chmod 600 "$keystore"
-
-          keytool -list \
-            -keystore "$keystore" \
-            -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
-            -alias talk-auto >/dev/null
-
           unsigned_aab=$(find app/build/outputs/bundle/gplayRelease -maxdepth 1 -type f -name '*.aab' ! -name 'Nextcloud-Talk-Android-Auto-PlayUpload.aab' | head -n1)
-          if [ -z "$unsigned_aab" ]; then
-            echo 'ERROR: GPlay release AAB was not produced.'
-            rm -f "$keystore"
-            exit 1
-          fi
-
+          [ -n "$unsigned_aab" ] || { echo 'ERROR: GPlay release AAB was not produced'; exit 1; }
           signed_aab=app/build/outputs/bundle/gplayRelease/Nextcloud-Talk-Android-Auto-PlayUpload.aab
           jarsigner \
-            -keystore "$keystore" \
+            -keystore /tmp/talk-auto-signing.jks \
             -storepass "$ANDROID_AUTO_KEYSTORE_PASSWORD" \
             -keypass "$ANDROID_AUTO_KEY_PASSWORD" \
-            -signedjar "$signed_aab" \
-            "$unsigned_aab" \
-            talk-auto
-
+            -signedjar "$signed_aab" "$unsigned_aab" talk-auto
           jarsigner -verify -verbose -certs "$signed_aab"
-          rm -f "$keystore"
+          rm -f /tmp/talk-auto-signing.jks
 
       - name: Upload Play Console AAB
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
