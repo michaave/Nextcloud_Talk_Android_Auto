@@ -1,12 +1,12 @@
 name: Port Android Auto onto current upstream
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - android-auto-sync-work
     paths:
       - .github/workflows/port-android-auto-upstream.yml
-      - scripts/android-auto-adapt-current-upstream.py
 
 permissions:
   contents: write
@@ -15,61 +15,77 @@ jobs:
   port:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sync branch
+      - name: Checkout Android Auto integration branch
         uses: actions/checkout@v6
         with:
+          ref: android-auto-carappservice
           fetch-depth: 0
 
-      - name: Fetch current upstream and Android Auto integration branches
+      - name: Fetch current upstream Talk master
         shell: bash
         run: |
           set -euo pipefail
           git remote add upstream https://github.com/nextcloud/talk-android.git || true
           git fetch upstream master
-          git fetch origin android-auto-carappservice android-auto-sync-work
 
-      - name: Reset working tree to current upstream master
+      - name: Merge upstream while preserving repository workflows
         shell: bash
         run: |
           set -euo pipefail
-          git reset --hard upstream/master
-          # Keep the reusable port workflow/helper from the sync branch itself.
-          git checkout origin/android-auto-sync-work -- \
-            .github/workflows/port-android-auto-upstream.yml \
-            scripts/android-auto-adapt-current-upstream.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-      - name: Restore Android Auto-only and non-overlapping integration files
-        shell: bash
-        run: |
-          set -euo pipefail
-          git checkout origin/android-auto-carappservice -- \
-            .github/workflows/android-auto-apk.yml \
-            .github/workflows/android-auto-build.yml \
-            app/src/gplay/AndroidManifest.xml \
-            app/src/gplay/java/com/nextcloud/talk/auto \
-            app/src/gplay/res/xml/automotive_app_desc.xml \
-            app/src/main/java/com/nextcloud/talk/call/TalkCallInterop.kt \
-            app/src/main/java/com/nextcloud/talk/activities/ParticipantHandler.kt \
-            app/src/main/java/com/nextcloud/talk/activities/ParticipantUiState.kt \
-            app/src/main/java/com/nextcloud/talk/receivers/DirectReplyReceiver.kt \
-            app/src/main/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifier.java \
-            app/src/main/java/com/nextcloud/talk/webrtc/PeerConnectionWrapper.java \
-            app/src/main/java/com/nextcloud/talk/webrtc/WebRtcAudioManager.java \
-            app/src/test/java/com/nextcloud/talk/webrtc/DataChannelMessageNotifierTest.kt \
-            scripts/android-auto-update-dependencies.py \
-            scripts/android-auto-wire-call-bridge.py \
-            tools/android_auto_bootstrap.py
+          # Merge current Talk. For overlapping application source, start from the
+          # upstream version and then reapply our Android Auto integration below.
+          if ! git merge --no-commit --no-ff upstream/master; then
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              echo "Resolving upstream overlap: $path"
+              git checkout --theirs -- "$path"
+              git add "$path"
+            done < <(git diff --name-only --diff-filter=U)
+          fi
 
-      - name: Adapt build workflow to sync branch
-        shell: bash
-        run: |
-          python -c "from pathlib import Path; p=Path('.github/workflows/android-auto-apk.yml'); s=p.read_text(); m='      - android-auto-carappservice\\n'; p.write_text(s if '      - android-auto-sync-work\\n' in s else s.replace(m, m+'      - android-auto-sync-work\\n', 1))"
+          # The Actions token deliberately has no workflow-edit permission. Keep
+          # the Android Auto branch's workflow files byte-for-byte unchanged; the
+          # upstream workflow updates are unrelated to the application build.
+          git checkout HEAD -- .github/workflows
+          git add .github/workflows
 
-      - name: Reapply Android Auto Gradle/manifest foundation
+      - name: Reapply Android Auto Gradle and manifest foundation
         run: python tools/android_auto_bootstrap.py
 
-      - name: Adapt current upstream call initialization
-        run: python scripts/android-auto-adapt-current-upstream.py
+      - name: Adapt current upstream CallActivity initialization
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/nextcloud/talk/activities/CallActivity.kt')
+          text = path.read_text()
+          old = '''        processExtras(intent.extras!!)
+        conversationUser = currentUserProviderOld.currentUser.blockingGet()
+
+        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
+            return
+        }
+
+        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
+'''
+          new = '''        processExtras(intent.extras!!)
+        conversationUser = currentUserProviderOld.currentUser.blockingGet()
+
+        credentials = ApiUtils.getCredentials(conversationUser!!.username, conversationUser!!.token)
+
+        if (warnAndFinishIfCallEndToEndEncryptionUnsupported()) {
+            return
+        }
+'''
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+          elif 'TalkCallInterop.notifyCallStarted(' not in text:
+              raise SystemExit('Current upstream CallActivity initialization block was not recognized')
+          PY
 
       - name: Reapply Talk/Core-Telecom bridge hooks
         run: python scripts/android-auto-wire-call-bridge.py
@@ -77,12 +93,21 @@ jobs:
       - name: Refresh dependency verification metadata
         run: ./gradlew --no-daemon --write-verification-metadata sha256 :app:dependencies >/tmp/dependencies.log
 
-      - name: Commit ported Android Auto layer
+      - name: Commit and push synchronized Talk source
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'Port Android Auto layer onto current upstream Talk'
-          git push --force-with-lease origin HEAD:android-auto-sync-work
+          # Reassert that this automated commit does not alter workflow files.
+          git reset HEAD -- .github/workflows
+          git checkout HEAD -- .github/workflows
+          git add .github/workflows
+
+          if git diff --cached --quiet; then
+            echo 'Android Auto branch is already synchronized with upstream.'
+            git merge --abort 2>/dev/null || true
+            exit 0
+          fi
+
+          git commit -m 'Merge current upstream Talk into Android Auto build'
+          git push origin HEAD:android-auto-carappservice
