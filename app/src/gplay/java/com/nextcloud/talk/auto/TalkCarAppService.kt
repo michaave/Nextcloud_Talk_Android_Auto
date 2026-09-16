@@ -22,6 +22,7 @@ import com.nextcloud.talk.utils.database.user.CurrentUserProvider
 import javax.inject.Inject
 
 /** Android Auto entry point for Talk messaging and calling. */
+// Kept intentionally lightweight so upstream Talk updates can be reapplied cleanly.
 @AutoInjector(NextcloudTalkApplication::class)
 class TalkCarAppService : CarAppService() {
     @Inject lateinit var currentUserProvider: CurrentUserProvider
