@@ -6,6 +6,7 @@
  */
 package com.nextcloud.talk.auto
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -20,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -31,25 +34,22 @@ internal object TalkCarImageLoader {
     private const val PREVIEW_SIZE = 640
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
         .build()
 
     private val cache = ConcurrentHashMap<String, CarIcon>()
 
-    suspend fun loadConversationAvatar(user: User, conversation: ConversationEntity): CarIcon? {
+    suspend fun loadConversationAvatar(context: Context, user: User, conversation: ConversationEntity): CarIcon? {
         val baseUrl = user.baseUrl ?: return null
         val cacheKey = "avatar:${conversation.internalId}:${conversation.avatarVersion}:${conversation.name}"
         cache[cacheKey]?.let { return it }
 
         val candidates = buildList {
-            if (conversation.type == ConversationEnums.ConversationType.ROOM_TYPE_ONE_TO_ONE_CALL &&
-                conversation.name.isNotBlank()
-            ) {
-                add(ApiUtils.getUrlForAvatar(baseUrl, conversation.name, requestBigSize = false))
-            }
+            // The versioned Talk avatar works for every conversation type. Try it first;
+            // the old ordering could wait for a failed user-avatar request before falling back.
             add(
                 ApiUtils.getUrlForConversationAvatarWithVersion(
                     AVATAR_API_VERSION,
@@ -59,10 +59,15 @@ internal object TalkCarImageLoader {
                     conversation.avatarVersion
                 )
             )
+            if (conversation.type == ConversationEnums.ConversationType.ROOM_TYPE_ONE_TO_ONE_CALL &&
+                conversation.name.isNotBlank()
+            ) {
+                add(ApiUtils.getUrlForAvatar(baseUrl, conversation.name, requestBigSize = false))
+            }
         }
 
         candidates.forEachIndexed { index, url ->
-            val icon = loadAuthenticatedIcon(user, url, "$cacheKey:$index", cropSquare = true)
+            val icon = loadAuthenticatedIcon(context, user, url, cacheKey, cropSquare = true)
             if (icon != null) {
                 cache[cacheKey] = icon
                 Log.i(TAG, "Loaded car avatar for ${conversation.internalId} from candidate $index")
@@ -74,7 +79,7 @@ internal object TalkCarImageLoader {
         return null
     }
 
-    suspend fun loadMessageImage(user: User, message: ChatMessageEntity): CarIcon? {
+    suspend fun loadMessageImage(context: Context, user: User, message: ChatMessageEntity): CarIcon? {
         val attachment = findImageAttachment(message) ?: return null
         val baseUrl = user.baseUrl ?: return null
         val identity = attachment.fileId ?: attachment.path ?: attachment.name
@@ -91,7 +96,7 @@ internal object TalkCarImageLoader {
         }
 
         candidates.forEachIndexed { index, url ->
-            val icon = loadAuthenticatedIcon(user, url, "$cacheKey:$index", cropSquare = false)
+            val icon = loadAuthenticatedIcon(context, user, url, cacheKey, cropSquare = false)
             if (icon != null) {
                 cache[cacheKey] = icon
                 Log.i(TAG, "Loaded image preview message=${message.internalId} candidate=$index")
@@ -118,6 +123,7 @@ internal object TalkCarImageLoader {
     }
 
     private suspend fun loadAuthenticatedIcon(
+        context: Context,
         user: User,
         url: String,
         cacheKey: String,
@@ -125,6 +131,19 @@ internal object TalkCarImageLoader {
     ): CarIcon? = withContext(Dispatchers.IO) {
         try {
             cache[cacheKey]?.let { return@withContext it }
+
+            val diskFile = diskCacheFile(context, cacheKey)
+            if (diskFile.isFile) {
+                val cachedBytes = runCatching { diskFile.readBytes() }.getOrNull()
+                val cachedIcon = cachedBytes?.let { decodeIcon(it, cropSquare) }
+                if (cachedIcon != null) {
+                    cache[cacheKey] = cachedIcon
+                    Log.d(TAG, "Loaded Talk car image from disk cache key=$cacheKey")
+                    return@withContext cachedIcon
+                }
+                runCatching { diskFile.delete() }
+            }
+
             val request = Request.Builder()
                 .url(url)
                 .header("Authorization", user.getCredentials())
@@ -141,19 +160,24 @@ internal object TalkCarImageLoader {
                 }
 
                 val bytes = response.body?.bytes() ?: return@withContext null
-                var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                if (bitmap == null) {
+                val icon = decodeIcon(bytes, cropSquare)
+                if (icon == null) {
                     Log.w(TAG, "Image decode failed type=$contentType bytes=${bytes.size} url=$url")
                     return@withContext null
                 }
-                if (cropSquare && bitmap.width != bitmap.height) {
-                    val side = minOf(bitmap.width, bitmap.height)
-                    val x = (bitmap.width - side) / 2
-                    val y = (bitmap.height - side) / 2
-                    bitmap = Bitmap.createBitmap(bitmap, x, y, side, side)
+
+                runCatching {
+                    diskFile.parentFile?.mkdirs()
+                    val tempFile = File(diskFile.parentFile, "${diskFile.name}.tmp")
+                    tempFile.writeBytes(bytes)
+                    if (!tempFile.renameTo(diskFile)) {
+                        diskFile.writeBytes(bytes)
+                        tempFile.delete()
+                    }
+                }.onFailure {
+                    Log.d(TAG, "Unable to persist Talk car image cache key=$cacheKey", it)
                 }
 
-                val icon = CarIcon.Builder(IconCompat.createWithBitmap(bitmap)).build()
                 cache[cacheKey] = icon
                 icon
             }
@@ -161,6 +185,24 @@ internal object TalkCarImageLoader {
             Log.w(TAG, "Unable to load Talk car image from $url", t)
             null
         }
+    }
+
+    private fun decodeIcon(bytes: ByteArray, cropSquare: Boolean): CarIcon? {
+        var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        if (cropSquare && bitmap.width != bitmap.height) {
+            val side = minOf(bitmap.width, bitmap.height)
+            val x = (bitmap.width - side) / 2
+            val y = (bitmap.height - side) / 2
+            bitmap = Bitmap.createBitmap(bitmap, x, y, side, side)
+        }
+        return CarIcon.Builder(IconCompat.createWithBitmap(bitmap)).build()
+    }
+
+    private fun diskCacheFile(context: Context, cacheKey: String): File {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(cacheKey.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        return File(File(context.cacheDir, "talk_auto_images"), "$digest.img")
     }
 
     private fun findImageAttachment(message: ChatMessageEntity): ImageAttachment? {
