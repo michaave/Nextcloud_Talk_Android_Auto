@@ -297,7 +297,7 @@ internal class TalkConversationHistoryScreen(
                 return@forEach
             }
             scope.launch {
-                val image = TalkCarImageLoader.loadMessageImage(activeUser, message)
+                val image = TalkCarImageLoader.loadMessageImage(carContext.applicationContext, activeUser, message)
                 if (image != null) {
                     messageImages[message.internalId] = image
                     invalidate()
