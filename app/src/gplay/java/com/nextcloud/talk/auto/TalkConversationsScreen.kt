@@ -147,6 +147,10 @@ internal class TalkConversationsScreen(
                         .take(MAX_CONVERSATIONS)
                         .toList()
 
+                    // Start avatar I/O as soon as we know the visible rooms. Message lookup below
+                    // should never hold up the first avatar requests.
+                    loadAvatars(activeUser, recentConversations)
+
                     snapshots = recentConversations.map { conversation ->
                         val latestMessage = chatMessagesDao
                             .getMessagesForConversation(conversation.internalId, null)
@@ -161,7 +165,6 @@ internal class TalkConversationsScreen(
                     loading = false
                     errorMessage = null
                     invalidate()
-                    loadAvatars(activeUser, recentConversations)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -178,7 +181,7 @@ internal class TalkConversationsScreen(
         conversations.take(getListContentLimit()).forEach { conversation ->
             if (avatarIcons.containsKey(conversation.internalId)) return@forEach
             scope.launch {
-                val icon = TalkCarImageLoader.loadConversationAvatar(activeUser, conversation)
+                val icon = TalkCarImageLoader.loadConversationAvatar(carContext.applicationContext, activeUser, conversation)
                 if (icon != null) {
                     avatarIcons[conversation.internalId] = icon
                     invalidate()
