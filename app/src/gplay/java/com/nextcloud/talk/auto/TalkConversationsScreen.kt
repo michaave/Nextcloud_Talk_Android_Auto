@@ -29,7 +29,9 @@ import com.nextcloud.talk.models.json.conversations.ConversationEnums
 import com.nextcloud.talk.utils.database.user.CurrentUserProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
@@ -52,6 +54,7 @@ internal class TalkConversationsScreen(
     private var loading = true
     private var errorMessage: String? = null
     private val avatarIcons = mutableMapOf<String, CarIcon>()
+    private val avatarJobs = mutableMapOf<String, Job>()
 
     init {
         lifecycle.addObserver(
@@ -64,12 +67,13 @@ internal class TalkConversationsScreen(
         observeConversations()
     }
 
-    override fun onGetTemplate(): Template = try {
-        buildTemplate()
-    } catch (t: Throwable) {
-        Log.e(TAG, "Failed to build Android Auto conversation template", t)
-        buildErrorTemplate("Unable to display Talk conversations")
-    }
+    override fun onGetTemplate(): Template =
+        try {
+            buildTemplate()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to build Android Auto conversation template", t)
+            buildErrorTemplate("Unable to display Talk conversations")
+        }
 
     private fun buildTemplate(): Template {
         val itemList = ItemList.Builder()
@@ -121,7 +125,7 @@ internal class TalkConversationsScreen(
                             )
                         }
 
-                    avatarIcons[conversation.internalId]?.let { icon ->
+                    avatarIcons[avatarKey(conversation)]?.let { icon ->
                         rowBuilder.setImage(icon, Row.IMAGE_TYPE_LARGE)
                     }
                     itemList.addItem(rowBuilder.build())
@@ -147,11 +151,16 @@ internal class TalkConversationsScreen(
                         .take(MAX_CONVERSATIONS)
                         .toList()
 
-                    // Start avatar I/O as soon as we know the visible rooms. Message lookup below
-                    // should never hold up the first avatar requests.
+                    val previousMessages = snapshots.associate { it.conversation.internalId to it.latestMessage }
+                    snapshots = recentConversations.map { conversation ->
+                        ConversationSnapshot(conversation, previousMessages[conversation.internalId])
+                    }
+                    loading = false
+                    errorMessage = null
+                    invalidate()
                     loadAvatars(activeUser, recentConversations)
 
-                    snapshots = recentConversations.map { conversation ->
+                    recentConversations.forEach { conversation ->
                         val latestMessage = chatMessagesDao
                             .getMessagesForConversation(conversation.internalId, null)
                             .first()
@@ -159,12 +168,15 @@ internal class TalkConversationsScreen(
                                 !it.deleted &&
                                     (it.message.isNotBlank() || TalkCarImageLoader.hasImageAttachment(it))
                             }
-                        ConversationSnapshot(conversation, latestMessage)
+                        snapshots = snapshots.map { snapshot ->
+                            if (snapshot.conversation.internalId == conversation.internalId) {
+                                ConversationSnapshot(conversation, latestMessage)
+                            } else {
+                                snapshot
+                            }
+                        }
+                        invalidate()
                     }
-
-                    loading = false
-                    errorMessage = null
-                    invalidate()
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -178,27 +190,50 @@ internal class TalkConversationsScreen(
     }
 
     private fun loadAvatars(activeUser: User, conversations: List<ConversationEntity>) {
-        conversations.take(getListContentLimit()).forEach { conversation ->
-            if (avatarIcons.containsKey(conversation.internalId)) return@forEach
-            scope.launch {
-                val icon = TalkCarImageLoader.loadConversationAvatar(carContext.applicationContext, activeUser, conversation)
-                if (icon != null) {
-                    avatarIcons[conversation.internalId] = icon
-                    invalidate()
+        val visibleConversations = conversations.take(getListContentLimit())
+        val visibleKeys = visibleConversations.map(::avatarKey).toSet()
+        avatarIcons.keys.retainAll(visibleKeys)
+        avatarJobs.keys.filterNot(visibleKeys::contains).forEach { key -> avatarJobs.remove(key)?.cancel() }
+        visibleConversations.forEach { conversation ->
+            val key = avatarKey(conversation)
+            if (avatarIcons.containsKey(key) || avatarJobs.containsKey(key)) return@forEach
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val icon = TalkCarImageLoader.loadConversationAvatar(
+                        carContext.applicationContext,
+                        activeUser,
+                        conversation
+                    )
+                    if (icon != null) {
+                        avatarIcons[key] = icon
+                        invalidate()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Unable to load conversation avatar", e)
+                } finally {
+                    avatarJobs.remove(key, coroutineContext[Job])
                 }
             }
+            avatarJobs[key] = job
+            job.start()
         }
     }
 
-    private fun getListContentLimit(): Int = try {
-        carContext
-            .getCarService(ConstraintManager::class.java)
-            .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
-            .coerceAtLeast(1)
-    } catch (t: Throwable) {
-        Log.w(TAG, "Unable to query Android Auto conversation list limit; using fallback", t)
-        FALLBACK_LIST_LIMIT
-    }
+    private fun avatarKey(conversation: ConversationEntity): String =
+        "${conversation.internalId}:${conversation.avatarVersion}:${conversation.name}:${conversation.type}"
+
+    private fun getListContentLimit(): Int =
+        try {
+            carContext
+                .getCarService(ConstraintManager::class.java)
+                .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
+                .coerceAtLeast(1)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Unable to query Android Auto conversation list limit; using fallback", t)
+            FALLBACK_LIST_LIMIT
+        }
 
     private fun buildListTemplate(itemList: ItemList): Template =
         ListTemplate.Builder()
@@ -223,10 +258,7 @@ internal class TalkConversationsScreen(
             conversation.type != ConversationEnums.ConversationType.DUMMY &&
             conversation.type != ConversationEnums.ConversationType.ROOM_SYSTEM
 
-    private data class ConversationSnapshot(
-        val conversation: ConversationEntity,
-        val latestMessage: ChatMessageEntity?
-    )
+    private data class ConversationSnapshot(val conversation: ConversationEntity, val latestMessage: ChatMessageEntity?)
 
     companion object {
         private const val TAG = "TalkAuto"

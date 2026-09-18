@@ -39,6 +39,21 @@ jobs:
       - name: Remove stale build output
         run: rm -rf app/build build .gradle
 
+      - name: Verify Android Auto regressions and generic flavor
+        run: >-
+          ./gradlew --no-daemon :app:testGplayDebugUnitTest
+          --tests 'com.nextcloud.talk.auto.*'
+          --tests 'com.nextcloud.talk.conversationlist.ui.ConversationAvatarContentTest'
+          :app:compileGenericDebugKotlin --stacktrace
+
+      - name: Upload regression test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Android-Auto-regression-tests
+          path: app/build/reports/tests/testGplayDebugUnitTest/
+          if-no-files-found: ignore
+
       - name: Assemble GPlay debug APK from clean sources
         run: ./gradlew --no-daemon --no-build-cache clean -PandroidAutoSideBySide=true :app:assembleGplayDebug --stacktrace
 

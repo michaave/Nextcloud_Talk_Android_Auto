@@ -340,7 +340,7 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
                 applicationContext,
                 requestCode + DECLINE_CALL_REQUEST_OFFSET,
                 Intent(applicationContext, DeclineCallReceiver::class.java).apply {
-                    putExtra(KEY_NOTIFICATION_TIMESTAMP, pushMessage.timestamp.toInt())
+                    putExtras(bundle)
                 },
                 pendingIntentFlags
             )
@@ -1189,6 +1189,14 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
     private fun removeNotification(notificationId: Int) {
         logger.d(TAG, "removed notification with id $notificationId")
         notificationManager.cancel(notificationId)
+        if (pushMessage.type == TYPE_CALL) {
+            TalkCallInterop.notifyIncomingCallDismissed(
+                applicationContext,
+                user.id ?: -1L,
+                pushMessage.id.orEmpty(),
+                notificationId
+            )
+        }
     }
 
     private fun checkIfCallIsActive(conversation: ConversationModel) {

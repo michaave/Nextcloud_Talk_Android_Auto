@@ -10,12 +10,21 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
+import com.nextcloud.talk.call.TalkCallInterop
+import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_INTERNAL_USER_ID
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_NOTIFICATION_TIMESTAMP
+import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
 
 class DeclineCallReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val notificationId = intent.getIntExtra(KEY_NOTIFICATION_TIMESTAMP, 0)
         NotificationManagerCompat.from(context).cancel(notificationId)
+        TalkCallInterop.notifyIncomingCallDismissed(
+            context,
+            intent.getLongExtra(KEY_INTERNAL_USER_ID, -1L),
+            intent.getStringExtra(KEY_ROOM_TOKEN).orEmpty(),
+            notificationId
+        )
     }
 }

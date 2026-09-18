@@ -34,7 +34,9 @@ import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_CALL_VOICE_ONLY
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
@@ -58,6 +60,7 @@ internal class TalkConversationHistoryScreen(
     private var ttsReady = false
     private var textToSpeech: TextToSpeech? = null
     private val messageImages = mutableMapOf<String, CarIcon>()
+    private val imageJobs = mutableMapOf<String, Job>()
 
     init {
         lifecycle.addObserver(
@@ -89,12 +92,13 @@ internal class TalkConversationHistoryScreen(
         observeMessages()
     }
 
-    override fun onGetTemplate(): Template = try {
-        buildTemplate()
-    } catch (t: Throwable) {
-        Log.e(TAG, "Failed to build conversation history for ${conversation.internalId}", t)
-        buildSimpleTemplate("Unable to display conversation history")
-    }
+    override fun onGetTemplate(): Template =
+        try {
+            buildTemplate()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to build conversation history for ${conversation.internalId}", t)
+            buildSimpleTemplate("Unable to display conversation history")
+        }
 
     private fun buildTemplate(): Template {
         val itemList = ItemList.Builder()
@@ -292,17 +296,35 @@ internal class TalkConversationHistoryScreen(
         val pageSize = max(1, listLimit - reserved)
         val start = (pageFromNewest * pageSize).coerceAtMost(messages.size)
         val end = (start + pageSize).coerceAtMost(messages.size)
-        messages.subList(start, end).forEach { message ->
-            if (!TalkCarImageLoader.hasImageAttachment(message) || messageImages.containsKey(message.internalId)) {
+        val visibleMessages = messages.subList(start, end)
+        val visibleIds = visibleMessages.map(ChatMessageEntity::internalId).toSet()
+        messageImages.keys.retainAll(visibleIds)
+        imageJobs.keys.filterNot(visibleIds::contains).forEach { id -> imageJobs.remove(id)?.cancel() }
+        visibleMessages.forEach { message ->
+            val id = message.internalId
+            if (!TalkCarImageLoader.hasImageAttachment(message) ||
+                messageImages.containsKey(id) ||
+                imageJobs.containsKey(id)
+            ) {
                 return@forEach
             }
-            scope.launch {
-                val image = TalkCarImageLoader.loadMessageImage(carContext.applicationContext, activeUser, message)
-                if (image != null) {
-                    messageImages[message.internalId] = image
-                    invalidate()
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val image = TalkCarImageLoader.loadMessageImage(carContext.applicationContext, activeUser, message)
+                    if (image != null) {
+                        messageImages[id] = image
+                        invalidate()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Unable to load message image", e)
+                } finally {
+                    imageJobs.remove(id, coroutineContext[Job])
                 }
             }
+            imageJobs[id] = job
+            job.start()
         }
     }
 
@@ -344,15 +366,16 @@ internal class TalkConversationHistoryScreen(
         }
     }
 
-    private fun getListContentLimit(): Int = try {
-        carContext
-            .getCarService(ConstraintManager::class.java)
-            .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
-            .coerceAtLeast(MIN_LIST_LIMIT)
-    } catch (t: Throwable) {
-        Log.w(TAG, "Unable to query Android Auto list limit; using fallback", t)
-        FALLBACK_LIST_LIMIT
-    }
+    private fun getListContentLimit(): Int =
+        try {
+            carContext
+                .getCarService(ConstraintManager::class.java)
+                .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
+                .coerceAtLeast(MIN_LIST_LIMIT)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Unable to query Android Auto list limit; using fallback", t)
+            FALLBACK_LIST_LIMIT
+        }
 
     private fun buildSimpleTemplate(message: String): Template =
         ListTemplate.Builder()

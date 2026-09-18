@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_INTERNAL_USER_ID
+import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_NOTIFICATION_TIMESTAMP
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
 
 /**
@@ -25,6 +26,7 @@ object TalkCallInterop {
     const val ACTION_CALL_STARTED = "com.nextcloud.talk.call.action.STARTED"
     const val ACTION_CALL_ACTIVE = "com.nextcloud.talk.call.action.ACTIVE"
     const val ACTION_CALL_ENDED = "com.nextcloud.talk.call.action.ENDED"
+    const val ACTION_INCOMING_CALL_DISMISSED = "com.nextcloud.talk.call.action.INCOMING_DISMISSED"
     const val ACTION_CALL_PARTICIPANTS_CHANGED = "com.nextcloud.talk.call.action.PARTICIPANTS_CHANGED"
 
     const val ACTION_CONTROL_DISCONNECT = "com.nextcloud.talk.call.action.CONTROL_DISCONNECT"
@@ -107,6 +109,16 @@ object TalkCallInterop {
 
     fun notifyCallEnded(context: Context, accountId: Long, roomToken: String) {
         notifySimple(context, ACTION_CALL_ENDED, accountId, roomToken)
+    }
+
+    fun notifyIncomingCallDismissed(context: Context, accountId: Long, roomToken: String, notificationId: Int) {
+        if (accountId < 0L || roomToken.isBlank()) return
+        send(
+            context,
+            Intent(ACTION_INCOMING_CALL_DISMISSED)
+                .putExtra(EXTRA_CALL_KEY, callKey(accountId, roomToken))
+                .putExtra(KEY_NOTIFICATION_TIMESTAMP, notificationId)
+        )
     }
 
     fun notifyCallParticipants(

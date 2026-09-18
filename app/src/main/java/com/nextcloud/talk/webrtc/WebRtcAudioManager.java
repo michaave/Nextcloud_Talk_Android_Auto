@@ -58,6 +58,7 @@ public class WebRtcAudioManager {
     private boolean telecomManagedAudioSession = false;
     private boolean wiredHeadsetReceiverRegistered = false;
     private boolean telecomAudioStateReceiverRegistered = false;
+    private boolean legacyAudioStarted = false;
 
     private AudioDevice userSelectedAudioDevice;
     private AudioDevice currentAudioDevice;
@@ -173,33 +174,7 @@ public class WebRtcAudioManager {
         amState = AudioManagerState.RUNNING;
         telecomManagedAudioSession = TalkCallInterop.isTelecomAudioManaged();
 
-        // Store current audio state so we can restore it when stop() is called.
-        savedAudioMode = audioManager.getMode();
-        savedIsSpeakerPhoneOn = audioManager.isSpeakerphoneOn();
-        savedIsMicrophoneMute = audioManager.isMicrophoneMute();
         hasWiredHeadset = hasWiredHeadset();
-
-        audioFocusChangeListener = this::onAudioFocusChange;
-
-        // Request audio focus for a long-running call (delivered on the main thread).
-        audioFocusRequest = buildCallAudioFocusRequest(audioFocusChangeListener);
-        int result = audioManager.requestAudioFocus(audioFocusRequest);
-        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            Log.d(TAG, "Audio focus request granted for VOICE_CALL streams");
-        } else {
-            Log.e(TAG, "Audio focus request failed");
-        }
-
-        // Start by setting MODE_IN_COMMUNICATION as default audio mode. It is
-        // required to be in this mode when playout and/or recording starts for
-        // best possible VoIP performance. Telecom owns the endpoint, not this mode.
-        audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-
-        // Legacy calls use AudioManager mute state. Telecom-managed calls mirror
-        // mute through the WebRTC track instead, so don't override Telecom here.
-        if (!telecomManagedAudioSession) {
-            setMicrophoneMute(false);
-        }
 
         // Set initial device states.
         userSelectedAudioDevice = AudioDevice.NONE;
@@ -215,10 +190,7 @@ public class WebRtcAudioManager {
         telecomAudioStateReceiverRegistered = true;
 
         if (!telecomManagedAudioSession) {
-            startBluetoothManager();
-            proximitySensor.start();
-            registerReceiver(wiredHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
-            wiredHeadsetReceiverRegistered = true;
+            startLegacyAudio();
         }
 
         // Do initial selection of audio device. In a Telecom-managed call this
@@ -227,12 +199,53 @@ public class WebRtcAudioManager {
         Log.d(TAG, "AudioManager started");
     }
 
+    private void startLegacyAudio() {
+        if (legacyAudioStarted || amState != AudioManagerState.RUNNING) return;
+        legacyAudioStarted = true;
+        savedAudioMode = audioManager.getMode();
+        savedIsSpeakerPhoneOn = audioManager.isSpeakerphoneOn();
+        savedIsMicrophoneMute = audioManager.isMicrophoneMute();
+        hasWiredHeadset = hasWiredHeadset();
+        audioFocusChangeListener = this::onAudioFocusChange;
+        audioFocusRequest = buildCallAudioFocusRequest(audioFocusChangeListener);
+        audioManager.requestAudioFocus(audioFocusRequest);
+        audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+        setMicrophoneMute(false);
+        startBluetoothManager();
+        if (proximitySensor != null) proximitySensor.start();
+        if (!wiredHeadsetReceiverRegistered) {
+            registerReceiver(wiredHeadsetReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
+            wiredHeadsetReceiverRegistered = true;
+        }
+    }
+
+    private void releaseLegacyAudio(boolean restoreState) {
+        if (!legacyAudioStarted) return;
+        legacyAudioStarted = false;
+        if (wiredHeadsetReceiverRegistered) {
+            unregisterReceiver(wiredHeadsetReceiver);
+            wiredHeadsetReceiverRegistered = false;
+        }
+        if (bluetoothManager.started()) bluetoothManager.stop();
+        if (proximitySensor != null) proximitySensor.stop();
+        if (audioFocusRequest != null) {
+            audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            audioFocusRequest = null;
+        }
+        audioFocusChangeListener = null;
+        if (restoreState) {
+            setSpeakerphoneOn(savedIsSpeakerPhoneOn);
+            setMicrophoneMute(savedIsMicrophoneMute);
+            audioManager.setMode(savedAudioMode);
+        }
+    }
+
     /**
      * Handles audio focus changes (called on the main thread). Re-asserts the communication mode and audio route
      * when focus returns after a transient loss, see {@link AudioFocusState}.
      */
     void onAudioFocusChange(int focusChange) {
-        if (audioFocusState.handle(focusChange) && amState == AudioManagerState.RUNNING) {
+        if (audioFocusState.handle(focusChange) && amState == AudioManagerState.RUNNING && !isTelecomAudioManaged()) {
             audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
             updateAudioDeviceState();
         }
@@ -288,6 +301,7 @@ public class WebRtcAudioManager {
             return;
         }
         amState = AudioManagerState.UNINITIALIZED;
+        releaseLegacyAudio(!isTelecomAudioManaged());
 
         if (wiredHeadsetReceiverRegistered) {
             unregisterReceiver(wiredHeadsetReceiver);
@@ -301,22 +315,6 @@ public class WebRtcAudioManager {
         if(bluetoothManager.started()) {
             bluetoothManager.stop();
         }
-
-        // Don't alter endpoint or global microphone state for a Telecom-managed
-        // session. Telecom restores the route after the call leaves its scope.
-        if (!telecomManagedAudioSession) {
-            setSpeakerphoneOn(savedIsSpeakerPhoneOn);
-            setMicrophoneMute(savedIsMicrophoneMute);
-        }
-        audioManager.setMode(savedAudioMode);
-
-        // Abandon audio focus. Gives the previous focus owner, if any, focus.
-        if (audioFocusRequest != null) {
-            audioManager.abandonAudioFocusRequest(audioFocusRequest);
-            audioFocusRequest = null;
-        }
-        audioFocusChangeListener = null;
-        Log.d(TAG, "Abandoned audio focus for VOICE_CALL streams");
 
         if (proximitySensor != null) {
             proximitySensor.stop();
@@ -486,8 +484,14 @@ public class WebRtcAudioManager {
     public final void updateAudioDeviceState() {
         ThreadUtils.checkIsOnMainThread();
 
-        if (TalkCallInterop.isTelecomAudioManaged()) {
-            telecomManagedAudioSession = true;
+        boolean managed = TalkCallInterop.isTelecomAudioManaged();
+        if (telecomManagedAudioSession != managed) {
+            telecomManagedAudioSession = managed;
+            if (managed) {
+                releaseLegacyAudio(false);
+            } else {
+                startLegacyAudio();
+            }
         }
         if (telecomManagedAudioSession) {
             updateTelecomAudioDeviceState();

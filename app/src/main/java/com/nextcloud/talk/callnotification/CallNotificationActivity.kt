@@ -24,6 +24,7 @@ import com.nextcloud.talk.activities.CallBaseActivity
 import com.nextcloud.talk.api.NcApi
 import com.nextcloud.talk.application.NextcloudTalkApplication
 import com.nextcloud.talk.application.NextcloudTalkApplication.Companion.sharedApplication
+import com.nextcloud.talk.call.TalkCallInterop
 import com.nextcloud.talk.data.user.model.User
 import com.nextcloud.talk.databinding.CallNotificationActivityBinding
 import com.nextcloud.talk.extensions.loadUserAvatar
@@ -187,6 +188,12 @@ class CallNotificationActivity : CallBaseActivity() {
     }
 
     private fun hangup() {
+        TalkCallInterop.notifyIncomingCallDismissed(
+            this,
+            internalUserId,
+            roomToken.orEmpty(),
+            notificationTimestamp ?: 0
+        )
         leavingScreen = true
         finish()
     }

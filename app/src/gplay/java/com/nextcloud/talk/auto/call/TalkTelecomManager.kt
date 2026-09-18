@@ -19,14 +19,17 @@ import androidx.core.telecom.CallControlResult
 import androidx.core.telecom.CallControlScope
 import androidx.core.telecom.CallEndpointCompat
 import androidx.core.telecom.CallsManager
+import androidx.core.telecom.extensions.CallsManagerExtensions
 import androidx.core.telecom.extensions.Participant as TelecomParticipant
 import androidx.core.telecom.extensions.ParticipantExtension
+import androidx.lifecycle.LiveData
 import com.nextcloud.talk.activities.CallActivity
 import com.nextcloud.talk.call.TalkCallInterop
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_CALL_VOICE_ONLY
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_NOTIFICATION_TIMESTAMP
 import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_ROOM_TOKEN
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
@@ -41,12 +44,15 @@ import java.util.concurrent.ConcurrentHashMap
  * This class does not own media/signaling. It only mirrors call state and
  * translates Telecom requests into package-local Talk call controls.
  */
-class TalkTelecomManager private constructor(context: Context) {
+class TalkTelecomManager internal constructor(
+    context: Context,
+    private val callsManager: CallsManager = CallsManager(context.applicationContext),
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    carConnectionType: LiveData<Int> = CarConnection(context.applicationContext).type,
+    private val callExtensions: CallsManagerExtensions = callsManager
+) {
     private val appContext = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val callsManager = CallsManager(appContext)
     private val calls = ConcurrentHashMap<String, ManagedCall>()
-    private val carConnection = CarConnection(appContext)
 
     @Volatile
     private var projectedToCar = false
@@ -55,9 +61,17 @@ class TalkTelecomManager private constructor(context: Context) {
     private var registered = false
 
     init {
-        carConnection.type.observeForever { connectionType ->
-            projectedToCar = connectionType == CarConnection.CONNECTION_TYPE_PROJECTION
+        carConnectionType.observeForever { connectionType ->
+            val connected = connectionType == CarConnection.CONNECTION_TYPE_PROJECTION
+            if (projectedToCar == connected) return@observeForever
+            projectedToCar = connected
             Log.i(TAG, "Android Auto projection active=$projectedToCar")
+            calls.values.forEach { managed ->
+                managed.vehicleRouteRequested = false
+                managed.control?.let { control ->
+                    control.launch { maybePreferVehicleEndpoint(managed, control) }
+                }
+            }
         }
     }
 
@@ -87,7 +101,7 @@ class TalkTelecomManager private constructor(context: Context) {
             existing.activityStarted = true
             existing.callExtras = Bundle(callExtras)
             existing.control?.let { control ->
-                scope.launch { activateStartedCall(existing, control) }
+                control.launch { activateStartedCall(existing, control) }
             }
             return
         }
@@ -105,7 +119,7 @@ class TalkTelecomManager private constructor(context: Context) {
     fun onCallActive(callKey: String) {
         val managed = calls[callKey] ?: return
         managed.control?.let { control ->
-            scope.launch {
+            control.launch {
                 if (!managed.telecomActive && !managed.activationInFlight) {
                     activateStartedCall(managed, control)
                 }
@@ -114,14 +128,25 @@ class TalkTelecomManager private constructor(context: Context) {
     }
 
     fun onCallEnded(callKey: String) {
-        TalkCallInterop.clearTelecomAudioState(appContext, callKey)
         val managed = calls.remove(callKey) ?: return
+        TalkCallInterop.clearTelecomAudioState(appContext, callKey)
         managed.control?.let { control ->
-            scope.launch {
+            control.launch {
                 runCatching {
                     control.disconnect(DisconnectCause(DisconnectCause.LOCAL))
                 }.onFailure { Log.w(TAG, "Telecom disconnect failed for $callKey", it) }
             }
+        }
+    }
+
+    fun onIncomingCallDismissed(callKey: String, notificationId: Int) {
+        val managed = calls[callKey] ?: return
+        if (managed.incoming &&
+            !managed.activityStarted &&
+            !managed.answeredByTelecom &&
+            managed.callExtras.getInt(KEY_NOTIFICATION_TIMESTAMP, 0) == notificationId
+        ) {
+            onCallEnded(callKey)
         }
     }
 
@@ -139,9 +164,7 @@ class TalkTelecomManager private constructor(context: Context) {
             }
             .distinctBy(TelecomParticipant::id)
         managed.activeParticipantId = activeParticipantId
-        if (managed.participantExtension != null) {
-            scope.launch { publishParticipantState(managed) }
-        }
+        managed.control?.launch { publishParticipantState(managed) }
     }
 
     fun requestAudioEndpoint(callKey: String, route: String) {
@@ -163,7 +186,8 @@ class TalkTelecomManager private constructor(context: Context) {
             return
         }
 
-        scope.launch {
+        managed.vehicleRouteRequested = true
+        control.launch {
             runCatching {
                 control.requestEndpointChange(endpoint)
             }.onFailure {
@@ -173,7 +197,7 @@ class TalkTelecomManager private constructor(context: Context) {
     }
 
     private suspend fun activateStartedCall(managed: ManagedCall, control: CallControlScope) {
-        if (managed.activationInFlight || managed.telecomActive) return
+        if (!isCurrentCall(managed) || managed.activationInFlight || managed.telecomActive) return
         managed.activationInFlight = true
         try {
             val result = if (managed.incoming && !managed.answeredByTelecom) {
@@ -195,11 +219,14 @@ class TalkTelecomManager private constructor(context: Context) {
                     }
                     managed.telecomActive = true
                     Log.i(TAG, "Telecom call active: ${managed.callKey}")
+                    maybePreferVehicleEndpoint(managed, control)
                 }
                 is CallControlResult.Error ->
                     Log.w(TAG, "Telecom activation rejected for ${managed.callKey}: error=${result.errorCode}")
             }
-        } catch (t: Throwable) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Exception) {
             Log.w(TAG, "Unable to activate Talk call in Telecom: ${managed.callKey}", t)
         } finally {
             managed.activationInFlight = false
@@ -215,7 +242,6 @@ class TalkTelecomManager private constructor(context: Context) {
         activityStarted: Boolean
     ) {
         if (callKey.isBlank() || calls.containsKey(callKey)) return
-        registerWithTelecom()
 
         val managed = ManagedCall(
             callKey = callKey,
@@ -229,6 +255,7 @@ class TalkTelecomManager private constructor(context: Context) {
 
         scope.launch {
             try {
+                registerWithTelecom()
                 val roomToken = managed.callExtras.getString(KEY_ROOM_TOKEN).orEmpty()
                 val attributes = CallAttributesCompat(
                     displayName = managed.displayName,
@@ -248,40 +275,42 @@ class TalkTelecomManager private constructor(context: Context) {
                     callCapabilities = 0
                 )
 
-                callsManager.addCallWithExtensions(
+                callExtensions.addCallWithExtensions(
                     callAttributes = attributes,
                     onAnswer = { requestedCallType ->
+                        if (!isCurrentCall(managed)) return@addCallWithExtensions
                         managed.answeredByTelecom = true
                         managed.telecomActive = true
                         Log.i(TAG, "Telecom answered ${managed.callKey}")
-                        launchTalkCall(
-                            managed,
-                            voiceOnly = requestedCallType != CallAttributesCompat.CALL_TYPE_VIDEO_CALL
-                        )
+                        if (!managed.activityStarted) {
+                            launchTalkCall(
+                                managed,
+                                voiceOnly = requestedCallType != CallAttributesCompat.CALL_TYPE_VIDEO_CALL
+                            )
+                        }
+                        managed.control?.let { maybePreferVehicleEndpoint(managed, it) }
                     },
                     onDisconnect = {
+                        if (!calls.remove(managed.callKey, managed)) return@addCallWithExtensions
                         cancelIncomingNotification(managed)
+                        TalkCallInterop.clearTelecomAudioState(appContext, managed.callKey)
                         if (managed.activityStarted) {
                             TalkCallInterop.requestDisconnect(appContext, managed.callKey)
-                        } else {
-                            calls.remove(managed.callKey)
-                            TalkCallInterop.clearTelecomAudioState(appContext, managed.callKey)
                         }
                     },
                     onSetActive = {
+                        if (!isCurrentCall(managed)) return@addCallWithExtensions
                         managed.telecomActive = true
                         Log.i(TAG, "Telecom requested active for ${managed.callKey}")
                         if (!managed.activityStarted) {
                             managed.answeredByTelecom = managed.incoming
                             launchTalkCall(managed, voiceOnly = !managed.video)
                         }
+                        managed.control?.let { maybePreferVehicleEndpoint(managed, it) }
                     },
                     onSetInactive = {
-                        // This callback is a temporary inactive/hold request, not a hang-up.
-                        // We do not advertise SUPPORTS_SET_INACTIVE, so preserve the WebRTC
-                        // session rather than tearing it down and creating a reconnect loop.
-                        managed.telecomActive = false
-                        Log.i(TAG, "Telecom requested inactive for ${managed.callKey}; preserving Talk session")
+                        // Holding requires suspending both microphone and remote playback.
+                        throw UnsupportedOperationException("Talk does not support holding calls")
                     }
                 ) {
                     val participantExtension = addParticipantExtension(
@@ -290,11 +319,15 @@ class TalkTelecomManager private constructor(context: Context) {
                     )
                     onCall {
                         val callControl = this
+                        if (!isCurrentCall(managed)) {
+                            disconnect(DisconnectCause(DisconnectCause.LOCAL))
+                            return@onCall
+                        }
                         managed.control = callControl
                         managed.participantExtension = participantExtension
                         publishParticipantState(managed)
 
-                        scope.launch {
+                        launch {
                             currentCallEndpoint
                                 .distinctUntilChanged()
                                 .collect { endpoint ->
@@ -303,68 +336,88 @@ class TalkTelecomManager private constructor(context: Context) {
                                 }
                         }
 
-                        scope.launch {
+                        launch {
                             availableEndpoints
                                 .distinctUntilChanged()
                                 .collect { endpoints ->
                                     managed.availableEndpoints = endpoints
                                     publishAudioState(managed)
-                                    maybePreferVehicleEndpoint(managed, callControl, endpoints)
+                                    maybePreferVehicleEndpoint(managed, callControl)
                                 }
                         }
 
-                        scope.launch {
+                        launch {
                             isMuted
                                 .distinctUntilChanged()
                                 .collect { muted ->
-                                    TalkCallInterop.requestMute(appContext, managed.callKey, muted)
+                                    if (isCurrentCall(managed)) {
+                                        TalkCallInterop.requestMute(appContext, managed.callKey, muted)
+                                    }
                                 }
                         }
 
                         if (managed.activityStarted) {
-                            scope.launch { activateStartedCall(managed, callControl) }
+                            launch { activateStartedCall(managed, callControl) }
                         }
                     }
                 }
-            } catch (t: Throwable) {
-                calls.remove(callKey)
-                TalkCallInterop.clearTelecomAudioState(appContext, callKey)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Exception) {
                 Log.e(TAG, "Unable to add Talk call to Telecom: $callKey", t)
+            } finally {
+                managed.control = null
+                managed.participantExtension = null
+                if (calls.remove(callKey, managed)) {
+                    TalkCallInterop.clearTelecomAudioState(appContext, callKey)
+                }
             }
         }
     }
 
-    private suspend fun maybePreferVehicleEndpoint(
-        managed: ManagedCall,
-        control: CallControlScope,
-        endpoints: List<CallEndpointCompat>
-    ) {
-        if (!projectedToCar || managed.vehicleRouteRequested || endpoints.isEmpty()) return
+    private suspend fun maybePreferVehicleEndpoint(managed: ManagedCall, control: CallControlScope) {
+        if (!isCurrentCall(managed) ||
+            !projectedToCar ||
+            !managed.telecomActive ||
+            managed.vehicleRouteRequested ||
+            managed.vehicleRouteInFlight
+        ) {
+            return
+        }
 
-        val vehicleEndpoint = endpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_BLUETOOTH }
-            ?: endpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_STREAMING }
+        val vehicleEndpoint = managed.availableEndpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_BLUETOOTH }
+            ?: managed.availableEndpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_STREAMING }
             ?: return
 
-        if (managed.currentEndpoint?.type == vehicleEndpoint.type) {
+        if (managed.currentEndpoint?.identifier == vehicleEndpoint.identifier) {
             managed.vehicleRouteRequested = true
             return
         }
 
-        when (val result = control.requestEndpointChange(vehicleEndpoint)) {
-            is CallControlResult.Success -> {
-                managed.vehicleRouteRequested = true
-                Log.i(
-                    TAG,
-                    "Routed ${managed.callKey} to projected vehicle endpoint " +
-                        "type=${vehicleEndpoint.type} name=${vehicleEndpoint.name}"
-                )
+        managed.vehicleRouteInFlight = true
+        try {
+            when (val result = control.requestEndpointChange(vehicleEndpoint)) {
+                is CallControlResult.Success -> {
+                    managed.vehicleRouteRequested = true
+                    Log.i(
+                        TAG,
+                        "Routed ${managed.callKey} to projected vehicle endpoint " +
+                            "type=${vehicleEndpoint.type} name=${vehicleEndpoint.name}"
+                    )
+                }
+                is CallControlResult.Error ->
+                    Log.w(
+                        TAG,
+                        "Vehicle endpoint request rejected for ${managed.callKey}: " +
+                            "error=${result.errorCode} type=${vehicleEndpoint.type}"
+                    )
             }
-            is CallControlResult.Error ->
-                Log.w(
-                    TAG,
-                    "Vehicle endpoint request rejected for ${managed.callKey}: " +
-                        "error=${result.errorCode} type=${vehicleEndpoint.type}"
-                )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to route ${managed.callKey} to vehicle endpoint", e)
+        } finally {
+            managed.vehicleRouteInFlight = false
         }
     }
 
@@ -375,6 +428,7 @@ class TalkTelecomManager private constructor(context: Context) {
     }
 
     private fun publishAudioState(managed: ManagedCall) {
+        if (!isCurrentCall(managed)) return
         val currentRoute = managed.currentEndpoint?.let(::routeForEndpoint)
         val availableRoutes = managed.availableEndpoints
             .mapNotNull(::routeForEndpoint)
@@ -388,6 +442,8 @@ class TalkTelecomManager private constructor(context: Context) {
             availableRoutes
         )
     }
+
+    private fun isCurrentCall(managed: ManagedCall): Boolean = calls[managed.callKey] === managed
 
     private fun routeForEndpoint(endpoint: CallEndpointCompat): String? =
         when (endpoint.type) {
@@ -432,6 +488,7 @@ class TalkTelecomManager private constructor(context: Context) {
         @Volatile var telecomActive: Boolean = false,
         @Volatile var activationInFlight: Boolean = false,
         @Volatile var vehicleRouteRequested: Boolean = false,
+        @Volatile var vehicleRouteInFlight: Boolean = false,
         @Volatile var control: CallControlScope? = null,
         @Volatile var participantExtension: ParticipantExtension? = null,
         @Volatile var participants: List<TelecomParticipant> = emptyList(),

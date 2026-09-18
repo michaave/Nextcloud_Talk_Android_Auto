@@ -8,83 +8,60 @@ package com.nextcloud.talk.auto
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.car.app.model.CarIcon
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.graphics.drawable.toBitmap
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import com.nextcloud.talk.R
+import com.nextcloud.talk.conversationlist.ui.AvatarContent
+import com.nextcloud.talk.conversationlist.ui.buildAvatarContent
+import com.nextcloud.talk.data.database.mappers.toDomainModel
 import com.nextcloud.talk.data.database.model.ChatMessageEntity
 import com.nextcloud.talk.data.database.model.ConversationEntity
 import com.nextcloud.talk.data.user.model.User
-import com.nextcloud.talk.models.json.conversations.ConversationEnums
 import com.nextcloud.talk.utils.ApiUtils
+import com.nextcloud.talk.utils.AvatarImageLoader
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.File
+import kotlinx.coroutines.withTimeoutOrNull
 import java.security.MessageDigest
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 
 /** Phone-side authenticated image loader for Android Auto. */
 internal object TalkCarImageLoader {
     private const val TAG = "TalkAuto"
-    private const val AVATAR_API_VERSION = 4
+    private const val AVATAR_SIZE = 128
     private const val PREVIEW_SIZE = 640
+    private const val IMAGE_TIMEOUT_MS = 10_000L
+    private const val MAX_CONCURRENT_IMAGES = 4
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .followSslRedirects(true)
-        .build()
-
-    private val cache = ConcurrentHashMap<String, CarIcon>()
+    private val imageRequests = Semaphore(MAX_CONCURRENT_IMAGES)
 
     suspend fun loadConversationAvatar(context: Context, user: User, conversation: ConversationEntity): CarIcon? {
-        val baseUrl = user.baseUrl ?: return null
-        val cacheKey = "avatar:${conversation.internalId}:${conversation.avatarVersion}:${conversation.name}"
-        cache[cacheKey]?.let { return it }
-
-        val candidates = buildList {
-            // The versioned Talk avatar works for every conversation type. Try it first;
-            // the old ordering could wait for a failed user-avatar request before falling back.
-            add(
-                ApiUtils.getUrlForConversationAvatarWithVersion(
-                    AVATAR_API_VERSION,
-                    baseUrl,
-                    conversation.token,
-                    false,
-                    conversation.avatarVersion
-                )
+        if (user.baseUrl == null) return null
+        val content = buildAvatarContent(conversation.toDomainModel(), user, isDark = false)
+        return when (content) {
+            is AvatarContent.Url -> loadAuthenticatedIcon(
+                context,
+                user,
+                content.url,
+                cropSquare = true,
+                versioned = content.versioned
             )
-            if (conversation.type == ConversationEnums.ConversationType.ROOM_TYPE_ONE_TO_ONE_CALL &&
-                conversation.name.isNotBlank()
-            ) {
-                add(ApiUtils.getUrlForAvatar(baseUrl, conversation.name, requestBigSize = false))
-            }
+            is AvatarContent.Res -> resourceIcon(context, content.resId)
+            AvatarContent.NoteToSelf -> resourceIcon(context, R.drawable.ic_note_to_self)
+            AvatarContent.System -> resourceIcon(context, R.drawable.ic_launcher_foreground)
         }
-
-        candidates.forEachIndexed { index, url ->
-            val icon = loadAuthenticatedIcon(context, user, url, cacheKey, cropSquare = true)
-            if (icon != null) {
-                cache[cacheKey] = icon
-                Log.i(TAG, "Loaded car avatar for ${conversation.internalId} from candidate $index")
-                return icon
-            }
-        }
-
-        Log.w(TAG, "No avatar candidate succeeded for ${conversation.internalId}")
-        return null
     }
 
     suspend fun loadMessageImage(context: Context, user: User, message: ChatMessageEntity): CarIcon? {
         val attachment = findImageAttachment(message) ?: return null
         val baseUrl = user.baseUrl ?: return null
-        val identity = attachment.fileId ?: attachment.path ?: attachment.name
-        val cacheKey = "message:${message.internalId}:$identity"
-        cache[cacheKey]?.let { return it }
 
         val candidates = buildList {
             attachment.fileId?.takeIf(String::isNotBlank)?.let {
@@ -96,9 +73,8 @@ internal object TalkCarImageLoader {
         }
 
         candidates.forEachIndexed { index, url ->
-            val icon = loadAuthenticatedIcon(context, user, url, cacheKey, cropSquare = false)
+            val icon = loadAuthenticatedIcon(context, user, url, cropSquare = false)
             if (icon != null) {
-                cache[cacheKey] = icon
                 Log.i(TAG, "Loaded image preview message=${message.internalId} candidate=$index")
                 return icon
             }
@@ -126,69 +102,35 @@ internal object TalkCarImageLoader {
         context: Context,
         user: User,
         url: String,
-        cacheKey: String,
-        cropSquare: Boolean
-    ): CarIcon? = withContext(Dispatchers.IO) {
-        try {
-            cache[cacheKey]?.let { return@withContext it }
-
-            val diskFile = diskCacheFile(context, cacheKey)
-            if (diskFile.isFile) {
-                val cachedBytes = runCatching { diskFile.readBytes() }.getOrNull()
-                val cachedIcon = cachedBytes?.let { decodeIcon(it, cropSquare) }
-                if (cachedIcon != null) {
-                    cache[cacheKey] = cachedIcon
-                    Log.d(TAG, "Loaded Talk car image from disk cache key=$cacheKey")
-                    return@withContext cachedIcon
+        cropSquare: Boolean,
+        versioned: Boolean = false
+    ): CarIcon? =
+        imageRequests.withPermit {
+            withTimeoutOrNull(IMAGE_TIMEOUT_MS) {
+                val imageLoader = if (versioned) AvatarImageLoader.get(context) else context.imageLoader
+                val cacheKey = cacheKey(user, url)
+                val request = ImageRequest.Builder(context)
+                    .data(url)
+                    .memoryCacheKey(cacheKey)
+                    .diskCacheKey(cacheKey)
+                    .addHeader("Authorization", user.getCredentials())
+                    .addHeader("OCS-APIRequest", "true")
+                    .addHeader("Accept", "image/*")
+                    .size(if (cropSquare) AVATAR_SIZE else PREVIEW_SIZE)
+                    .allowHardware(false)
+                    .build()
+                val result = imageLoader.execute(request) as? SuccessResult ?: return@withTimeoutOrNull null
+                withContext(Dispatchers.Default) {
+                    createIcon(result.drawable.toBitmap(), cropSquare)
                 }
-                runCatching { diskFile.delete() }
             }
-
-            val request = Request.Builder()
-                .url(url)
-                .header("Authorization", user.getCredentials())
-                .header("OCS-APIRequest", "true")
-                .header("Accept", "image/*")
-                .header("User-Agent", ApiUtils.userAgent)
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                val contentType = response.header("Content-Type") ?: ""
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "Image request failed code=${response.code} type=$contentType url=$url")
-                    return@withContext null
-                }
-
-                val bytes = response.body?.bytes() ?: return@withContext null
-                val icon = decodeIcon(bytes, cropSquare)
-                if (icon == null) {
-                    Log.w(TAG, "Image decode failed type=$contentType bytes=${bytes.size} url=$url")
-                    return@withContext null
-                }
-
-                runCatching {
-                    diskFile.parentFile?.mkdirs()
-                    val tempFile = File(diskFile.parentFile, "${diskFile.name}.tmp")
-                    tempFile.writeBytes(bytes)
-                    if (!tempFile.renameTo(diskFile)) {
-                        diskFile.writeBytes(bytes)
-                        tempFile.delete()
-                    }
-                }.onFailure {
-                    Log.d(TAG, "Unable to persist Talk car image cache key=$cacheKey", it)
-                }
-
-                cache[cacheKey] = icon
-                icon
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "Unable to load Talk car image from $url", t)
-            null
         }
-    }
 
-    private fun decodeIcon(bytes: ByteArray, cropSquare: Boolean): CarIcon? {
-        var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+    private fun resourceIcon(context: Context, resource: Int): CarIcon =
+        CarIcon.Builder(IconCompat.createWithResource(context, resource)).build()
+
+    private fun createIcon(source: Bitmap, cropSquare: Boolean): CarIcon {
+        var bitmap = source
         if (cropSquare && bitmap.width != bitmap.height) {
             val side = minOf(bitmap.width, bitmap.height)
             val x = (bitmap.width - side) / 2
@@ -198,12 +140,10 @@ internal object TalkCarImageLoader {
         return CarIcon.Builder(IconCompat.createWithBitmap(bitmap)).build()
     }
 
-    private fun diskCacheFile(context: Context, cacheKey: String): File {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(cacheKey.toByteArray(Charsets.UTF_8))
+    internal fun cacheKey(user: User, url: String): String =
+        "talk-auto-v2:" + MessageDigest.getInstance("SHA-256")
+            .digest(listOf(user.baseUrl, user.id, user.username, user.token, url).joinToString("\n").toByteArray())
             .joinToString("") { "%02x".format(it) }
-        return File(File(context.cacheDir, "talk_auto_images"), "$digest.img")
-    }
 
     private fun findImageAttachment(message: ChatMessageEntity): ImageAttachment? {
         val parameters = message.messageParameters ?: return null
@@ -230,7 +170,10 @@ internal object TalkCarImageLoader {
                 ?: parameter["link"]?.takeIf { it.startsWith("/") }
 
             if (fileId.isNullOrBlank() && path.isNullOrBlank()) {
-                Log.d(TAG, "Image-like attachment has no file id/path message=${message.internalId} keys=${parameter.keys}")
+                Log.d(
+                    TAG,
+                    "Image-like attachment has no file id/path message=${message.internalId} keys=${parameter.keys}"
+                )
                 continue
             }
             return ImageAttachment(fileId, path, name, mimeType)
@@ -252,12 +195,7 @@ internal object TalkCarImageLoader {
         return IMAGE_EXTENSIONS.any(lower::endsWith)
     }
 
-    private data class ImageAttachment(
-        val fileId: String?,
-        val path: String?,
-        val name: String,
-        val mimeType: String?
-    )
+    private data class ImageAttachment(val fileId: String?, val path: String?, val name: String, val mimeType: String?)
 
     private val IMAGE_EXTENSIONS = setOf(
         ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".heif", ".avif"

@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import com.nextcloud.talk.call.TalkCallInterop
+import com.nextcloud.talk.utils.bundle.BundleKeys.KEY_NOTIFICATION_TIMESTAMP
 
 /** Receives package-local Talk call lifecycle events and mirrors them into Core-Telecom. */
 class TalkTelecomInteropReceiver : BroadcastReceiver() {
@@ -42,6 +43,10 @@ class TalkTelecomInteropReceiver : BroadcastReceiver() {
 
             TalkCallInterop.ACTION_CALL_ACTIVE -> manager.onCallActive(callKey)
             TalkCallInterop.ACTION_CALL_ENDED -> manager.onCallEnded(callKey)
+            TalkCallInterop.ACTION_INCOMING_CALL_DISMISSED -> manager.onIncomingCallDismissed(
+                callKey,
+                intent.getIntExtra(KEY_NOTIFICATION_TIMESTAMP, 0)
+            )
             TalkCallInterop.ACTION_CALL_PARTICIPANTS_CHANGED -> {
                 manager.onParticipantsChanged(
                     callKey = callKey,
