@@ -60,8 +60,9 @@ internal object TalkCarImageLoader {
     }
 
     suspend fun loadMessageImage(context: Context, user: User, message: ChatMessageEntity): CarIcon? {
-        val attachment = findImageAttachment(message) ?: return null
-        val baseUrl = user.baseUrl ?: return null
+        val attachment = findImageAttachment(message)
+        val baseUrl = user.baseUrl
+        if (attachment == null || baseUrl == null) return null
 
         val candidates = buildList {
             attachment.fileId?.takeIf(String::isNotBlank)?.let {
@@ -72,16 +73,11 @@ internal object TalkCarImageLoader {
             }
         }
 
-        candidates.forEachIndexed { index, url ->
-            val icon = loadAuthenticatedIcon(context, user, url, cropSquare = false)
-            if (icon != null) {
-                Log.i(TAG, "Loaded image preview message=${message.internalId} candidate=$index")
-                return icon
-            }
+        val icon = candidates.firstNotNullOfOrNull { url ->
+            loadAuthenticatedIcon(context, user, url, cropSquare = false)
         }
-
-        Log.w(TAG, "Unable to load image preview for message=${message.internalId} attachment=$attachment")
-        return null
+        if (icon == null) Log.w(TAG, "Unable to load image preview for message=${message.internalId}")
+        return icon
     }
 
     fun imageAttachmentName(message: ChatMessageEntity): String? = findImageAttachment(message)?.name

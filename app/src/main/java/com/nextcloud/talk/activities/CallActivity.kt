@@ -263,6 +263,7 @@ class CallActivity : CallBaseActivity() {
     private var isIncomingCallFromNotification = false
     private var telecomControlReceiverRegistered = false
     private var activeTelecomCallKey: String? = null
+    private var pendingTelecomMute: Boolean? = null
     private val telecomControlReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action ?: return
@@ -275,9 +276,7 @@ class CallActivity : CallBaseActivity() {
 
                 TalkCallInterop.ACTION_CONTROL_MUTE -> {
                     val shouldMute = intent.getBooleanExtra(TalkCallInterop.EXTRA_MUTED, false)
-                    if (microphoneOn == shouldMute) {
-                        onMicrophoneClick()
-                    }
+                    applyTelecomMicrophoneMute(shouldMute)
                 }
             }
         }
@@ -1239,7 +1238,10 @@ class CallActivity : CallBaseActivity() {
                 )
             }
 
-            if (!microphoneOn && !appPreferences.callMicrophoneMuted) {
+            val telecomMuted = pendingTelecomMute
+            if (telecomMuted != null) {
+                applyTelecomMicrophoneMute(telecomMuted)
+            } else if (!microphoneOn && !appPreferences.callMicrophoneMuted) {
                 onMicrophoneClick()
             }
         } else {
@@ -1426,6 +1428,15 @@ class CallActivity : CallBaseActivity() {
             }
         }
         return null
+    }
+
+    internal fun applyTelecomMicrophoneMute(muted: Boolean) {
+        // Telecom can publish mute state before permission checks and audio track creation finish.
+        pendingTelecomMute = muted
+        if (localAudioTrack != null) {
+            pendingTelecomMute = null
+            if (microphoneOn == muted) onMicrophoneClick()
+        }
     }
 
     fun onMicrophoneClick() {
