@@ -64,6 +64,12 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/audio_output_bluetooth_devices"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <LinearLayout
         android:id="@+id/audio_output_speaker"
         android:layout_width="match_parent"
         android:layout_height="@dimen/bottom_sheet_item_height"

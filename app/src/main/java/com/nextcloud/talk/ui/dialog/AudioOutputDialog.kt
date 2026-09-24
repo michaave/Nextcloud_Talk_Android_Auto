@@ -8,8 +8,11 @@ package com.nextcloud.talk.ui.dialog
 
 import android.os.Bundle
 import android.util.Log
+import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import androidx.appcompat.widget.AppCompatTextView
 import autodagger.AutoInjector
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -17,6 +20,7 @@ import com.nextcloud.android.common.ui.theme.utils.ColorRole
 import com.nextcloud.talk.R
 import com.nextcloud.talk.activities.CallActivity
 import com.nextcloud.talk.application.NextcloudTalkApplication
+import com.nextcloud.talk.call.TalkCallInterop
 import com.nextcloud.talk.databinding.DialogAudioOutputBinding
 import com.nextcloud.talk.ui.theme.ViewThemeUtils
 import com.nextcloud.talk.webrtc.WebRtcAudioManager
@@ -39,12 +43,58 @@ class AudioOutputDialog(val callActivity: CallActivity) : BottomSheetDialog(call
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
         viewThemeUtils.platform.themeDialogDark(dialogAudioOutputBinding.root)
-        updateOutputDeviceList()
         initClickListeners()
+        updateOutputDeviceList()
     }
 
     fun updateOutputDeviceList() {
-        if (callActivity.audioManager?.audioDevices?.contains(WebRtcAudioManager.AudioDevice.BLUETOOTH) == false) {
+        val telecomEndpoints = if (TalkCallInterop.isTelecomAudioManaged()) {
+            TalkCallInterop.getTelecomAudioEndpoints().filter {
+                it.route == TalkCallInterop.AUDIO_ROUTE_BLUETOOTH || it.route == TalkCallInterop.AUDIO_ROUTE_EXTERNAL
+            }
+        } else {
+            emptyList()
+        }
+        dialogAudioOutputBinding.audioOutputBluetoothDevices.removeAllViews()
+        if (telecomEndpoints.isNotEmpty()) {
+            val currentId = TalkCallInterop.getTelecomCurrentAudioEndpointId()
+            telecomEndpoints.forEachIndexed { index, endpoint ->
+                if (index == 0) {
+                    dialogAudioOutputBinding.audioOutputBluetoothText.text = endpoint.name
+                    dialogAudioOutputBinding.audioOutputBluetooth.setOnClickListener {
+                        TalkCallInterop.requestTelecomAudioEndpoint(callActivity, endpoint.id)
+                        dismiss()
+                    }
+                } else {
+                    val text = AppCompatTextView(context).apply {
+                        this.text = endpoint.name
+                        setTextColor(callActivity.getColor(R.color.high_emphasis_text_dark_background))
+                        setTextSize(
+                            TypedValue.COMPLEX_UNIT_PX,
+                            dialogAudioOutputBinding.audioOutputBluetoothText.textSize
+                        )
+                        val padding = resources.getDimensionPixelSize(R.dimen.standard_dialog_padding)
+                        setPadding(padding, 0, padding, 0)
+                        gravity = android.view.Gravity.CENTER_VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            resources.getDimensionPixelSize(R.dimen.bottom_sheet_item_height)
+                        )
+                        setOnClickListener {
+                            TalkCallInterop.requestTelecomAudioEndpoint(callActivity, endpoint.id)
+                            dismiss()
+                        }
+                    }
+                    if (currentId == endpoint.id) {
+                        viewThemeUtils.platform.colorPrimaryTextViewElementDarkMode(text)
+                    }
+                    dialogAudioOutputBinding.audioOutputBluetoothDevices.addView(text)
+                }
+            }
+            dialogAudioOutputBinding.audioOutputBluetooth.visibility = View.VISIBLE
+        } else if (TalkCallInterop.isTelecomAudioManaged() ||
+            callActivity.audioManager?.audioDevices?.contains(WebRtcAudioManager.AudioDevice.BLUETOOTH) == false
+        ) {
             dialogAudioOutputBinding.audioOutputBluetooth.visibility = View.GONE
         } else {
             dialogAudioOutputBinding.audioOutputBluetooth.visibility = View.VISIBLE
@@ -73,7 +123,12 @@ class AudioOutputDialog(val callActivity: CallActivity) : BottomSheetDialog(call
             dialogAudioOutputBinding.audioOutputWiredHeadset.visibility = View.GONE
         }
 
-        highlightActiveOutputChannel()
+        if (callActivity.audioManager?.currentAudioDevice != WebRtcAudioManager.AudioDevice.BLUETOOTH ||
+            telecomEndpoints.isEmpty() ||
+            TalkCallInterop.getTelecomCurrentAudioEndpointId() == telecomEndpoints.first().id
+        ) {
+            highlightActiveOutputChannel()
+        }
     }
 
     private fun highlightActiveOutputChannel() {
@@ -118,8 +173,10 @@ class AudioOutputDialog(val callActivity: CallActivity) : BottomSheetDialog(call
 
     private fun initClickListeners() {
         dialogAudioOutputBinding.audioOutputBluetooth.setOnClickListener {
-            callActivity.setAudioOutputChannel(WebRtcAudioManager.AudioDevice.BLUETOOTH)
-            dismiss()
+            if (!TalkCallInterop.isTelecomAudioManaged()) {
+                callActivity.setAudioOutputChannel(WebRtcAudioManager.AudioDevice.BLUETOOTH)
+                dismiss()
+            }
         }
 
         dialogAudioOutputBinding.audioOutputSpeaker.setOnClickListener {

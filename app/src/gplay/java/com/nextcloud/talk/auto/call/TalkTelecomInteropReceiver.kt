@@ -54,7 +54,8 @@ class TalkTelecomInteropReceiver : BroadcastReceiver() {
             TalkCallInterop.ACTION_CONTROL_AUDIO_ENDPOINT -> {
                 manager.requestAudioEndpoint(
                     callKey,
-                    intent.getStringExtra(TalkCallInterop.EXTRA_AUDIO_ROUTE).orEmpty()
+                    intent.getStringExtra(TalkCallInterop.EXTRA_AUDIO_ROUTE).orEmpty(),
+                    intent.getStringExtra(TalkCallInterop.EXTRA_AUDIO_ENDPOINT_ID)
                 )
             }
         }

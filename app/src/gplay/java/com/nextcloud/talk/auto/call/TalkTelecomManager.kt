@@ -6,14 +6,20 @@
  */
 package com.nextcloud.talk.auto.call
 
+import android.Manifest
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.telecom.DisconnectCause
 import android.util.Log
 import androidx.car.app.connection.CarConnection
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.telecom.CallAttributesCompat
 import androidx.core.telecom.CallControlResult
 import androidx.core.telecom.CallControlScope
@@ -58,6 +64,13 @@ class TalkTelecomManager private constructor(context: Context) {
         carConnection.type.observeForever { connectionType ->
             projectedToCar = connectionType == CarConnection.CONNECTION_TYPE_PROJECTION
             Log.i(TAG, "Android Auto projection active=$projectedToCar")
+            if (projectedToCar) {
+                calls.values.forEach { managed ->
+                    managed.control?.let { control ->
+                        scope.launch { maybePreferVehicleEndpoint(managed, control, managed.availableEndpoints) }
+                    }
+                }
+            }
         }
     }
 
@@ -144,11 +157,15 @@ class TalkTelecomManager private constructor(context: Context) {
         }
     }
 
-    fun requestAudioEndpoint(callKey: String, route: String) {
-        if (callKey.isBlank() || route.isBlank()) return
+    fun requestAudioEndpoint(callKey: String, route: String, endpointId: String?) {
+        if (callKey.isBlank() || (route.isBlank() && endpointId.isNullOrBlank())) return
         val managed = calls[callKey] ?: return
         val control = managed.control ?: return
-        val endpoint = managed.availableEndpoints.firstOrNull { endpoint ->
+        val endpoint = endpointId?.let { id ->
+            managed.availableEndpoints.firstOrNull { it.identifier.toString() == id }
+        } ?: if (endpointId != null) {
+            null
+        } else managed.availableEndpoints.firstOrNull { endpoint ->
             routeForEndpoint(endpoint) == route
         } ?: if (route == TalkCallInterop.AUDIO_ROUTE_BLUETOOTH) {
             managed.availableEndpoints.firstOrNull { endpoint ->
@@ -163,6 +180,7 @@ class TalkTelecomManager private constructor(context: Context) {
             return
         }
 
+        managed.vehicleRouteRequested = true
         scope.launch {
             runCatching {
                 control.requestEndpointChange(endpoint)
@@ -341,11 +359,13 @@ class TalkTelecomManager private constructor(context: Context) {
     ) {
         if (!projectedToCar || managed.vehicleRouteRequested || endpoints.isEmpty()) return
 
-        val vehicleEndpoint = endpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_BLUETOOTH }
-            ?: endpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_STREAMING }
-            ?: return
+        val carAudioNames = pairedCarAudioNames()
+        val vehicleEndpoint = endpoints.firstOrNull { endpoint ->
+            endpoint.type == CallEndpointCompat.TYPE_BLUETOOTH &&
+                carAudioNames.any { it.equals(endpoint.name.toString(), ignoreCase = true) }
+        } ?: endpoints.firstOrNull { it.type == CallEndpointCompat.TYPE_STREAMING } ?: return
 
-        if (managed.currentEndpoint?.type == vehicleEndpoint.type) {
+        if (managed.currentEndpoint?.identifier == vehicleEndpoint.identifier) {
             managed.vehicleRouteRequested = true
             return
         }
@@ -368,6 +388,24 @@ class TalkTelecomManager private constructor(context: Context) {
         }
     }
 
+    private fun pairedCarAudioNames(): Set<String> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return emptySet()
+
+        return try {
+            val adapter = appContext.getSystemService(BluetoothManager::class.java)?.adapter
+            adapter?.bondedDevices.orEmpty()
+                .filter { it.bluetoothClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_CAR_AUDIO }
+                .mapNotNull { it.name }
+                .toSet()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Cannot inspect paired car audio devices", e)
+            emptySet()
+        }
+    }
+
     private suspend fun publishParticipantState(managed: ManagedCall) {
         val participantExtension = managed.participantExtension ?: return
         participantExtension.updateParticipants(managed.participants)
@@ -385,7 +423,17 @@ class TalkTelecomManager private constructor(context: Context) {
             appContext,
             managed.callKey,
             currentRoute,
-            availableRoutes
+            availableRoutes,
+            managed.currentEndpoint?.identifier?.toString(),
+            managed.availableEndpoints.mapNotNull { endpoint ->
+                routeForEndpoint(endpoint)?.let { route ->
+                    TalkCallInterop.AudioEndpoint(
+                        endpoint.identifier.toString(),
+                        endpoint.name.toString(),
+                        route
+                    )
+                }
+            }
         )
     }
 

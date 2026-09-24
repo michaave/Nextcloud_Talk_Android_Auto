@@ -45,6 +45,7 @@ object TalkCallInterop {
     const val EXTRA_VIDEO = "talk_video"
     const val EXTRA_MUTED = "talk_muted"
     const val EXTRA_AUDIO_ROUTE = "talk_audio_route"
+    const val EXTRA_AUDIO_ENDPOINT_ID = "talk_audio_endpoint_id"
     const val EXTRA_PARTICIPANT_IDS = "talk_participant_ids"
     const val EXTRA_PARTICIPANT_NAMES = "talk_participant_names"
     const val EXTRA_ACTIVE_PARTICIPANT_ID = "talk_active_participant_id"
@@ -57,6 +58,14 @@ object TalkCallInterop {
 
     @Volatile
     private var telecomAvailableAudioRoutes: Array<String> = emptyArray()
+
+    data class AudioEndpoint(val id: String, val name: String, val route: String)
+
+    @Volatile
+    private var telecomAudioEndpoints: List<AudioEndpoint> = emptyList()
+
+    @Volatile
+    private var telecomCurrentAudioEndpointId: String? = null
 
     fun callKey(accountId: Long, roomToken: String): String = "$accountId@$roomToken"
 
@@ -152,11 +161,29 @@ object TalkCallInterop {
         )
     }
 
+    fun requestTelecomAudioEndpoint(context: Context, endpointId: String) {
+        val callKey = activeTelecomCallKey ?: return
+        send(
+            context,
+            Intent(ACTION_CONTROL_AUDIO_ENDPOINT)
+                .putExtra(EXTRA_CALL_KEY, callKey)
+                .putExtra(EXTRA_AUDIO_ENDPOINT_ID, endpointId)
+        )
+    }
+
+    @JvmStatic
+    fun getTelecomAudioEndpoints(): List<AudioEndpoint> = telecomAudioEndpoints
+
+    @JvmStatic
+    fun getTelecomCurrentAudioEndpointId(): String? = telecomCurrentAudioEndpointId
+
     fun beginTelecomAudioManagement(context: Context, callKey: String) {
         if (callKey.isBlank() || activeTelecomCallKey == callKey) return
         activeTelecomCallKey = callKey
         telecomCurrentAudioRoute = null
         telecomAvailableAudioRoutes = emptyArray()
+        telecomCurrentAudioEndpointId = null
+        telecomAudioEndpoints = emptyList()
         send(context, Intent(ACTION_TELECOM_AUDIO_STATE_CHANGED).putExtra(EXTRA_CALL_KEY, callKey))
     }
 
@@ -164,12 +191,16 @@ object TalkCallInterop {
         context: Context,
         callKey: String,
         currentRoute: String?,
-        availableRoutes: Array<String>
+        availableRoutes: Array<String>,
+        currentEndpointId: String?,
+        endpoints: List<AudioEndpoint>
     ) {
         if (callKey.isBlank()) return
         activeTelecomCallKey = callKey
         telecomCurrentAudioRoute = currentRoute
         telecomAvailableAudioRoutes = availableRoutes.copyOf()
+        telecomCurrentAudioEndpointId = currentEndpointId
+        telecomAudioEndpoints = endpoints.toList()
         send(context, Intent(ACTION_TELECOM_AUDIO_STATE_CHANGED).putExtra(EXTRA_CALL_KEY, callKey))
     }
 
@@ -178,6 +209,8 @@ object TalkCallInterop {
         activeTelecomCallKey = null
         telecomCurrentAudioRoute = null
         telecomAvailableAudioRoutes = emptyArray()
+        telecomCurrentAudioEndpointId = null
+        telecomAudioEndpoints = emptyList()
         send(context, Intent(ACTION_TELECOM_AUDIO_STATE_CHANGED).putExtra(EXTRA_CALL_KEY, callKey))
     }
 

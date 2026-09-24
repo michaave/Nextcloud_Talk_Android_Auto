@@ -41,6 +41,7 @@ import org.webrtc.ThreadUtils;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class WebRtcAudioManager {
@@ -68,6 +69,8 @@ public class WebRtcAudioManager {
     private Set<AudioDevice> audioDevices = new HashSet<>();
 
     private Set<AudioDevice> internalAudioDevices = new HashSet<>();
+    private Set<String> telecomEndpointIds = new HashSet<>();
+    private String telecomCurrentEndpointId;
 
     private final BroadcastReceiver wiredHeadsetReceiver;
     private final BroadcastReceiver telecomAudioStateReceiver;
@@ -207,6 +210,8 @@ public class WebRtcAudioManager {
         defaultAudioDevice = AudioDevice.NONE;
         audioDevices.clear();
         internalAudioDevices.clear();
+        telecomEndpointIds.clear();
+        telecomCurrentEndpointId = null;
 
         registerReceiver(
             telecomAudioStateReceiver,
@@ -629,6 +634,15 @@ public class WebRtcAudioManager {
     private void updateTelecomAudioDeviceState() {
         String currentRoute = TalkCallInterop.getTelecomCurrentAudioRoute();
         String[] availableRoutes = TalkCallInterop.getTelecomAvailableAudioRoutes();
+        String currentEndpointId = TalkCallInterop.getTelecomCurrentAudioEndpointId();
+        Set<String> endpointIds = new HashSet<>();
+        for (TalkCallInterop.AudioEndpoint endpoint : TalkCallInterop.getTelecomAudioEndpoints()) {
+            endpointIds.add(endpoint.getId());
+        }
+        boolean endpointSelectionUpdated = !telecomEndpointIds.equals(endpointIds)
+            || !Objects.equals(telecomCurrentEndpointId, currentEndpointId);
+        telecomEndpointIds = endpointIds;
+        telecomCurrentEndpointId = currentEndpointId;
         Set<AudioDevice> newAudioDevices = new HashSet<>();
 
         for (String route : availableRoutes) {
@@ -662,7 +676,8 @@ public class WebRtcAudioManager {
         }
 
         Log.d(TAG, "Telecom audio state: available=" + audioDevices + ", current=" + currentAudioDevice);
-        if ((audioDeviceSetUpdated || currentAudioDeviceUpdated) && audioManagerListener != null) {
+        if ((audioDeviceSetUpdated || currentAudioDeviceUpdated || endpointSelectionUpdated)
+            && audioManagerListener != null) {
             audioManagerListener.onAudioDeviceChanged(currentAudioDevice, audioDevices);
         }
     }
