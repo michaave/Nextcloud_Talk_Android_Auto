@@ -161,18 +161,18 @@ class TalkTelecomManager private constructor(context: Context) {
         if (callKey.isBlank() || (route.isBlank() && endpointId.isNullOrBlank())) return
         val managed = calls[callKey] ?: return
         val control = managed.control ?: return
-        val endpoint = endpointId?.let { id ->
-            managed.availableEndpoints.firstOrNull { it.identifier.toString() == id }
-        } ?: if (endpointId != null) {
-            null
-        } else managed.availableEndpoints.firstOrNull { endpoint ->
-            routeForEndpoint(endpoint) == route
-        } ?: if (route == TalkCallInterop.AUDIO_ROUTE_BLUETOOTH) {
-            managed.availableEndpoints.firstOrNull { endpoint ->
-                routeForEndpoint(endpoint) == TalkCallInterop.AUDIO_ROUTE_EXTERNAL
-            }
+        val endpoint = if (endpointId != null) {
+            managed.availableEndpoints.firstOrNull { it.identifier.toString() == endpointId }
         } else {
-            null
+            managed.availableEndpoints.firstOrNull { candidate ->
+                routeForEndpoint(candidate) == route
+            } ?: if (route == TalkCallInterop.AUDIO_ROUTE_BLUETOOTH) {
+                managed.availableEndpoints.firstOrNull { candidate ->
+                    routeForEndpoint(candidate) == TalkCallInterop.AUDIO_ROUTE_EXTERNAL
+                }
+            } else {
+                null
+            }
         }
 
         if (endpoint == null) {
@@ -392,7 +392,9 @@ class TalkTelecomManager private constructor(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) !=
             PackageManager.PERMISSION_GRANTED
-        ) return emptySet()
+        ) {
+            return emptySet()
+        }
 
         return try {
             val adapter = appContext.getSystemService(BluetoothManager::class.java)?.adapter
