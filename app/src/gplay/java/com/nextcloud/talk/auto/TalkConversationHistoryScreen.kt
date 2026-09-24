@@ -6,7 +6,9 @@
  */
 package com.nextcloud.talk.auto
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.speech.tts.TextToSpeech
 import android.util.Log
@@ -19,10 +21,14 @@ import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Header
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
+import androidx.car.app.model.ParkedOnlyOnClickListener
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.nextcloud.talk.R
 import com.nextcloud.talk.chat.ChatActivity
 import com.nextcloud.talk.chat.data.network.ChatNetworkDataSource
 import com.nextcloud.talk.data.database.dao.ChatMessagesDao
@@ -110,13 +116,29 @@ internal class TalkConversationHistoryScreen(
             else -> addHistoryRows(itemList)
         }
 
+        val header = Header.Builder()
+            .setStartHeaderAction(Action.BACK)
+            .setTitle(conversation.displayName)
+        if (conversation.canStartCall || conversation.hasCall) {
+            val callAction = Action.Builder()
+                .setIcon(
+                    CarIcon.Builder(
+                        IconCompat.createWithResource(carContext, R.drawable.ic_baseline_phone_in_talk_24)
+                    ).build()
+                )
+                .setTitle(if (conversation.hasCall) "Join call" else "Voice call")
+            if (hasMicrophonePermission()) {
+                callAction.setOnClickListener { startVoiceCall() }
+            } else {
+                callAction.setOnClickListener(
+                    ParkedOnlyOnClickListener.create { requestMicrophonePermissionAndStart() }
+                )
+            }
+            header.addEndHeaderAction(callAction.build())
+        }
+
         return ListTemplate.Builder()
-            .setHeader(
-                Header.Builder()
-                    .setStartHeaderAction(Action.BACK)
-                    .setTitle(conversation.displayName)
-                    .build()
-            )
+            .setHeader(header.build())
             .setSingleList(itemList.build())
             .build()
     }
@@ -139,16 +161,6 @@ internal class TalkConversationHistoryScreen(
                 }
                 .build()
         )
-
-        if (conversation.canStartCall || conversation.hasCall) {
-            itemList.addItem(
-                Row.Builder()
-                    .setTitle(if (conversation.hasCall) "Join voice call" else "Start voice call")
-                    .addText("Call ${conversation.displayName} through Talk")
-                    .setOnClickListener { startVoiceCall() }
-                    .build()
-            )
-        }
 
         if (messages.isNotEmpty()) {
             itemList.addItem(
@@ -252,6 +264,25 @@ internal class TalkConversationHistoryScreen(
             Log.e(TAG, "Unable to start phone-side Talk voice call", t)
             CarToast.makeText(carContext, "Unable to start Talk call", CarToast.LENGTH_LONG).show()
         }
+    }
+
+    private fun hasMicrophonePermission(): Boolean =
+        ContextCompat.checkSelfPermission(carContext, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun requestMicrophonePermissionAndStart() {
+        carContext.requestPermissions(listOf(Manifest.permission.RECORD_AUDIO)) { grantedPermissions, _ ->
+            if (Manifest.permission.RECORD_AUDIO in grantedPermissions) {
+                startVoiceCall()
+            } else {
+                CarToast.makeText(
+                    carContext,
+                    "Microphone permission is required for Talk calls",
+                    CarToast.LENGTH_LONG
+                ).show()
+            }
+        }
+        CarToast.makeText(carContext, "Grant microphone access on your phone", CarToast.LENGTH_LONG).show()
     }
 
     private fun observeMessages() {
@@ -372,7 +403,7 @@ internal class TalkConversationHistoryScreen(
     companion object {
         private const val TAG = "TalkAuto"
         private const val MAX_HISTORY_MESSAGES = 100
-        private const val RESERVED_FIRST_PAGE_ROWS = 5
+        private const val RESERVED_FIRST_PAGE_ROWS = 4
         private const val RESERVED_PAGING_ROWS = 2
         private const val MIN_LIST_LIMIT = 4
         private const val FALLBACK_LIST_LIMIT = 6

@@ -36,13 +36,14 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
 
-        <!-- Keep a single, unambiguous CarAppService while validating templated messaging. -->
+        <!-- One CarAppService provides the messaging and calling templates. -->
         <service
             android:name=".auto.TalkCarAppService"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.MESSAGING" />
+                <category android:name="androidx.car.app.category.CALLING" />
             </intent-filter>
         </service>
 
