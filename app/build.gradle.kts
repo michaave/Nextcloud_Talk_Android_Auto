@@ -64,8 +64,8 @@ android {
 
         // mayor.minor.hotfix.increment (for increment: 01-50=Alpha / 51-89=RC / 90-99=stable)
         // xx   .xxx  .xx    .xx
-        versionCode = 250010008
-        versionName = "25.1.0 Alpha 08"
+        versionCode = 250010009
+        versionName = "25.1.0 Alpha 09"
 
         vectorDrawables.useSupportLibrary = true
 
@@ -225,7 +225,8 @@ dependencies {
     implementation(fileTree(mapOf("include" to listOf("*"), "dir" to "libs")))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-rx2:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
 
     implementation("androidx.appcompat:appcompat:1.8.0")
     implementation("com.google.android.material:material:1.14.0")
@@ -235,7 +236,6 @@ dependencies {
     implementation("androidx.emoji2:emoji2-views:$emojiVersion")
     implementation("androidx.emoji2:emoji2-views-helper:$emojiVersion")
     implementation("androidx.emoji2:emoji2-emojipicker:$emojiVersion")
-    implementation("org.michaelevans.colorart:library:0.0.3")
     implementation("androidx.work:work-runtime:$workVersion")
     implementation("androidx.work:work-rxjava2:$workVersion")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
@@ -448,6 +448,7 @@ tasks.withType<SpotBugsTask>().configureEach {
 }
 
 tasks.named<Detekt>("detekt").configure {
+    jvmTarget = "17"
     reports {
         html.required.set(true)
         txt.required.set(true)

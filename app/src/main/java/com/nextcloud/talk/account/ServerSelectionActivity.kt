@@ -16,7 +16,6 @@ import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.security.KeyChain
 import android.text.TextUtils
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -51,6 +50,7 @@ import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.runBlocking
 import java.security.cert.CertificateException
 import javax.inject.Inject
 
@@ -115,7 +115,7 @@ class ServerSelectionActivity : BaseActivity() {
             binding.certTextView.visibility = View.GONE
         }
 
-        val loggedInUsers = userManager.users.blockingGet()
+        val loggedInUsers = runBlocking { userManager.getUsers() }
         val availableAccounts = AccountUtils.findAvailableAccountsOnDevice(loggedInUsers)
 
         if (isImportAccountNameSet() && availableAccounts.isNotEmpty()) {
@@ -367,7 +367,7 @@ class ServerSelectionActivity : BaseActivity() {
                 }
 
                 override fun onError(e: Throwable) {
-                    Log.e(TAG, "Error while checking capabilities", e)
+                    logger.e(TAG, "Error while checking capabilities", e)
                     if (resources != null) {
                         runOnUiThread {
                             setErrorText(resources!!.getString(R.string.nc_common_error_sorry))

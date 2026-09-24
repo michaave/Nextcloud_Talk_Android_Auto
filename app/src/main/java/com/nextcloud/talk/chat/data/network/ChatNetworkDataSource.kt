@@ -23,7 +23,7 @@ import retrofit2.Response
 
 @Suppress("LongParameterList", "TooManyFunctions")
 interface ChatNetworkDataSource {
-    fun getRoom(user: User, roomToken: String): Observable<ConversationModel>
+    suspend fun getRoom(user: User, roomToken: String): ConversationModel
     fun getCapabilities(user: User, roomToken: String): Observable<SpreedCapability>
     fun joinRoom(user: User, roomToken: String, roomPassword: String): Observable<ConversationModel>
     fun setReminder(
@@ -71,7 +71,7 @@ interface ChatNetworkDataSource {
         fieldMap: HashMap<String, Int>
     ): Response<ChatOverall>
 
-    fun deleteChatMessage(credentials: String, url: String): Observable<ChatOverallSingleMessage>
+    suspend fun deleteChatMessage(credentials: String, url: String): ChatOverallSingleMessage
     fun createRoom(credentials: String, url: String, map: Map<String, String>): Observable<RoomOverall>
     fun setChatReadMarker(credentials: String, url: String, previousMessageId: Int): Observable<GenericOverall>
     suspend fun editChatMessage(credentials: String, url: String, text: String): ChatOverallSingleMessage

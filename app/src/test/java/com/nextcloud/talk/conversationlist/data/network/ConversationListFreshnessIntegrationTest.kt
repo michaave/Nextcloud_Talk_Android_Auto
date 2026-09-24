@@ -21,6 +21,7 @@ import com.nextcloud.talk.data.network.NetworkMonitor
 import com.nextcloud.talk.data.source.local.TalkDatabase
 import com.nextcloud.talk.data.user.model.User
 import com.nextcloud.talk.data.user.model.UserEntity
+import com.nextcloud.talk.logger.Logger
 import com.nextcloud.talk.models.domain.ConversationModel
 import com.nextcloud.talk.models.json.capabilities.Capabilities
 import com.nextcloud.talk.models.json.capabilities.SpreedCapability
@@ -81,7 +82,9 @@ class ConversationListFreshnessIntegrationTest {
         db = Room.inMemoryDatabaseBuilder(context, TalkDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        db.usersDao().saveUser(UserEntity(id = ACCOUNT_ID, userId = "me", username = "me", baseUrl = BASE_URL))
+        runBlocking {
+            db.usersDao().saveUser(UserEntity(id = ACCOUNT_ID, userId = "me", username = "me", baseUrl = BASE_URL))
+        }
 
         whenever(networkMonitor.isOnline).thenReturn(MutableStateFlow(true))
 
@@ -184,14 +187,13 @@ class ConversationListFreshnessIntegrationTest {
             networkMonitor,
             syncer,
             conversationListUpdater,
-            ApplicationProvider.getApplicationContext()
+            ApplicationProvider.getApplicationContext(),
+            mock<Logger>()
         )
-        whenever(chatNetwork.getRoom(any(), any())).thenReturn(
-            Observable.just(
-                ConversationModel.mapToConversationModel(
-                    staleServerRoom(lastReadMessage = 10, unreadMessages = 2),
-                    user
-                )
+        wheneverBlocking { chatNetwork.getRoom(any(), any()) }.thenReturn(
+            ConversationModel.mapToConversationModel(
+                staleServerRoom(lastReadMessage = 10, unreadMessages = 2),
+                user
             )
         )
 
@@ -254,7 +256,8 @@ class ConversationListFreshnessIntegrationTest {
             networkMonitor,
             syncer,
             conversationListUpdater,
-            ApplicationProvider.getApplicationContext()
+            ApplicationProvider.getApplicationContext(),
+            mock<Logger>()
         )
         whenever(conversationsNetwork.getRooms(any(), any(), any())).thenReturn(
             Observable.just(listOf(staleServerRoom(lastReadMessage = 10, unreadMessages = 2))),
@@ -366,7 +369,8 @@ class ConversationListFreshnessIntegrationTest {
             networkMonitor,
             syncer,
             conversationListUpdater,
-            ApplicationProvider.getApplicationContext()
+            ApplicationProvider.getApplicationContext(),
+            mock<Logger>()
         )
         whenever(conversationsNetwork.getRooms(any(), any(), any())).thenReturn(
             Observable.just(listOf(Conversation(token = ROOM_TOKEN, lastActivity = 10, unreadMessages = 1)))
@@ -396,7 +400,8 @@ class ConversationListFreshnessIntegrationTest {
             networkMonitor,
             syncer,
             conversationListUpdater,
-            ApplicationProvider.getApplicationContext()
+            ApplicationProvider.getApplicationContext(),
+            mock<Logger>()
         )
 
     private fun staleServerRoom(

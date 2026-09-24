@@ -17,16 +17,21 @@ import com.nextcloud.talk.invitation.data.Invitation
 import com.nextcloud.talk.invitation.data.InvitationActionModel
 import com.nextcloud.talk.invitation.data.InvitationsModel
 import com.nextcloud.talk.invitation.data.InvitationsRepository
+import com.nextcloud.talk.logger.Logger
 import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-class InvitationsViewModel @Inject constructor(private val repository: InvitationsRepository) : ViewModel() {
+class InvitationsViewModel @Inject constructor(
+    private val repository: InvitationsRepository,
+    private val logger: Logger
+) : ViewModel() {
 
     sealed interface ViewState
 
@@ -44,8 +49,13 @@ class InvitationsViewModel @Inject constructor(private val repository: Invitatio
     open class GetInvitationsErrorState(val error: Exception) : ViewState
     open class GetInvitationsSuccessState(val invitations: List<Invitation>) : ViewState
 
-    private val _getInvitationsViewState = MutableStateFlow<ViewState>(GetInvitationsStartState)
-    val getInvitationsViewState: StateFlow<ViewState> = _getInvitationsViewState
+    /**
+     * Keyed by [User.id], since [getInvitations] is called once per saved account (the account
+     * switcher checks every account for pending invitations) and each account's result must be
+     * attributed back to that account rather than overwriting a single shared value.
+     */
+    private val _invitationsStateByUser = MutableStateFlow<Map<Long, ViewState>>(emptyMap())
+    val invitationsStateByUser: StateFlow<Map<Long, ViewState>> = _invitationsStateByUser
 
     object InvitationActionStartState : ViewState
     object InvitationActionErrorState : ViewState
@@ -67,17 +77,20 @@ class InvitationsViewModel @Inject constructor(private val repository: Invitatio
 
     @Suppress("TooGenericExceptionCaught")
     fun getInvitations(user: User) {
+        val userId = user.id ?: return
         viewModelScope.launch {
-            try {
+            val state = try {
                 val invitationsModel = repository.getInvitations(user)
                 if (invitationsModel.invitations.isEmpty()) {
-                    _getInvitationsViewState.value = GetInvitationsEmptyState
+                    GetInvitationsEmptyState
                 } else {
-                    _getInvitationsViewState.value = GetInvitationsSuccessState(invitationsModel.invitations)
+                    GetInvitationsSuccessState(invitationsModel.invitations)
                 }
             } catch (e: Exception) {
-                _getInvitationsViewState.value = GetInvitationsErrorState(e)
+                logger.e(TAG, "Failed to get invitations", e)
+                GetInvitationsErrorState(e)
             }
+            _invitationsStateByUser.update { it + (userId to state) }
         }
     }
 
@@ -142,7 +155,7 @@ class InvitationsViewModel @Inject constructor(private val repository: Invitatio
     }
 
     companion object {
-        private val TAG = InvitationsViewModel::class.simpleName
+        private val TAG = InvitationsViewModel::class.java.simpleName
         private const val OPEN_PENDING_INVITATION = "0"
         private const val HTTP_OK = 200
     }

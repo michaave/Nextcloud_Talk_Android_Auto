@@ -167,7 +167,7 @@
     <string name="nc_call_state_in_call">%1$s ist in einem Gespräch</string>
     <string name="nc_call_state_with_phone">%1$s mit Telefon</string>
     <string name="nc_call_state_with_video">%1$s mit Video</string>
-    <string name="nc_call_timeout">Keine Antwort nach 45 Sekunden, klicken Sie um es erneut zu versuchen</string>
+    <string name="nc_call_timeout">Keine Antwort nach 45 Sekunden, klicken, um es erneut zu versuchen</string>
     <string name="nc_call_unknown">%s Anruf</string>
     <string name="nc_call_video">%s Videoanruf</string>
     <string name="nc_call_voice">%s Sprachanruf</string>
@@ -383,6 +383,7 @@
     <string name="nc_logs_share">Per E-Mail versenden</string>
     <string name="nc_logs_share_diagnosis">Diagnosebericht</string>
     <string name="nc_logs_share_latest_crash">Neuester Absturz</string>
+    <string name="nc_logs_share_no_app_found">Es wurde keine App gefunden, mit der der Bericht gesendet werden kann.</string>
     <string name="nc_logs_share_subject">%1$s Protokolle</string>
     <string name="nc_logs_title">Protokolle</string>
     <string name="nc_logs_total_size">Gesamtgröße des Protokolls: %d KB</string>
@@ -696,6 +697,7 @@
     <string name="pinned_indefinitely">Dauerhaft angeheftet</string>
     <string name="pinned_message_options">Nachrichtenoptionen</string>
     <string name="pinned_until">Angeheftet bis</string>
+    <string name="play_pause_audio_file">Audiodatei Wiedergeben/Pausieren</string>
     <string name="play_pause_voice_message">Sprachnachricht wiedergeben/pausieren</string>
     <string name="playback_speed_control">Steuerung der Wiedergabegeschwindigkeit</string>
     <string name="please_continue_the_login_process_in_the_browser">Bitte den Anmeldeprozess im Browser fortsetzen</string>
@@ -718,6 +720,8 @@
     <string name="previously_set">Zuvor eingestellt</string>
     <string name="qr_code_error">Der QR-Code konnte nicht gelesen werden</string>
     <string name="raise_hand">Hand heben</string>
+    <string name="reaction_add_failed">Die Reaktion konnte nicht hinzugefügt werden</string>
+    <string name="reaction_delete_failed">Die Reaktion konnte nicht entfernt werden</string>
     <string name="reaction_forbidden">Sie haben nicht die Berechtigung, in dieser Unterhaltung Reaktionen hinzuzufügen oder zu entfernen</string>
     <string name="reactions_tab_all">Alle</string>
     <string name="read_storage_no_permission">Dateien können nicht ohne Berechtigung geteilt werden</string>

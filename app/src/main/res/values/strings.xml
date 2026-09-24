@@ -224,6 +224,7 @@ How to translate with transifex:
 
     <!-- Error / crash screen -->
     <string name="error_crash_title">%1$s crashed</string>
+    <string name="error_crash_mail_subject" translatable="false">%1$s crashed</string>
     <string name="error_crash_description">The app crashed unexpectedly. Please help us fix it by sending the crash report via the menu.</string>
     <string name="nc_logs_advanced_logging_privacy_warning">If you had advanced logging activated, please do not share the report in public.</string>
     <string name="nc_logs_advanced_logging_enabled_warning">Advanced logging is enabled. This may slow down performance.</string>
@@ -232,13 +233,14 @@ How to translate with transifex:
     <!-- Logs screen -->
     <string name="nc_logs_title">Logs</string>
     <string name="nc_logs_share">Send as mail</string>
-    <string name="nc_logs_share_subject">%1$s logs</string>
     <string name="nc_logs_delete_all">Delete all logs</string>
     <string name="nc_logs_empty">No log entries found.</string>
+    <string name="nc_logs_mail_subject" translatable="false">%1$s logs</string>
     <string name="nc_logs_total_size">Total log size: %d KB</string>
     <string name="nc_logs_overflow_warning">Warning: some log entries were lost due to queue overflow.</string>
     <string name="nc_logs_share_latest_crash">Latest crash</string>
     <string name="nc_logs_share_diagnosis">Diagnosis report</string>
+    <string name="nc_logs_share_no_app_found">No app found to send the report.</string>
     <string name="nc_logs_download_zip">Download as ZIP</string>
     <string name="nc_logs_logging_enabled">Logging enabled</string>
     <string name="nc_logs_logging_disabled_note">Logging is disabled. No logs are written to disk.</string>
@@ -658,6 +660,8 @@ How to translate with transifex:
     <string name="open_in_files_app">Open in Files app</string>
     <string name="send_to_forbidden">You are not allowed to share content to this chat</string>
     <string name="reaction_forbidden">You are not allowed to add or remove reactions in this conversation</string>
+    <string name="reaction_add_failed">Could not add the reaction</string>
+    <string name="reaction_delete_failed">Could not remove the reaction</string>
 
     <string name="typing_is_typing">is typing …</string>
     <string name="typing_are_typing">are typing …</string>
@@ -739,6 +743,7 @@ How to translate with transifex:
     <string name="nc_description_record_voice">Record voice message</string>
     <string name="nc_voice_message_slide_to_cancel">« Slide to cancel</string>
     <string name="play_pause_voice_message">Play/pause voice message</string>
+    <string name="play_pause_audio_file">Play/pause audio file</string>
     <string name="nc_voice_message_missing_audio_permission">Permission for audio recording is required</string>
     <string name="playback_speed_control">Playback speed control</string>
     <string name="delete_voice_recording">Delete voice recording</string>

@@ -1,7 +1,7 @@
 /*
  * Nextcloud Talk - Android Client
  *
- * SPDX-FileCopyrightText: 2026 Andy Scherzinger <andy.scherzinger@nextcloud.com>
+ * SPDX-FileCopyrightText: 2026 Andy Scherzinger <info@andy-scherzinger.de>
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -18,6 +18,7 @@ import com.nextcloud.talk.data.network.NetworkMonitor
 import com.nextcloud.talk.data.source.local.TalkDatabase
 import com.nextcloud.talk.data.user.model.User
 import com.nextcloud.talk.data.user.model.UserEntity
+import com.nextcloud.talk.logger.Logger
 import com.nextcloud.talk.models.json.capabilities.Capabilities
 import com.nextcloud.talk.models.json.capabilities.SpreedCapability
 import com.nextcloud.talk.models.json.chat.ChatMessageJson
@@ -71,7 +72,9 @@ class RoomListMessagePrefetchIntegrationTest {
         db = Room.inMemoryDatabaseBuilder(context, TalkDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        db.usersDao().saveUser(UserEntity(id = ACCOUNT_ID, userId = "me", username = "me", baseUrl = BASE_URL))
+        runBlocking {
+            db.usersDao().saveUser(UserEntity(id = ACCOUNT_ID, userId = "me", username = "me", baseUrl = BASE_URL))
+        }
 
         whenever(networkMonitor.isOnline).thenReturn(MutableStateFlow(true))
 
@@ -91,7 +94,8 @@ class RoomListMessagePrefetchIntegrationTest {
             networkMonitor,
             syncer,
             conversationListUpdater,
-            context
+            context,
+            mock<Logger>()
         )
     }
 

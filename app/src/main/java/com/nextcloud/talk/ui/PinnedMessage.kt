@@ -143,7 +143,9 @@ fun PinnedMessageView(
 
     val canPin = remember {
         message.isOneToOneConversation ||
-            ConversationUtils.isParticipantOwnerOrModerator(currentConversation!!)
+            currentConversation?.let {
+                ConversationUtils.isParticipantOwnerOrModerator(it)
+            } ?: false
     }
 
     Card(
@@ -179,7 +181,8 @@ fun PinnedMessageView(
                     textColor = colorScheme.onSurface,
                     modifier = Modifier
                         .heightIn(max = 80.dp)
-                        .verticalScroll(scrollState)
+                        .verticalScroll(scrollState),
+                    onClick = { scrollToMessageWithIdWithOffset(message.jsonMessageId.toString()) }
                 )
             }
             Column {

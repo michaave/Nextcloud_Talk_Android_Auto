@@ -687,6 +687,7 @@ class ChatActivity :
                     }
                 }
                 .onFailure {
+                    logger.e(TAG, "Failed to register media picker activity result launcher", it)
                     Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 }
         }
@@ -936,6 +937,7 @@ class ChatActivity :
                             chatMode = chatMode,
                             highlightedMessageId = uiState.highlightedMessageId,
                             highlightedSearchTerm = uiState.highlightedSearchTerm,
+                            markedAsUnreadByUser = uiState.markedAsUnreadByUser,
                             hasChatPermission = participantPermissions?.hasChatPermission() == true,
                             downloadingFileState = downloadingFileState.value,
                             stickyHeaderTopOffset = overflowHeightDp
@@ -1029,11 +1031,7 @@ class ChatActivity :
                             showEdit = sendingFailed || !isOnline,
                             showDelete = sendingFailed || !isOnline,
                             onResend = {
-                                chatViewModel.resendMessage(
-                                    conversationUser!!.getCredentials(),
-                                    ApiUtils.getUrlForChat(chatApiVersion, conversationUser!!.baseUrl!!, roomToken),
-                                    msg
-                                )
+                                chatViewModel.resendMessage(msg)
                             },
                             onEdit = { messageInputViewModel.edit(msg) },
                             onDelete = { chatViewModel.deleteTempMessage(msg) },
@@ -1115,7 +1113,7 @@ class ChatActivity :
 
                 durationLong / ONE_SECOND_IN_MILLIS
             } catch (e: IllegalArgumentException) {
-                e.printStackTrace()
+                logger.e(TAG, "Failed to read audio duration for $audioFilePath", e)
                 0L
             } finally {
                 retriever.release()
@@ -1125,9 +1123,14 @@ class ChatActivity :
         fun setupAndPlay(controller: MediaController, message: ChatMessage, file: String) {
             val avatarUrl = chatViewModel.getAvatarUrl(message)
 
+            val artist = if (message.isVoiceMessage) {
+                "Voice Message"
+            } else {
+                message.fileParameters.name
+            }
             val metadata = MediaMetadata.Builder()
                 .setTitle(message.actorDisplayName)
-                .setArtist("Voice Message")
+                .setArtist(artist)
                 .setArtworkUri(avatarUrl.toUri())
                 .build()
 
@@ -1180,7 +1183,18 @@ class ChatActivity :
                 }
             )
 
-            if (controller.currentMediaItem?.mediaId != currentMessageId) {
+            fun finishPreparing() {
+                setupAndPlay(controller, message, filePath)
+                if (message.isVoiceMessage) {
+                    setUpWaveform(message, file)
+                } else {
+                    message.isDownloadingVoiceMessage = false
+                    chatViewModel.syncVoiceMessageUiState(message)
+                }
+            }
+
+            val alreadyLoaded = controller.currentMediaItem?.mediaId == currentMessageId
+            if (!alreadyLoaded || !file.exists()) {
                 if (!file.exists()) {
                     downloadFileToCache(message, true) {
                         chatViewModel.syncVoiceMessageUiState(
@@ -1188,12 +1202,10 @@ class ChatActivity :
                                 voiceMessageDuration = getAudioDuration(file.absolutePath).toInt()
                             }
                         )
-                        setupAndPlay(controller, message, filePath)
-                        setUpWaveform(message, file)
+                        finishPreparing()
                     }
                 } else {
-                    setupAndPlay(controller, message, filePath)
-                    setUpWaveform(message, file)
+                    finishPreparing()
                 }
 
                 return true
@@ -1281,7 +1293,7 @@ class ChatActivity :
                 chatIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 startActivity(chatIntent)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to start direct chat with $actorId", e)
+                logger.e(TAG, "Failed to start direct chat with $actorId", e)
                 Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             }
         }
@@ -1418,11 +1430,24 @@ class ChatActivity :
         this.lifecycle.addObserver(chatViewModel)
 
         val sessionToken = SessionToken(this, ComponentName(this, VoiceMessageMediaService::class.java))
-        mediaControllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
+        val future = MediaController.Builder(this, sessionToken)
+            .setListener(object : MediaController.Listener {
+                override fun onDisconnected(controller: MediaController) {
+                    mediaController?.removeListener(playerListener)
+                    stopProgressPolling()
+                    mediaController = null
+                }
+            })
+            .buildAsync()
+        mediaControllerFuture = future
 
-        mediaControllerFuture?.addListener({
+        future.addListener({
+            if (future !== mediaControllerFuture) {
+                return@addListener
+            }
+
             mediaController = try {
-                mediaControllerFuture?.get()
+                future.get()
             } catch (_: CancellationException) {
                 null
             }
@@ -1493,6 +1518,7 @@ class ChatActivity :
                         isLoading = inSearchMode && state.isLoading
                     )
                     if (inSearchMode && state.hasError) {
+                        logger.e(TAG, "Error while searching messages")
                         Toast.makeText(this@ChatActivity, R.string.nc_common_error_sorry, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -1501,6 +1527,16 @@ class ChatActivity :
         lifecycleScope.launch {
             chatViewModel.isLoadingFlow.collectLatest { isLoading ->
                 updateSearchLoadingIndicator(isLoading)
+            }
+        }
+
+        lifecycleScope.launch {
+            chatViewModel.reactionFailures.collect { operation ->
+                val message = when (operation) {
+                    ChatViewModel.ReactionOperation.ADD -> R.string.reaction_add_failed
+                    ChatViewModel.ReactionOperation.DELETE -> R.string.reaction_delete_failed
+                }
+                Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
             }
         }
 
@@ -1652,6 +1688,7 @@ class ChatActivity :
                 }
 
                 is ChatViewModel.GetCapabilitiesErrorState -> {
+                    logger.e(TAG, "Failed to get capabilities")
                     Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 }
 
@@ -1733,6 +1770,7 @@ class ChatActivity :
                 }
 
                 is MessageInputViewModel.ScheduleChatMessageErrorState -> {
+                    logger.e(TAG, "Failed to schedule chat message")
                     Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 }
 
@@ -1771,6 +1809,7 @@ class ChatActivity :
                 }
 
                 is ChatViewModel.DeleteChatMessageErrorState -> {
+                    logger.e(TAG, "Failed to delete chat message")
                     Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 }
 
@@ -1793,6 +1832,7 @@ class ChatActivity :
                 }
 
                 is ChatViewModel.CreateRoomErrorState -> {
+                    logger.e(TAG, "Failed to create room")
                     Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 }
 
@@ -1836,6 +1876,7 @@ class ChatActivity :
                 }
 
                 is MessageInputViewModel.EditMessageErrorState -> {
+                    logger.e(TAG, "Failed to edit message")
                     Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 }
 
@@ -1893,6 +1934,7 @@ class ChatActivity :
                 }
 
                 is ChatViewModel.UnbindRoomUiState.Error -> {
+                    logger.e(TAG, "Failed to unbind room: ${uiState.message}")
                     Snackbar.make(
                         binding.root,
                         context.getString(R.string.nc_common_error_sorry),
@@ -1943,7 +1985,7 @@ class ChatActivity :
                     }
 
                     is ChatViewModel.ThreadRetrieveUiState.Error -> {
-                        Log.e(TAG, "Error when retrieving thread", uiState.exception)
+                        logger.e(TAG, "Error when retrieving thread", uiState.exception)
                         Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                     }
 
@@ -2643,6 +2685,7 @@ class ChatActivity :
             val fileName = ContactUtils.getDisplayNameFromDeviceContact(context, id) + ".vcf"
             val file = FileUtils.resolveSharedAttachmentFile(context.cacheDir, fileName)
             if (file == null) {
+                logger.e(TAG, "Refused to save contact with unsafe name: $fileName")
                 Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                 cursor.close()
                 return
@@ -3387,6 +3430,7 @@ class ChatActivity :
                         }
 
                         WorkInfo.State.FAILED -> {
+                            logger.e(TAG, "Failed to delete conversation")
                             val errorMessage = context.resources.getString(R.string.nc_common_error_sorry)
                             Snackbar.make(binding.root, errorMessage, Snackbar.LENGTH_LONG).show()
                         }
@@ -3583,7 +3627,7 @@ class ChatActivity :
 
     fun deleteMessage(message: ChatMessage) {
         if (participantPermissionsFlow.value?.hasChatPermission() != true) {
-            Log.w(
+            logger.e(
                 TAG,
                 "Deletion of message is skipped because of restrictions by permissions. " +
                     "This method should not have been called!"
@@ -3666,7 +3710,7 @@ class ChatActivity :
             token = roomToken,
             messageId = message.jsonMessageId.toString()
         )
-        chatViewModel.hidePinnedMessage(credentials!!, url)
+        chatViewModel.hidePinnedMessage(credentials!!, url, message.jsonMessageId.toLong())
     }
 
     fun pinMessage(message: ChatMessage) {
@@ -3681,8 +3725,13 @@ class ChatActivity :
             setContent {
                 GetPinnedOptionsDialog(shouldDismiss, context, viewThemeUtils) { zonedDateTime ->
                     zonedDateTime?.let {
-                        chatViewModel.pinMessage(credentials!!, url, pinUntil = zonedDateTime.toEpochSecond().toInt())
-                    } ?: chatViewModel.pinMessage(credentials!!, url)
+                        chatViewModel.pinMessage(
+                            credentials!!,
+                            url,
+                            message.jsonMessageId.toLong(),
+                            pinUntil = zonedDateTime.toEpochSecond().toInt()
+                        )
+                    } ?: chatViewModel.pinMessage(credentials!!, url, message.jsonMessageId.toLong())
 
                     shouldDismiss.value = true
                 }
@@ -3697,26 +3746,24 @@ class ChatActivity :
             token = roomToken,
             messageId = message.jsonMessageId.toString()
         )
-        chatViewModel.unPinMessage(credentials!!, url)
+        chatViewModel.unPinMessage(credentials!!, url, message.jsonMessageId.toLong())
     }
 
     private fun markAsRead(messageId: Int) {
         chatViewModel.setChatReadMessage(messageId)
     }
 
+    /**
+     * The selected message and everything newer become unread, so the read marker moves to the message
+     * right before it.
+     */
     fun markAsUnread(chatMessage: ChatMessage) {
-        val items = chatViewModel.uiState.value.items
-        val selectedIndex = items.indexOfFirst {
-            (it as? ChatViewModel.ChatItem.MessageItem)?.uiMessage?.id == chatMessage.jsonMessageId
-        }
-        val lastReadMessage = if (selectedIndex in 0 until items.size - 1) {
-            (selectedIndex + 1 until items.size)
-                .firstNotNullOfOrNull { (items[it] as? ChatViewModel.ChatItem.MessageItem)?.uiMessage?.id }
-                ?: 0
-        } else {
-            0
-        }
-        chatViewModel.setChatReadMessage(lastReadMessage)
+        val lastReadMessage = ChatViewModel.readMarkerForMarkingUnread(
+            chatViewModel.uiState.value.items,
+            chatMessage.jsonMessageId
+        ) ?: return
+
+        chatViewModel.markChatAsUnread(lastReadMessage)
     }
 
     fun copyMessage(message: ChatMessage?) {
@@ -3732,6 +3779,7 @@ class ChatActivity :
     fun copyMessageLink(message: ChatMessage) {
         val baseUrl = conversationUser?.baseUrl
         if (baseUrl.isNullOrEmpty()) {
+            logger.e(TAG, "Failed to copy message link because baseUrl is null or empty")
             Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             return
         }
@@ -3761,6 +3809,7 @@ class ChatActivity :
     fun share(message: ChatMessage) {
         val sharedFile = FileUtils.resolveSharedAttachmentFile(applicationContext.cacheDir, message.fileParameters.name)
         if (sharedFile == null) {
+            logger.e(TAG, "Refused to share file with unsafe name: ${message.fileParameters.name}")
             Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             return
         }
@@ -3783,6 +3832,7 @@ class ChatActivity :
     fun checkIfSharable(message: ChatMessage) {
         val file = FileUtils.resolveSharedAttachmentFile(context.cacheDir, message.fileParameters.name)
         if (file == null) {
+            logger.e(TAG, "Refused to check sharability of file with unsafe name: ${message.fileParameters.name}")
             Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             return
         }
@@ -3809,6 +3859,7 @@ class ChatActivity :
     fun checkIfSaveable(message: ChatMessage) {
         val file = FileUtils.resolveSharedAttachmentFile(context.cacheDir, message.fileParameters.name)
         if (file == null) {
+            logger.e(TAG, "Refused to check saveability of file with unsafe name: ${message.fileParameters.name}")
             Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             return
         }
@@ -3823,6 +3874,10 @@ class ChatActivity :
     }
 
     fun shareToNotes(message: ChatMessage) {
+        if (!hasSpreedFeatureCapability(spreedCapabilities, SpreedFeatures.NOTE_TO_SELF)) {
+            return
+        }
+
         val apiVersion = ApiUtils.getConversationApiVersion(
             conversationUser!!,
             intArrayOf(ApiUtils.API_V4, ApiUtils.API_V3, 1)
@@ -3844,6 +3899,7 @@ class ChatActivity :
                 if (message.hasFileAttachment) {
                     val file = FileUtils.resolveSharedAttachmentFile(context.cacheDir, message.fileParameters.name)
                     if (file == null) {
+                        logger.e(TAG, "Refused to share to notes file with unsafe name: ${message.fileParameters.name}")
                         Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
                         return@launch
                     }
@@ -3871,6 +3927,7 @@ class ChatActivity :
 
                 shareToNotes(shareUri, noteToSelfConversation.token, message, objectId, metaData)
             } else {
+                logger.e(TAG, "Failed to share to notes because note to self conversation is null")
                 Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             }
         }
@@ -3977,6 +4034,7 @@ class ChatActivity :
         val keyID = message.fileParameters.id
         val link = message.fileParameters.link
         if (keyID.isEmpty() || link.isEmpty()) {
+            logger.e(TAG, "Failed to open in files app because keyID or link is empty")
             Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             return
         }
@@ -4076,8 +4134,8 @@ class ChatActivity :
                         )
                         File(outputDir, "$photoName$PICTURE_SUFFIX")
                     } catch (e: IOException) {
+                        logger.e(TAG, "error while creating photo file", e)
                         Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
-                        Log.e(TAG, "error while creating photo file", e)
                         null
                     }
 
@@ -4108,8 +4166,8 @@ class ChatActivity :
                         )
                         File(outputDir, "$videoName$VIDEO_SUFFIX")
                     } catch (e: IOException) {
+                        logger.e(TAG, "error while creating video file", e)
                         Snackbar.make(binding.root, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
-                        Log.e(TAG, "error while creating video file", e)
                         null
                     }
 
@@ -4244,7 +4302,7 @@ class ChatActivity :
     }
 
     companion object {
-        val TAG = ChatActivity::class.simpleName
+        val TAG = ChatActivity::class.java.simpleName
         private const val CONTENT_TYPE_CALL_STARTED: Byte = 1
         private const val CONTENT_TYPE_SYSTEM_MESSAGE: Byte = 2
         private const val CONTENT_TYPE_UNREAD_NOTICE_MESSAGE: Byte = 3

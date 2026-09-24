@@ -1,7 +1,7 @@
 /*
  * Nextcloud Talk - Android Client
  *
- * SPDX-FileCopyrightText: 2026 Andy Scherzinger <andy.scherzinger@nextcloud.com>
+ * SPDX-FileCopyrightText: 2026 Andy Scherzinger <info@andy-scherzinger.de>
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -97,6 +97,15 @@ class ChatMessageSyncer @Inject constructor(
      * [newestPersistedMessage] is the newest persisted message that qualifies as a conversation's
      * last message (system messages that never change a conversation's preview are skipped). It
      * feeds the conversation list update after a background catch-up.
+     *
+     * [visibleMessageIds] are the ids of all persisted messages of this round that render as their
+     * own bubble in an open chat (see [CHAT_HIDDEN_SYSTEM_MESSAGE_TYPES] — a different, broader
+     * filter than [newestPersistedMessage]'s, since "valid conversation preview" and "gets its own
+     * chat bubble" are not the same question). [pullUntilVisibleMessage] needs the full set, not
+     * just the single newest id: a round can contain a visible message that is not the highest id
+     * (e.g. an older real message hiding behind a newer reaction-only one), and it must also be
+     * able to tell such a message apart from the already-known anchor message a round re-fetches
+     * via includeLastKnown.
      */
     data class SyncOutcome(
         val persistedNewMessages: Boolean,
@@ -104,7 +113,8 @@ class ChatMessageSyncer @Inject constructor(
         val oldestPersistedMessageId: Long? = null,
         val persistedMessageCount: Int = 0,
         val syncFailed: Boolean = false,
-        val newestPersistedMessage: ChatMessageJson? = null
+        val newestPersistedMessage: ChatMessageJson? = null,
+        val visibleMessageIds: List<Long> = emptyList()
     )
 
     /**
@@ -217,6 +227,11 @@ class ChatMessageSyncer @Inject constructor(
      * dismiss the user's push notifications for the fetched messages, so the catch-up is skipped
      * entirely (same guard as on iOS).
      *
+     * Reachability is deliberately not pre-checked. Callers are gated by a WorkManager
+     * `NetworkType.CONNECTED` constraint, and a request that fails because the device is offline
+     * is reported as a failed sync and retried, which is strictly better than skipping a fetch
+     * that would have succeeded on a connected-but-unvalidated network.
+     *
      * Bursts of catch-up requests for the same room (e.g. one push notification per message of an
      * active group chat) are coalesced: while a catch-up runs, further requests only mark a rerun
      * and return, and consecutive fetches are paced by [CATCH_UP_COOLDOWN_MILLIS].
@@ -226,24 +241,18 @@ class ChatMessageSyncer @Inject constructor(
         limit: Int = DEFAULT_MESSAGES_LIMIT,
         lastReadMessage: Int? = null,
         unreadMessages: Int = 0
-    ): SyncOutcome =
-        when {
-            !networkMonitor.isOnline.value -> {
-                Log.d(TAG, "Device is offline, skipping catch-up for ${target.internalConversationId}")
-                SYNC_FAILED
-            }
-
-            !target.user.hasSpreedFeatureCapability(SpreedFeatures.CHAT_KEEP_NOTIFICATIONS.value) -> {
-                Log.d(
-                    TAG,
-                    "Server lacks ${SpreedFeatures.CHAT_KEEP_NOTIFICATIONS.value}, " +
-                        "skipping catch-up for ${target.internalConversationId}"
-                )
-                NOTHING_SYNCED
-            }
-
-            else -> coalescedRoomCatchUp(target, limit, lastReadMessage, unreadMessages)
+    ): SyncOutcome {
+        if (!target.user.hasSpreedFeatureCapability(SpreedFeatures.CHAT_KEEP_NOTIFICATIONS.value)) {
+            Log.d(
+                TAG,
+                "Server lacks ${SpreedFeatures.CHAT_KEEP_NOTIFICATIONS.value}, " +
+                    "skipping catch-up for ${target.internalConversationId}"
+            )
+            return NOTHING_SYNCED
         }
+
+        return coalescedRoomCatchUp(target, limit, lastReadMessage, unreadMessages)
+    }
 
     /**
      * Runs at most one catch-up per room at a time. A request arriving while one is running only
@@ -407,7 +416,7 @@ class ChatMessageSyncer @Inject constructor(
                 events = events
             )
         } else {
-            pullAndPersistMessages(
+            pullUntilVisibleMessage(
                 target,
                 buildFieldMap(
                     lookIntoFuture = false,
@@ -574,6 +583,115 @@ class ChatMessageSyncer @Inject constructor(
         )
     }
 
+    /**
+     * Repeats [pullAndPersistMessages], advancing [fieldMap]'s anchor deeper into history each
+     * round, until a round persists at least one message that will actually be shown in the chat,
+     * no more history is available, or [MAX_VISIBLE_MESSAGE_ROUNDS] rounds were spent.
+     *
+     * A single page can be made up entirely of messages that are never rendered as their own chat
+     * bubble — most notably a burst of REACTION/REACTION_REVOKED/REACTION_DELETED system messages
+     * from repeatedly adding and removing a reaction — even though real, visible messages exist
+     * just beyond that page. Accepting such an all-hidden page as "there is nothing (more) to
+     * show" leaves the chat looking empty or stuck (see
+     * https://github.com/nextcloud/talk-android/issues/5775). This mirrors the iOS client, which
+     * keeps paging until a page actually contains a visible message instead of stopping at a fixed
+     * message count.
+     *
+     * The first round re-fetches the anchor message itself (includeLastKnown), so a page is only
+     * accepted once it contains a visible message OTHER than that already-known anchor — otherwise
+     * a heavily-reacted anchor message would immediately satisfy "found a visible message" and the
+     * wall of reaction messages right below it would never be paged through.
+     */
+    suspend fun pullUntilVisibleMessage(
+        target: SyncTarget,
+        fieldMap: HashMap<String, Int>,
+        events: Events = NO_EVENTS
+    ): SyncOutcome {
+        val lookIntoFuture = fieldMap["lookIntoFuture"] == 1
+        val knownAnchorId = fieldMap["lastKnownMessageId"]?.toLong()
+        var totalCount = 0
+        var oldestPersisted: Long? = null
+        var newestPersisted: Long? = null
+        var newestPersistedMessage: ChatMessageJson? = null
+
+        repeat(MAX_VISIBLE_MESSAGE_ROUNDS) {
+            val roundOutcome = pullAndPersistMessages(target, fieldMap, events)
+
+            if (roundOutcome.persistedNewMessages) {
+                totalCount += roundOutcome.persistedMessageCount
+                if (lookIntoFuture) {
+                    oldestPersisted = oldestPersisted ?: roundOutcome.oldestPersistedMessageId
+                    newestPersisted = roundOutcome.newestPersistedMessageId ?: newestPersisted
+                } else {
+                    newestPersisted = newestPersisted ?: roundOutcome.newestPersistedMessageId
+                    oldestPersisted = roundOutcome.oldestPersistedMessageId ?: oldestPersisted
+                }
+            }
+            val foundNewVisibleMessage = roundOutcome.visibleMessageIds.any { it != knownAnchorId }
+            if (foundNewVisibleMessage) {
+                newestPersistedMessage = roundOutcome.newestPersistedMessage
+            }
+
+            val nextAnchor = if (lookIntoFuture) {
+                roundOutcome.newestPersistedMessageId
+            } else {
+                roundOutcome.oldestPersistedMessageId
+            }
+            val reachedEndOfHistory = !roundOutcome.persistedNewMessages || nextAnchor == null
+
+            if (foundNewVisibleMessage || reachedEndOfHistory || roundOutcome.syncFailed) {
+                return SyncOutcome(
+                    persistedNewMessages = totalCount > 0,
+                    newestPersistedMessageId = newestPersisted,
+                    oldestPersistedMessageId = oldestPersisted,
+                    persistedMessageCount = totalCount,
+                    syncFailed = roundOutcome.syncFailed,
+                    newestPersistedMessage = newestPersistedMessage
+                )
+            }
+
+            fieldMap["lastKnownMessageId"] = nextAnchor!!.toInt()
+            fieldMap["includeLastKnown"] = 0
+        }
+
+        Log.w(
+            TAG,
+            "No visible message found for ${target.internalConversationId} after " +
+                "$MAX_VISIBLE_MESSAGE_ROUNDS rounds (persisted $totalCount message(s), ids " +
+                "$oldestPersisted..$newestPersisted)"
+        )
+        return SyncOutcome(
+            persistedNewMessages = totalCount > 0,
+            newestPersistedMessageId = newestPersisted,
+            oldestPersistedMessageId = oldestPersisted,
+            persistedMessageCount = totalCount,
+            newestPersistedMessage = newestPersistedMessage
+        )
+    }
+
+    /**
+     * Whether [message] renders as its own bubble in an open chat — mirrors ChatViewModel's two
+     * combined chat-rendering filters: a hidden system message type (see
+     * [CHAT_HIDDEN_SYSTEM_MESSAGE_TYPES]), and, only when [syncedThreadId] is null (i.e. this sync
+     * is for the main channel, not a specific thread), a reply belonging to some other thread —
+     * ChatViewModel.handleThreadMessages() hides those from the main channel view the same way it
+     * hides the system message types above, so a page made up entirely of thread replies could
+     * fool [pullUntilVisibleMessage] the same way reaction spam did. A message that starts a thread
+     * (threadId == its own id) is not itself a reply and stays visible.
+     */
+    private fun isChatVisibleMessage(message: ChatMessageJson, syncedThreadId: Long?): Boolean {
+        val hiddenSystemMessage = message.systemMessageType in CHAT_HIDDEN_SYSTEM_MESSAGE_TYPES
+        val replyToAnotherThread = syncedThreadId == null && message.hasThread && message.threadId != message.id
+        return !hiddenSystemMessage && !replyToAnotherThread
+    }
+
+    /**
+     * Pulls messages as described by [fieldMap], retrying a failed request up to
+     * [MAX_PULL_ATTEMPTS] times with a linearly growing delay in between. The requested limit is
+     * kept across retries: a background catch-up that succeeds on a later attempt must still
+     * create a full chat block, and backing off in time rather than in payload size also keeps a
+     * struggling or rate-limiting server from being hammered.
+     */
     fun pullMessagesFlow(target: SyncTarget, fieldMap: HashMap<String, Int>): Flow<ChatPullResult> =
         flow {
             var attempts = 1
@@ -599,10 +717,8 @@ class ChatMessageSyncer @Inject constructor(
                     onFailure = { e ->
                         Log.e(TAG, "Attempt $attempts failed", e)
                         attempts++
-                        fieldMap["limit"] = when (attempts) {
-                            2 -> RETRY_LIMIT_SECOND_ATTEMPT
-                            3 -> RETRY_LIMIT_THIRD_ATTEMPT
-                            else -> RETRY_LIMIT_FALLBACK_ATTEMPT
+                        if (attempts < MAX_PULL_ATTEMPTS) {
+                            delay(PULL_RETRY_DELAY_MILLIS * (attempts - 1))
                         }
                     }
                 )
@@ -695,19 +811,29 @@ class ChatMessageSyncer @Inject constructor(
                 events
             )
             persistedMessages.maxOfOrNull { it.id }?.let { recordHttpSyncedMessageId(target, it) }
-            val newestPersistedMessage = if (persistedMessages.isNotEmpty()) {
-                result.messages
-                    .filter { it.systemMessageType !in ConversationListUpdater.LAST_MESSAGE_HIDDEN_SYSTEM_TYPES }
-                    .maxByOrNull { it.id }
+            // Two different notions of "visible", each feeding a different consumer: a
+            // conversation's last-message preview (narrower — some system messages just never
+            // qualify as a preview, whether or not they get their own bubble) vs. a message that
+            // actually renders as its own bubble in an open chat (see CHAT_HIDDEN_SYSTEM_MESSAGE_TYPES).
+            val previewEligibleMessages = if (persistedMessages.isNotEmpty()) {
+                result.messages.filter {
+                    it.systemMessageType !in ConversationListUpdater.LAST_MESSAGE_HIDDEN_SYSTEM_TYPES
+                }
             } else {
-                null
+                emptyList()
+            }
+            val chatVisibleMessages = if (persistedMessages.isNotEmpty()) {
+                result.messages.filter { isChatVisibleMessage(it, target.threadId) }
+            } else {
+                emptyList()
             }
             SyncOutcome(
                 persistedNewMessages = persistedMessages.isNotEmpty(),
                 newestPersistedMessageId = persistedMessages.maxOfOrNull { it.id },
                 oldestPersistedMessageId = persistedMessages.minOfOrNull { it.id },
                 persistedMessageCount = persistedMessages.size,
-                newestPersistedMessage = newestPersistedMessage
+                newestPersistedMessage = previewEligibleMessages.maxByOrNull { it.id },
+                visibleMessageIds = chatVisibleMessages.map { it.id }
             )
         } else {
             Log.d(TAG, "No new messages to update")
@@ -908,7 +1034,11 @@ class ChatMessageSyncer @Inject constructor(
                 deriveReactionsSelf(target, messageJson, existingEntity)
         }
 
-        chatDao.upsertChatMessage(parentMessageEntity)
+        try {
+            chatDao.upsertChatMessage(parentMessageEntity)
+        } catch (e: SQLiteConstraintException) {
+            Log.w(TAG, "Skip upserting parent message: conversation not in DB (yet). Swallowed exception: $e")
+        }
     }
 
     /**
@@ -993,6 +1123,17 @@ class ChatMessageSyncer @Inject constructor(
         private val SYNC_FAILED =
             SyncOutcome(persistedNewMessages = false, newestPersistedMessageId = null, syncFailed = true)
 
+        val CHAT_HIDDEN_SYSTEM_MESSAGE_TYPES = setOf(
+            ChatMessage.SystemMessageType.REACTION,
+            ChatMessage.SystemMessageType.REACTION_REVOKED,
+            ChatMessage.SystemMessageType.REACTION_DELETED,
+            ChatMessage.SystemMessageType.MESSAGE_DELETED,
+            ChatMessage.SystemMessageType.MESSAGE_EDITED,
+            ChatMessage.SystemMessageType.POLL_VOTED,
+            ChatMessage.SystemMessageType.THREAD_CREATED,
+            ChatMessage.SystemMessageType.MESSAGE_UNPINNED
+        )
+
         private const val DEFAULT_MESSAGES_LIMIT = 100
 
         private const val MILLIS_PER_SECOND = 1000L
@@ -1000,12 +1141,18 @@ class ChatMessageSyncer @Inject constructor(
         private const val CATCH_UP_COOLDOWN_MILLIS = 5_000L
         private const val MAX_CATCH_UP_RUNS_PER_BURST = 3
         private const val MAX_BACKLOG_ROUNDS = 5
+
+        /**
+         * Generous on purpose: [pullUntilVisibleMessage] exits after round 1 for virtually every
+         * page (anything with real content near the top), so a higher cap costs nothing in the
+         * common case — the extra budget only gets spent in the exact pathological case it exists
+         * to cover, where the alternative used to be getting stuck forever (#5775).
+         */
+        private const val MAX_VISIBLE_MESSAGE_ROUNDS = 25
         private const val HTTP_CODE_OK: Int = 200
         private const val HTTP_CODE_NOT_MODIFIED = 304
         private const val HTTP_CODE_PRECONDITION_FAILED = 412
         private const val MAX_PULL_ATTEMPTS = 5
-        private const val RETRY_LIMIT_SECOND_ATTEMPT = 50
-        private const val RETRY_LIMIT_THIRD_ATTEMPT = 10
-        private const val RETRY_LIMIT_FALLBACK_ATTEMPT = 5
+        private const val PULL_RETRY_DELAY_MILLIS = 1_000L
     }
 }

@@ -27,14 +27,15 @@ import retrofit2.Response
 
 class RetrofitChatNetwork(private val ncApi: NcApi, private val ncApiCoroutines: NcApiCoroutines) :
     ChatNetworkDataSource {
-    override fun getRoom(user: User, roomToken: String): Observable<ConversationModel> {
+    override suspend fun getRoom(user: User, roomToken: String): ConversationModel {
         val credentials: String = ApiUtils.getCredentials(user.username, user.token)!!
         val apiVersion = ApiUtils.getConversationApiVersion(user, intArrayOf(ApiUtils.API_V4, ApiUtils.API_V3, 1))
 
-        return ncApi.getRoom(
+        val roomOverall = ncApiCoroutines.getRoom(
             credentials,
             ApiUtils.getUrlForRoom(apiVersion, user.baseUrl!!, roomToken)
-        ).map { ConversationModel.mapToConversationModel(it.ocs?.data!!, user) }
+        )
+        return ConversationModel.mapToConversationModel(roomOverall.ocs?.data!!, user)
     }
 
     override fun getCapabilities(user: User, roomToken: String): Observable<SpreedCapability> {
@@ -164,10 +165,8 @@ class RetrofitChatNetwork(private val ncApi: NcApi, private val ncApiCoroutines:
         fieldMap: HashMap<String, Int>
     ): Response<ChatOverall> = ncApiCoroutines.pullChatMessages(credentials, url, fieldMap)
 
-    override fun deleteChatMessage(credentials: String, url: String): Observable<ChatOverallSingleMessage> =
-        ncApi.deleteChatMessage(credentials, url).map {
-            it
-        }
+    override suspend fun deleteChatMessage(credentials: String, url: String): ChatOverallSingleMessage =
+        ncApiCoroutines.deleteChatMessage(credentials, url)
 
     override fun createRoom(credentials: String, url: String, map: Map<String, String>): Observable<RoomOverall> =
         ncApi.createRoom(credentials, url, map).map {

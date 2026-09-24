@@ -383,6 +383,7 @@
     <string name="nc_logs_share">E-posta ile gönder</string>
     <string name="nc_logs_share_diagnosis">Tanılama raporu</string>
     <string name="nc_logs_share_latest_crash">Son çökme</string>
+    <string name="nc_logs_share_no_app_found">Bildirim gönderilebileceği bir uygulama bulunamadı.</string>
     <string name="nc_logs_share_subject">%1$s günlük kayıtları</string>
     <string name="nc_logs_title">Günlükler</string>
     <string name="nc_logs_total_size">Toplam günlük boyutu: %d KB</string>
@@ -696,6 +697,7 @@
     <string name="pinned_indefinitely">Süresiz sabitlendi</string>
     <string name="pinned_message_options">İleti seçenekleri</string>
     <string name="pinned_until">Şu zamana kadar sabitlendi</string>
+    <string name="play_pause_audio_file">Ses dosyasını oynat/duraklat</string>
     <string name="play_pause_voice_message">Ses iletisini oynat/duraklat</string>
     <string name="playback_speed_control">Oynatma hızı denetimi</string>
     <string name="please_continue_the_login_process_in_the_browser">Lütfen oturum açma işlemini tarayıcınızdan sürdürün</string>
@@ -718,6 +720,8 @@
     <string name="previously_set">Önceden ayarlanmış</string>
     <string name="qr_code_error">Kare kod okunamadı</string>
     <string name="raise_hand">El kaldır</string>
+    <string name="reaction_add_failed">Tepki eklenemedi</string>
+    <string name="reaction_delete_failed">Tepki kaldırılamadı</string>
     <string name="reaction_forbidden">Bu görüşmede tepki ekleme veya kaldırma izniniz yok</string>
     <string name="reactions_tab_all">Tümü</string>
     <string name="read_storage_no_permission">İzin verilmeden depolamadaki dosyalar paylaşılamaz</string>

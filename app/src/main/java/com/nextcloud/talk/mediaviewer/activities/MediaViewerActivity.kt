@@ -76,12 +76,6 @@ class MediaViewerActivity : BaseActivity() {
         windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        // Deliberately no SwipeToCloseLayout here (unlike FullScreenMediaActivity, still used for
-        // audio): its ViewDragHelper intercepts drags at the parent level before
-        // the HorizontalPager below ever sees them, and a real swipe is rarely perfectly
-        // horizontal - the small vertical component was enough to trigger it, closing the viewer
-        // on what the user meant as a page-navigation swipe. Closing is still available via the
-        // top bar's Close button and the system back gesture/button.
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -126,6 +120,7 @@ class MediaViewerActivity : BaseActivity() {
     private fun showSaveDialog(item: MediaViewerItem, localPath: String) {
         val safeFile = FileUtils.resolveSharedAttachmentFile(cacheDir, File(localPath).name)
         if (safeFile == null) {
+            logger.e(TAG, "Refused to save file with unsafe name: ${File(localPath).name}")
             Snackbar.make(window.decorView, R.string.nc_common_error_sorry, Snackbar.LENGTH_LONG).show()
             return
         }

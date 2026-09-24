@@ -17,6 +17,7 @@ import com.nextcloud.talk.data.database.mappers.asEntity
 import com.nextcloud.talk.data.database.model.ConversationEntity
 import com.nextcloud.talk.data.network.NetworkMonitor
 import com.nextcloud.talk.data.user.model.User
+import com.nextcloud.talk.logger.Logger
 import com.nextcloud.talk.models.domain.ConversationModel
 import com.nextcloud.talk.models.json.capabilities.Capabilities
 import com.nextcloud.talk.models.json.capabilities.SpreedCapability
@@ -60,8 +61,9 @@ import org.mockito.kotlin.whenever
  * returned [kotlinx.coroutines.Job]), so `getRooms(user).join()` does not wait for it. Assertions
  * about the catch-up therefore poll with a real timeout ([AWAIT_TIMEOUT_MILLIS]) rather than just
  * asserting right after `join()`; skip assertions instead wait a fixed delay
- * ([AFTER_DELAY_MILLIS]) and check nothing arrived. The RxJava chain in [getRoom] behaves the
- * same way, for the same reason.
+ * ([AFTER_DELAY_MILLIS]) and check nothing arrived. [getRoom]'s emission to
+ * [OfflineFirstConversationsRepository.conversationFlow] has the same race, since that flow has no
+ * replay buffer and drops emissions with no subscriber yet.
  */
 @Suppress("TooManyFunctions")
 class OfflineFirstConversationsRepositoryTest {
@@ -102,7 +104,8 @@ class OfflineFirstConversationsRepositoryTest {
             networkMonitor,
             chatMessageSyncer,
             conversationListUpdater,
-            context
+            context,
+            mock<Logger>()
         )
     }
 
@@ -362,7 +365,7 @@ class OfflineFirstConversationsRepositoryTest {
                 conversation(token = ROOM_TOKEN, lastActivity = 5, unreadMessages = 2),
                 user()
             )
-            whenever(chatNetworkDataSource.getRoom(any(), any())).thenReturn(Observable.just(fetched))
+            wheneverBlocking { chatNetworkDataSource.getRoom(any(), any()) }.thenReturn(fetched)
 
             repository.getRoom(user(), ROOM_TOKEN).join()
 
@@ -377,8 +380,8 @@ class OfflineFirstConversationsRepositoryTest {
         runBlocking {
             val existing = conversation(token = ROOM_TOKEN, lastActivity = 4, unreadMessages = 1).asEntity(ACCOUNT_ID)
             whenever(dao.getConversationForUser(ACCOUNT_ID, ROOM_TOKEN)).thenReturn(flowOf(existing))
-            whenever(chatNetworkDataSource.getRoom(any(), any()))
-                .thenReturn(Observable.error(RuntimeException("network failure")))
+            wheneverBlocking { chatNetworkDataSource.getRoom(any(), any()) }
+                .thenThrow(RuntimeException("network failure"))
 
             val emissions = mutableListOf<ConversationModel>()
             val collector = launch(Dispatchers.IO) {

@@ -22,6 +22,7 @@ import com.nextcloud.talk.conversationinfo.CreateRoomRequest
 import com.nextcloud.talk.conversationinfo.Participants
 import com.nextcloud.talk.conversationinfo.model.ParticipantModel
 import com.nextcloud.talk.data.user.model.User
+import com.nextcloud.talk.logger.Logger
 import com.nextcloud.talk.models.domain.ConversationModel
 import com.nextcloud.talk.models.domain.converters.DomainEnumNotificationLevelConverter
 import com.nextcloud.talk.models.json.autocomplete.AutocompleteUser
@@ -77,7 +78,8 @@ class ConversationInfoViewModel @Inject constructor(
     private val chatNetworkDataSource: ChatNetworkDataSource,
     private val conversationsRepository: ConversationsRepository,
     private val ncApi: NcApi,
-    private val passwordPolicyRepository: PasswordPolicyRepository
+    private val passwordPolicyRepository: PasswordPolicyRepository,
+    private val logger: Logger
 ) : ViewModel() {
     object LifeCycleObserver : DefaultLifecycleObserver {
         enum class LifeCycleFlag {
@@ -173,6 +175,7 @@ class ConversationInfoViewModel @Inject constructor(
         return uiItems
     }
 
+    @Suppress("Detekt.TooGenericExceptionCaught")
     fun getRoom(user: User, token: String) {
         currentUser = user
         currentToken = token
@@ -180,10 +183,17 @@ class ConversationInfoViewModel @Inject constructor(
             databaseStorageModule = DatabaseStorageModule(user, token)
         }
         _uiState.update { it.copy(isLoading = true) }
-        chatNetworkDataSource.getRoom(user, token)
-            .subscribeOn(Schedulers.io())
-            ?.observeOn(AndroidSchedulers.mainThread())
-            ?.subscribe(GetRoomObserver())
+        viewModelScope.launch {
+            try {
+                val conversationModel = chatNetworkDataSource.getRoom(user, token)
+                _uiState.update { it.copy(conversation = conversationModel) }
+                getCapabilities(user, token, conversationModel)
+            } catch (e: Exception) {
+                logger.e(TAG, "Error when fetching room", e)
+                _uiState.update { it.copy(isLoading = false) }
+                _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
+            }
+        }
     }
 
     @Suppress("Detekt.TooGenericExceptionCaught")
@@ -221,10 +231,11 @@ class ConversationInfoViewModel @Inject constructor(
                 if (token != null) {
                     _uiEvent.emit(ConversationInfoUiEvent.NavigateToChat(token))
                 } else {
+                    logger.e(TAG, "Failed to create room, response did not contain a token")
                     _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create room", e)
+                logger.e(TAG, "Failed to create room", e)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
             }
         }
@@ -674,7 +685,7 @@ class ConversationInfoViewModel @Inject constructor(
                 }
                 getRoom(user, token)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to toggle archive state", e)
+                logger.e(TAG, "Failed to toggle archive state", e)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
             }
         }
@@ -708,7 +719,7 @@ class ConversationInfoViewModel @Inject constructor(
                 }
                 override fun onNext(t: GenericOverall) { /* unused */ }
                 override fun onError(e: Throwable) {
-                    Log.e(TAG, "Failed to set lobby state", e)
+                    logger.e(TAG, "Failed to set lobby state", e)
                     _uiState.update {
                         it.copy(
                             lobbyEnabled = previousLobbyEnabled,
@@ -746,7 +757,7 @@ class ConversationInfoViewModel @Inject constructor(
                 }
                 override fun onNext(t: GenericOverall) { /* unused */ }
                 override fun onError(e: Throwable) {
-                    Log.e(TAG, "Failed to set lobby timer", e)
+                    logger.e(TAG, "Failed to set lobby timer", e)
                     viewModelScope.launch {
                         _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
                     }
@@ -773,7 +784,7 @@ class ConversationInfoViewModel @Inject constructor(
                 }
                 override fun onNext(t: GenericOverall) { /* unused */ }
                 override fun onError(e: Throwable) {
-                    Log.e(TAG, "Error setting recording consent", e)
+                    logger.e(TAG, "Error setting recording consent", e)
                     _uiState.update { it.copy(recordingConsentForConversation = previousConsent) }
                     viewModelScope.launch {
                         _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
@@ -798,6 +809,7 @@ class ConversationInfoViewModel @Inject constructor(
                 val url = ApiUtils.getUrlForConversationReadOnly(apiVersion, user.baseUrl!!, token)
                 conversationsRepository.setConversationReadOnly(user = user, url = url, state = if (newLocked) 1 else 0)
             } catch (exception: Exception) {
+                logger.e(TAG, "Failed to toggle read-only lock state", exception)
                 _uiState.update { it.copy(isConversationLocked = previousLocked) }
                 databaseStorageModule?.saveBoolean("lock_switch", previousLocked)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.conversation_read_only_failed))
@@ -867,8 +879,8 @@ class ConversationInfoViewModel @Inject constructor(
                 }
             } catch (exception: Exception) {
                 _uiState.update { it.copy(importantConversation = previousValue) }
+                logger.e(TAG, "failed to toggle important conversation state", exception)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
-                Log.e(TAG, "failed to toggle important conversation state", exception)
             }
         }
     }
@@ -887,8 +899,8 @@ class ConversationInfoViewModel @Inject constructor(
                 }
             } catch (exception: Exception) {
                 _uiState.update { it.copy(sensitiveConversation = previousValue) }
+                logger.e(TAG, "failed to toggle sensitive conversation state", exception)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
-                Log.e(TAG, "failed to toggle sensitive conversation state", exception)
             }
         }
     }
@@ -900,33 +912,14 @@ class ConversationInfoViewModel @Inject constructor(
                 conversationsRepository.clearChatHistory(user, url)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_clear_history_success))
             } catch (exception: Exception) {
+                logger.e(TAG, "failed to clear chat history", exception)
                 _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
-                Log.e(TAG, "failed to clear chat history", exception)
             }
         }
     }
 
-    inner class GetRoomObserver : Observer<ConversationModel> {
-        override fun onSubscribe(d: Disposable) {
-            // unused atm
-        }
-        override fun onNext(conversationModel: ConversationModel) {
-            _uiState.update { it.copy(conversation = conversationModel) }
-            currentUser?.let { getCapabilities(it, currentToken, conversationModel) }
-        }
-        override fun onError(e: Throwable) {
-            Log.e(TAG, "Error when fetching room")
-            _uiState.update { it.copy(isLoading = false) }
-            viewModelScope.launch {
-                _uiEvent.emit(ConversationInfoUiEvent.ShowSnackbar(R.string.nc_common_error_sorry))
-            }
-        }
-        override fun onComplete() {
-            // unused atm
-        }
-    }
     companion object {
-        private val TAG = ConversationInfoViewModel::class.simpleName
+        private val TAG = ConversationInfoViewModel::class.java.simpleName
         private const val NEW_CONVERSATION_PARTICIPANTS_SEPARATOR = ", "
         private const val EXTENDED_CONVERSATION = "extended_conversation"
         private const val GROUP_CONVERSATION_TYPE = "2"

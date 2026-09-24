@@ -250,9 +250,9 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
         getNcDataAndShowNotification(mainActivityIntent)
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod", "TooGenericExceptionCaught")
     private fun handleCallPushMessage() {
-        val userBeingCalled = userManager.getUserWithId(user.id!!).blockingGet()
+        val userBeingCalled = runBlocking { userManager.getUserWithId(user.id!!) }
 
         fun createBundle(conversation: ConversationModel): Bundle {
             val bundle = Bundle()
@@ -404,35 +404,20 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
             checkIfCallIsActive(conversation)
         }
 
-        chatNetworkDataSource?.getRoom(userBeingCalled, roomToken = pushMessage.id!!)
-            ?.subscribeOn(Schedulers.io())
-            ?.observeOn(Schedulers.io())
-            ?.subscribe(object : Observer<ConversationModel> {
-                override fun onSubscribe(d: Disposable) {
-                    // unused atm
-                }
+        val conversation = try {
+            runBlocking { chatNetworkDataSource?.getRoom(userBeingCalled!!, roomToken = pushMessage.id!!) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get room", e)
+            null
+        }
 
-                override fun onNext(conversation: ConversationModel) {
-                    if (userManager.setUserAsActive(userBeingCalled!!).blockingGet()) {
-                        if (CapabilitiesUtil.isCallEndToEndEncryptionEnabled(
-                                userBeingCalled?.capabilities?.spreedCapability
-                            )
-                        ) {
-                            showEndToEndEncryptionUnsupportedNotification(conversation)
-                        } else {
-                            prepareCallNotificationScreen(conversation)
-                        }
-                    }
-                }
-
-                override fun onError(e: Throwable) {
-                    Log.e(TAG, "Failed to get room", e)
-                }
-
-                override fun onComplete() {
-                    // unused atm
-                }
-            })
+        if (conversation != null && runBlocking { userManager.setUserAsActive(userBeingCalled!!) }) {
+            if (CapabilitiesUtil.isCallEndToEndEncryptionEnabled(userBeingCalled?.capabilities?.spreedCapability)) {
+                showEndToEndEncryptionUnsupportedNotification(conversation)
+            } else {
+                prepareCallNotificationScreen(conversation)
+            }
+        }
     }
 
     private fun initNcApiAndCredentials() {
@@ -464,7 +449,7 @@ class NotificationWorker(context: Context, workerParams: WorkerParameters) : Wor
     private fun initFromCleartextSubject(inputData: Data): Boolean {
         val subject = inputData.getString(BundleKeys.KEY_NOTIFICATION_CLEARTEXT_SUBJECT)
         val id = inputData.getLong(BundleKeys.KEY_NOTIFICATION_USER_ID, -1)
-        user = userManager.getUserWithId(id).blockingGet()
+        user = runBlocking { userManager.getUserWithId(id) }!!
         pushMessage = LoganSquare.parse(subject, DecryptedPushMessage::class.java)
         return true
     }

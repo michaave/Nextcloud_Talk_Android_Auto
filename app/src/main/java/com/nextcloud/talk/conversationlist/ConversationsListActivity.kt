@@ -118,7 +118,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.runBlocking
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import retrofit2.HttpException
@@ -200,7 +200,7 @@ class ConversationsListActivity : BaseActivity() {
 
         val targetUserId = intent.getLongExtra(KEY_INTERNAL_USER_ID, 0L)
         currentUser = if (targetUserId != 0L) {
-            userManager.getUserWithId(targetUserId).blockingGet()
+            runBlocking { userManager.getUserWithId(targetUserId) }!!
         } else {
             currentUserProviderOld.currentUser.blockingGet()
         }
@@ -343,20 +343,22 @@ class ConversationsListActivity : BaseActivity() {
             object : AccountReceiverCallback {
                 @SuppressLint("UseKtx")
                 override fun onAccountReceived(accountName: String) {
-                    val users = userManager.users.blockingGet()
                     val baseUrl = accountName.substringAfterLast("@")
-                    val accountName = accountName.substringBeforeLast("@")
-                    val user = users.firstOrNull { user ->
-                        user.username == accountName && baseUrl == user.baseUrl?.toUri()?.host
+                    val trimmedAccountName = accountName.substringBeforeLast("@")
+                    lifecycleScope.launch {
+                        val users = userManager.getUsers()
+                        val user = users.firstOrNull { user ->
+                            user.username == trimmedAccountName && baseUrl == user.baseUrl?.toUri()?.host
+                        }
+                        if (user != null) {
+                            userManager.setUserAsActive(user)
+                            val intent = Intent(context, ConversationsListActivity::class.java)
+                            startActivity(intent)
+                        } else {
+                            showSnackbar(getString(R.string.nc_no_account_found))
+                        }
                     }
-                    if (user != null) {
-                        userManager.setUserAsActive(user)
-                        val intent = Intent(context, ConversationsListActivity::class.java)
-                        startActivity(intent)
-                    } else {
-                        showSnackbar(getString(R.string.nc_no_account_found))
-                    }
-                    Log.d(TAG, accountName)
+                    Log.d(TAG, trimmedAccountName)
                 }
 
                 override fun onAccountError(reason: String) {
@@ -425,13 +427,13 @@ class ConversationsListActivity : BaseActivity() {
             }
 
             lifecycleScope.launch {
-                hasMultipleAccountsState.value = userManager.users.await().size > 1
+                hasMultipleAccountsState.value = userManager.getUsers().size > 1
             }
             conversationsListViewModel.setHideRoomToken(intent.getStringExtra(KEY_FORWARD_HIDE_SOURCE_ROOM))
             fetchRooms()
             fetchPendingInvitations()
         } else {
-            Log.e(TAG, "currentUser was null")
+            logger.e(TAG, "currentUser was null")
             showSnackbar(getString(R.string.nc_common_error_sorry))
         }
 
@@ -547,6 +549,7 @@ class ConversationsListActivity : BaseActivity() {
                         conversationsListViewModel.resetReadUnreadState()
                     }
                     is ConversationsListViewModel.ConversationReadUnreadUiState.Error -> {
+                        logger.e(TAG, "Failed to mark conversation as read/unread")
                         showSnackbar(resources.getString(R.string.nc_common_error_sorry))
                         conversationsListViewModel.resetReadUnreadState()
                     }
@@ -562,6 +565,7 @@ class ConversationsListActivity : BaseActivity() {
                         conversationsListViewModel.resetFavoriteState()
                     }
                     is ConversationsListViewModel.FavoriteUiState.Error -> {
+                        logger.e(TAG, "Failed to toggle conversation favorite state")
                         showSnackbar(resources.getString(R.string.nc_common_error_sorry))
                         conversationsListViewModel.resetFavoriteState()
                     }
@@ -583,6 +587,7 @@ class ConversationsListActivity : BaseActivity() {
                         conversationsListViewModel.resetArchiveState()
                     }
                     is ConversationsListViewModel.ArchiveUiState.Error -> {
+                        logger.e(TAG, "Failed to toggle conversation archive state")
                         showSnackbar(resources.getString(R.string.nc_common_error_sorry))
                         conversationsListViewModel.resetArchiveState()
                     }
@@ -636,6 +641,7 @@ class ConversationsListActivity : BaseActivity() {
     private fun showContextChatForMessage(result: SearchMessageEntry) {
         val messageId = result.messageId?.toLongOrNull()?.takeIf { it > 0L }
         if (messageId == null) {
+            logger.e(TAG, "message id could not be parsed from search result")
             showSnackbar(getString(R.string.nc_common_error_sorry))
             return
         }
@@ -705,7 +711,7 @@ class ConversationsListActivity : BaseActivity() {
             .setCancelable(false)
             .setNegativeButton(R.string.close, null)
 
-        if (resources!!.getBoolean(R.bool.multiaccount_support) && userManager.users.blockingGet().size > 1) {
+        if (resources!!.getBoolean(R.bool.multiaccount_support) && runBlocking { userManager.getUsers() }.size > 1) {
             dialogBuilder.setPositiveButton(R.string.nc_switch_account) { _, _ ->
                 showChooseAccountDialog()
             }
@@ -835,6 +841,7 @@ class ConversationsListActivity : BaseActivity() {
         } else if (filesToShare != null && filesToShare!!.isNotEmpty()) {
             showSendFilesConfirmDialog()
         } else {
+            logger.e(TAG, "no text or files to share")
             showSnackbar(context.resources.getString(R.string.nc_common_error_sorry))
         }
     }
@@ -910,12 +917,12 @@ class ConversationsListActivity : BaseActivity() {
                 extractFilesFromClipData()
             }
             if (filesToShare!!.isEmpty() && textToPaste!!.isEmpty()) {
+                logger.e(TAG, "failed to get data from intent")
                 showSnackbar(context.resources.getString(R.string.nc_common_error_sorry))
-                Log.e(TAG, "failed to get data from intent")
             }
         } catch (e: Exception) {
+            logger.e(TAG, "Something went wrong when extracting data from intent", e)
             showSnackbar(context.resources.getString(R.string.nc_common_error_sorry))
-            Log.e(TAG, "Something went wrong when extracting data from intent")
         }
     }
 
@@ -1200,6 +1207,7 @@ class ConversationsListActivity : BaseActivity() {
         if (success) {
             showSnackbar(resources.getString(R.string.nc_shortcut_created))
         } else {
+            logger.e(TAG, "failed to pin conversation shortcut to home screen")
             showSnackbar(resources.getString(R.string.nc_common_error_sorry))
         }
     }
@@ -1281,6 +1289,7 @@ class ConversationsListActivity : BaseActivity() {
                     fetchRooms()
                 }
                 WorkInfo.State.FAILED -> {
+                    logger.e(TAG, "LeaveConversationWorker failed for token $token")
                     conversationsListViewModel.clearConversationPendingLeave(token)
                     showSnackbar(resources.getString(R.string.nc_common_error_sorry))
                 }
@@ -1365,44 +1374,46 @@ class ConversationsListActivity : BaseActivity() {
         )
     }
 
-    @SuppressLint("CheckResult")
     private fun deleteUserAndRestartApp() {
-        userManager.scheduleUserForDeletionWithId(currentUser!!.id!!).blockingGet()
-        val accountRemovalWork = OneTimeWorkRequest.Builder(AccountRemovalWorker::class.java)
-            .setExpeditedIfSupported()
-            .build()
-        WorkManager.getInstance(applicationContext).enqueue(accountRemovalWork)
+        lifecycleScope.launch {
+            userManager.scheduleUserForDeletionWithId(currentUser!!.id!!)
+            val accountRemovalWork = OneTimeWorkRequest.Builder(AccountRemovalWorker::class.java)
+                .setExpeditedIfSupported()
+                .build()
+            WorkManager.getInstance(applicationContext).enqueue(accountRemovalWork)
 
-        WorkManager.getInstance(context).getWorkInfoByIdLiveData(accountRemovalWork.id)
-            .observeForever { workInfo: WorkInfo? ->
+            WorkManager.getInstance(context).getWorkInfoByIdLiveData(accountRemovalWork.id)
+                .observeForever { workInfo: WorkInfo? ->
 
-                when (workInfo?.state) {
-                    WorkInfo.State.SUCCEEDED -> {
-                        val text = String.format(
-                            context.resources.getString(R.string.nc_deleted_user),
-                            currentUser!!.displayName
-                        )
-                        Toast.makeText(
-                            context,
-                            text,
-                            Toast.LENGTH_LONG
-                        ).show()
-                        restartApp()
+                    when (workInfo?.state) {
+                        WorkInfo.State.SUCCEEDED -> {
+                            val text = String.format(
+                                context.resources.getString(R.string.nc_deleted_user),
+                                currentUser!!.displayName
+                            )
+                            Toast.makeText(
+                                context,
+                                text,
+                                Toast.LENGTH_LONG
+                            ).show()
+                            restartApp()
+                        }
+
+                        WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> {
+                            logger.e(TAG, "something went wrong when deleting user with id " + currentUser!!.userId)
+
+                            Toast.makeText(
+                                context,
+                                context.resources.getString(R.string.nc_common_error_sorry),
+                                Toast.LENGTH_LONG
+                            ).show()
+                            restartApp()
+                        }
+
+                        else -> {}
                     }
-
-                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> {
-                        Toast.makeText(
-                            context,
-                            context.resources.getString(R.string.nc_common_error_sorry),
-                            Toast.LENGTH_LONG
-                        ).show()
-                        Log.e(TAG, "something went wrong when deleting user with id " + currentUser!!.userId)
-                        restartApp()
-                    }
-
-                    else -> {}
                 }
-            }
+        }
     }
 
     private fun restartApp() {
@@ -1428,13 +1439,14 @@ class ConversationsListActivity : BaseActivity() {
                         Intent(Intent.ACTION_VIEW, (CLIENT_UPGRADE_MARKET_LINK + packageName).toUri())
                     )
                 } catch (e: ActivityNotFoundException) {
+                    logger.w(TAG, "Play Store app not found, falling back to browser link", e)
                     startActivity(
                         Intent(Intent.ACTION_VIEW, (CLIENT_UPGRADE_GPLAY_LINK + packageName).toUri())
                     )
                 }
             }
 
-        if (resources!!.getBoolean(R.bool.multiaccount_support) && userManager.users.blockingGet().size > 1) {
+        if (resources!!.getBoolean(R.bool.multiaccount_support) && runBlocking { userManager.getUsers() }.size > 1) {
             dialogBuilder.setNegativeButton(R.string.nc_switch_account) { _, _ ->
                 showChooseAccountDialog()
             }
@@ -1475,7 +1487,7 @@ class ConversationsListActivity : BaseActivity() {
                 deleteUserAndRestartApp()
             }
 
-        if (resources!!.getBoolean(R.bool.multiaccount_support) && userManager.users.blockingGet().size > 1) {
+        if (resources!!.getBoolean(R.bool.multiaccount_support) && runBlocking { userManager.getUsers() }.size > 1) {
             dialogBuilder.setNegativeButton(R.string.nc_switch_account) { _, _ ->
                 showChooseAccountDialog()
             }
@@ -1535,6 +1547,7 @@ class ConversationsListActivity : BaseActivity() {
                         }
 
                         WorkInfo.State.FAILED -> {
+                            logger.e(TAG, "DeleteConversationWorker failed for token ${conversation.token}")
                             showSnackbar(context.resources.getString(R.string.nc_common_error_sorry))
                         }
 
